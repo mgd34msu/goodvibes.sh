@@ -49,6 +49,8 @@ const api = {
     ipcRenderer.invoke('refresh-session', id),
   isSessionLive: (id: string) =>
     ipcRenderer.invoke('is-session-live', id),
+  recalculateSessionCosts: () =>
+    ipcRenderer.invoke('recalculate-session-costs'),
 
   // ============================================================================
   // ANALYTICS

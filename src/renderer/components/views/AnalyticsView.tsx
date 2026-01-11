@@ -277,79 +277,81 @@ function ToolUsageGrid({ data }: { data: ToolUsageStat[] }) {
 }
 
 // ============================================================================
-// ACTIVITY HEATMAP - Horizontal layout: oldest on left, newest on right
+// ACTIVITY HEATMAP - Weeks as columns, days as rows (Sun-Sat top to bottom)
 // ============================================================================
 
 function ActivityHeatmap({ data }: { data: Array<{ date: string; count: number }> }) {
-  // Create 12 weeks x 7 days grid (horizontal: weeks are columns, days are rows)
-  const weeks = 12;
+  const numWeeks = 12;
 
   const dateMap = new Map(data.map(d => [d.date, d.count]));
   const maxCount = Math.max(...data.map(d => d.count), 1);
 
+  // Format date as YYYY-MM-DD in local timezone (not UTC)
+  const formatLocalDate = (date: Date): string => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   const today = new Date();
+  const todayStr = formatLocalDate(today);
 
-  // Build grid: rows are days of week (0=Sun to 6=Sat), columns are weeks (oldest to newest)
-  const grid: Array<Array<{ date: string; count: number }>> = [];
+  // Find the Sunday of the current week
+  const currentSunday = new Date(today);
+  currentSunday.setDate(today.getDate() - today.getDay());
 
-  // Initialize 7 rows (one for each day of week)
-  for (let d = 0; d < 7; d++) {
-    grid.push([]);
-  }
+  // Go back numWeeks-1 weeks to get the starting Sunday
+  const startSunday = new Date(currentSunday);
+  startSunday.setDate(currentSunday.getDate() - (numWeeks - 1) * 7);
 
-  // Calculate the start of our 12-week window (going back from today)
-  // We want to end on today and go back 12 weeks
-  const startDate = new Date(today);
-  startDate.setDate(today.getDate() - (weeks * 7 - 1));
+  // Build grid: grid[weekIndex][dayIndex] where dayIndex 0=Sun, 6=Sat
+  const grid: Array<Array<{ date: string; count: number } | null>> = [];
 
-  // Fill in the grid from oldest (left) to newest (right)
-  for (let dayOffset = 0; dayOffset < weeks * 7; dayOffset++) {
-    const cellDate = new Date(startDate);
-    cellDate.setDate(startDate.getDate() + dayOffset);
-    const dateStr = cellDate.toISOString().split('T')[0] ?? '';
-    const dayOfWeek = cellDate.getDay(); // 0 = Sunday
-    const dayGrid = grid[dayOfWeek];
-    if (dayGrid) {
-      dayGrid.push({ date: dateStr, count: dateMap.get(dateStr) ?? 0 });
+  for (let week = 0; week < numWeeks; week++) {
+    const weekData: Array<{ date: string; count: number } | null> = [];
+    for (let day = 0; day < 7; day++) {
+      const cellDate = new Date(startSunday);
+      cellDate.setDate(startSunday.getDate() + week * 7 + day);
+      const dateStr = formatLocalDate(cellDate);
+
+      // Don't show future dates
+      if (dateStr > todayStr) {
+        weekData.push(null);
+      } else {
+        weekData.push({ date: dateStr, count: dateMap.get(dateStr) ?? 0 });
+      }
     }
+    grid.push(weekData);
   }
-
-  // Day order: Wednesday at top (3), through Sunday (0), then Monday (1) and Tuesday (2) at bottom
-  // Adjusted to match the desired visual layout
-  const dayOrder = [3, 4, 5, 6, 0, 1, 2];
 
   return (
     <div className="flex flex-col gap-2">
-      {/* Heatmap grid - horizontal layout */}
+      {/* Heatmap grid - weeks as columns, days as rows */}
       <div className="flex gap-1">
-        {/* Grid columns (weeks from oldest to newest) */}
-        {/* Days ordered Mon-Sun (indices 1-6, 0) from top to bottom */}
-        <div className="flex gap-1">
-          {Array.from({ length: Math.ceil(grid[0]?.length ?? 0) }).map((_, weekIdx) => (
-            <div key={weekIdx} className="flex flex-col gap-1">
-              {dayOrder.map((dayIdx) => {
-                const cell = grid[dayIdx]?.[weekIdx];
-                if (!cell) return <div key={dayIdx} className="w-3 h-3" />;
+        {grid.map((week, weekIdx) => (
+          <div key={weekIdx} className="flex flex-col gap-1">
+            {week.map((cell, dayIdx) => {
+              if (!cell) return <div key={dayIdx} className="w-3 h-3" />;
 
-                const level = cell.count === 0 ? 0 : Math.ceil((cell.count / maxCount) * 4);
-                return (
-                  <div
-                    key={dayIdx}
-                    className={clsx(
-                      'w-3 h-3 rounded-sm cursor-default',
-                      level === 0 && 'bg-surface-800',
-                      level === 1 && 'bg-success-500/20',
-                      level === 2 && 'bg-success-500/40',
-                      level === 3 && 'bg-success-500/60',
-                      level === 4 && 'bg-success-500/80'
-                    )}
-                    title={`${cell.date}: ${cell.count} sessions`}
-                  />
-                );
-              })}
-            </div>
-          ))}
-        </div>
+              const level = cell.count === 0 ? 0 : Math.ceil((cell.count / maxCount) * 4);
+              return (
+                <div
+                  key={dayIdx}
+                  className={clsx(
+                    'w-3 h-3 rounded-sm cursor-default',
+                    level === 0 && 'bg-surface-800',
+                    level === 1 && 'bg-success-500/20',
+                    level === 2 && 'bg-success-500/40',
+                    level === 3 && 'bg-success-500/60',
+                    level === 4 && 'bg-success-500/80'
+                  )}
+                  title={`${cell.date}: ${cell.count} sessions`}
+                />
+              );
+            })}
+          </div>
+        ))}
       </div>
 
       {/* Legend */}

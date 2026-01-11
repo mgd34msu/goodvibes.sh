@@ -164,6 +164,19 @@ export function registerAllIpcHandlers(): void {
     return sessionManager?.isSessionLive(id) ?? false;
   }));
 
+  ipcMain.handle('recalculate-session-costs', withContext('recalculate-session-costs', async () => {
+    const sessionManager = getSessionManager();
+    if (!sessionManager) {
+      return { success: false, error: 'Session manager not initialized', count: 0 };
+    }
+    try {
+      const count = await sessionManager.recalculateAllCosts();
+      return { success: true, count };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error', count: 0 };
+    }
+  }));
+
   // ============================================================================
   // ANALYTICS HANDLERS
   // ============================================================================

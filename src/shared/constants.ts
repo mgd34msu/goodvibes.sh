@@ -36,33 +36,51 @@ export const SESSION_FILE_WATCH_INTERVAL_MS = 500;
 export const LIVE_SESSION_CHECK_THRESHOLD_MS = 30000; // 30 seconds
 
 // ============================================================================
-// COST ESTIMATION
+// COST ESTIMATION (per million tokens in USD)
 // ============================================================================
 
-/** Cost per million input tokens in USD */
+/**
+ * Model pricing per million tokens (MTok) in USD.
+ * Source: https://platform.claude.com/docs/en/about-claude/pricing
+ *
+ * Cache multipliers:
+ * - Cache creation (5m): 1.25x base input price
+ * - Cache read: 0.1x base input price
+ */
+export const MODEL_PRICING: Record<string, { input: number; output: number }> = {
+  // Opus models
+  'claude-opus-4-5': { input: 5, output: 25 },
+  'claude-opus-4-1': { input: 15, output: 75 },
+  'claude-opus-4': { input: 15, output: 75 },
+  'claude-opus-3': { input: 15, output: 75 },
+  // Sonnet models
+  'claude-sonnet-4-5': { input: 3, output: 15 },
+  'claude-sonnet-4': { input: 3, output: 15 },
+  'claude-sonnet-3-7': { input: 3, output: 15 },
+  'claude-sonnet-3-5': { input: 3, output: 15 },
+  // Haiku models
+  'claude-haiku-4-5': { input: 1, output: 5 },
+  'claude-haiku-3-5': { input: 0.8, output: 4 },
+  'claude-haiku-3': { input: 0.25, output: 1.25 },
+};
+
+/** Cache write multiplier (1.25x base input price) */
+export const CACHE_WRITE_MULTIPLIER = 1.25;
+
+/** Cache read multiplier (0.1x base input price) */
+export const CACHE_READ_MULTIPLIER = 0.1;
+
+/** Default pricing when model is unknown (uses Sonnet 4 pricing) */
+export const DEFAULT_INPUT_PRICE = 3;
+export const DEFAULT_OUTPUT_PRICE = 15;
+
+/** @deprecated Use MODEL_PRICING instead */
 export const COST_PER_MILLION_INPUT_TOKENS = 3;
 
-/** Cost per million output tokens in USD */
+/** @deprecated Use MODEL_PRICING instead */
 export const COST_PER_MILLION_OUTPUT_TOKENS = 15;
 
-/**
- * Assumed input/output token ratio for cost estimation when breakdown is unknown.
- *
- * When session files don't provide separate input/output token counts, we estimate
- * cost by assuming this ratio of total tokens. A value of 0.5 means we assume
- * 50% of tokens are input and 50% are output.
- *
- * This is a simplification since actual ratios vary significantly by use case:
- * - Code generation: May have higher output ratio (more generated code than prompts)
- * - Q&A sessions: May have more balanced ratios
- * - Context-heavy sessions: Higher input ratio (large files in context)
- *
- * The 0.5 default provides a reasonable middle-ground estimate. For accurate
- * cost tracking, sessions should provide the actual input/output breakdown
- * which takes precedence over this estimate.
- *
- * @see sessionManager.ts estimateCost() for usage
- */
+/** @deprecated No longer used - we have actual token breakdowns */
 export const TOKEN_RATIO_ASSUMPTION = 0.5;
 
 // ============================================================================

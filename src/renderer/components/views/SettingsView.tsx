@@ -4,6 +4,7 @@
 
 import { useState, useEffect } from 'react';
 import { clsx } from 'clsx';
+import { useQueryClient } from '@tanstack/react-query';
 import { useSettingsStore } from '../../stores/settingsStore';
 import type { AppSettings } from '../../../shared/types';
 import { toast } from '../../stores/toastStore';
@@ -509,6 +510,11 @@ export default function SettingsView() {
             </button>
           </SettingRow>
         </SettingsSection>
+
+        {/* Maintenance */}
+        <SettingsSection title="Maintenance">
+          <RecalculateCostsButton />
+        </SettingsSection>
       </div>
 
       {/* Confirmation Modal */}
@@ -605,6 +611,51 @@ function ShortcutRow({ action, shortcut }: { action: string; shortcut: string })
       <span className="text-sm text-surface-300">{action}</span>
       <kbd className="px-2.5 py-1 text-xs font-medium bg-surface-800 border border-surface-700 rounded-md text-surface-300 shadow-sm">{shortcut}</kbd>
     </div>
+  );
+}
+
+// ============================================================================
+// RECALCULATE COSTS BUTTON
+// ============================================================================
+
+function RecalculateCostsButton() {
+  const [isRecalculating, setIsRecalculating] = useState(false);
+  const queryClient = useQueryClient();
+
+  const handleRecalculate = async () => {
+    setIsRecalculating(true);
+
+    try {
+      const result = await window.clausitron.recalculateSessionCosts();
+
+      if (result.success) {
+        // Invalidate analytics queries to refresh data
+        await queryClient.invalidateQueries({ queryKey: ['analytics'] });
+        await queryClient.invalidateQueries({ queryKey: ['sessions'] });
+        toast.success(`Recalculated costs for ${result.count} sessions`);
+      } else {
+        toast.error(result.error || 'Failed to recalculate costs');
+      }
+    } catch (err) {
+      toast.error('Failed to recalculate costs');
+    } finally {
+      setIsRecalculating(false);
+    }
+  };
+
+  return (
+    <SettingRow
+      label="Recalculate Session Costs"
+      description="Re-parse all sessions with updated pricing (model-specific rates + cache tokens)"
+    >
+      <button
+        onClick={handleRecalculate}
+        disabled={isRecalculating}
+        className="btn btn-secondary btn-sm"
+      >
+        {isRecalculating ? 'Recalculating...' : 'Recalculate'}
+      </button>
+    </SettingRow>
   );
 }
 

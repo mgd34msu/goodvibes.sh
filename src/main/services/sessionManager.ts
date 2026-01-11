@@ -23,9 +23,11 @@ import {
   LIVE_SESSION_THRESHOLD_MS,
   SESSION_FILE_WATCH_INTERVAL_MS,
   LIVE_SESSION_CHECK_THRESHOLD_MS,
-  COST_PER_MILLION_INPUT_TOKENS,
-  COST_PER_MILLION_OUTPUT_TOKENS,
-  TOKEN_RATIO_ASSUMPTION,
+  MODEL_PRICING,
+  CACHE_WRITE_MULTIPLIER,
+  CACHE_READ_MULTIPLIER,
+  DEFAULT_INPUT_PRICE,
+  DEFAULT_OUTPUT_PRICE,
 } from '../../shared/constants.js';
 import type { Session, SessionMessage } from '../../shared/types/index.js';
 
@@ -143,7 +145,7 @@ class SessionManagerInstance {
       return; // Session hasn't changed and has valid token data
     }
 
-    const { messages, tokenStats, costUSD } = await this.parseSessionFileWithStats(filePath);
+    const { messages, tokenStats, costUSD, model } = await this.parseSessionFileWithStats(filePath);
 
     // Calculate session stats
     let startTime: string | null = null;
@@ -156,11 +158,12 @@ class SessionManagerInstance {
       }
     }
 
-    // Calculate total tokens
-    const totalTokens = tokenStats.inputTokens + tokenStats.outputTokens;
+    // Calculate total tokens (including cache tokens)
+    const totalTokens = tokenStats.inputTokens + tokenStats.outputTokens +
+      tokenStats.cacheWriteTokens + tokenStats.cacheReadTokens;
 
-    // Use actual cost from JSONL if available, otherwise estimate
-    const totalCost = costUSD > 0 ? costUSD : this.estimateCost(totalTokens);
+    // Use actual cost from JSONL if available, otherwise calculate based on model
+    const totalCost = costUSD > 0 ? costUSD : this.calculateCost(tokenStats, model);
 
     // Upsert session with token breakdown
     upsertSession({
@@ -193,6 +196,7 @@ class SessionManagerInstance {
       cacheReadTokens: number;
     };
     costUSD: number;
+    model: string | null;
   }> {
     const messages: Partial<SessionMessage>[] = [];
     let tokenStats = {
@@ -202,6 +206,7 @@ class SessionManagerInstance {
       cacheReadTokens: 0,
     };
     let costUSD = 0;
+    let model: string | null = null;
 
     try {
       const content = await fs.readFile(filePath, 'utf-8');
@@ -222,6 +227,12 @@ class SessionManagerInstance {
         cacheWriteTokens: sumTokens(/"cache_creation_input_tokens"\s*:\s*\d+/g),
         cacheReadTokens: sumTokens(/"cache_read_input_tokens"\s*:\s*\d+/g),
       };
+
+      // Extract model name (use the first model found in the session)
+      const modelMatch = content.match(/"model"\s*:\s*"([^"]+)"/);
+      if (modelMatch) {
+        model = modelMatch[1] ?? null;
+      }
 
       // Extract cost using regex as well for robustness
       const costMatches = content.match(/"costUSD"\s*:\s*[\d.]+/g) || [];
@@ -251,7 +262,7 @@ class SessionManagerInstance {
       logger.error(`Failed to parse session file: ${filePath}`, error);
     }
 
-    return { messages, tokenStats, costUSD };
+    return { messages, tokenStats, costUSD, model };
   }
 
   private async parseSessionFile(filePath: string): Promise<Partial<SessionMessage>[]> {
@@ -320,15 +331,38 @@ class SessionManagerInstance {
   }
 
   /**
-   * Estimates the cost of tokens when actual cost is not available from the session file.
-   * @param tokens - Total number of tokens
-   * @returns Estimated cost in USD
+   * Calculates the cost of a session based on token usage and model.
+   * Uses model-specific pricing and proper cache token multipliers.
+   *
+   * Pricing source: https://platform.claude.com/docs/en/about-claude/pricing
    */
-  private estimateCost(tokens: number): number {
-    // Assumes a split between input and output tokens when actual breakdown is unknown
-    const inputCost = (tokens * TOKEN_RATIO_ASSUMPTION * COST_PER_MILLION_INPUT_TOKENS) / 1_000_000;
-    const outputCost = (tokens * TOKEN_RATIO_ASSUMPTION * COST_PER_MILLION_OUTPUT_TOKENS) / 1_000_000;
-    return inputCost + outputCost;
+  private calculateCost(
+    tokenStats: { inputTokens: number; outputTokens: number; cacheWriteTokens: number; cacheReadTokens: number },
+    model: string | null
+  ): number {
+    // Normalize model name to match our pricing keys
+    // e.g., "claude-opus-4-5-20251101" -> "claude-opus-4-5"
+    const normalizedModel = model
+      ? model.replace(/-\d{8}$/, '').replace(/_/g, '-')
+      : null;
+
+    // Get pricing for this model, fall back to defaults
+    const pricing = (normalizedModel && MODEL_PRICING[normalizedModel]) || {
+      input: DEFAULT_INPUT_PRICE,
+      output: DEFAULT_OUTPUT_PRICE,
+    };
+
+    // Calculate costs per token type
+    const inputCost = (tokenStats.inputTokens * pricing.input) / 1_000_000;
+    const outputCost = (tokenStats.outputTokens * pricing.output) / 1_000_000;
+
+    // Cache write tokens cost 1.25x base input price
+    const cacheWriteCost = (tokenStats.cacheWriteTokens * pricing.input * CACHE_WRITE_MULTIPLIER) / 1_000_000;
+
+    // Cache read tokens cost 0.1x base input price
+    const cacheReadCost = (tokenStats.cacheReadTokens * pricing.input * CACHE_READ_MULTIPLIER) / 1_000_000;
+
+    return inputCost + outputCost + cacheWriteCost + cacheReadCost;
   }
 
   // ============================================================================
@@ -544,6 +578,32 @@ class SessionManagerInstance {
       logger.error(`Failed to refresh session tokens for ${sessionId}`, error);
       return session;
     }
+  }
+
+  /**
+   * Recalculates costs for all sessions using updated pricing.
+   * Forces reparse of all sessions with valid file paths.
+   */
+  async recalculateAllCosts(): Promise<number> {
+    const sessions = getAllSessions();
+    let count = 0;
+
+    logger.info(`Starting cost recalculation for ${sessions.length} sessions`);
+
+    for (const session of sessions) {
+      if (session.filePath && existsSync(session.filePath)) {
+        try {
+          const stats = await fs.stat(session.filePath);
+          await this.processSessionFile(session.filePath, stats.mtimeMs, true);
+          count++;
+        } catch (error) {
+          logger.error(`Failed to recalculate costs for session ${session.id}`, error);
+        }
+      }
+    }
+
+    logger.info(`Completed cost recalculation for ${count} sessions`);
+    return count;
   }
 
   isSessionLive(sessionId: string): boolean {
