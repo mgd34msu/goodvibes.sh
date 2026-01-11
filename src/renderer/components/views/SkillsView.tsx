@@ -19,6 +19,7 @@ import {
   ChevronRight,
   Settings,
 } from 'lucide-react';
+import ProjectSelector from '../shared/ProjectSelector';
 
 // ============================================================================
 // TYPES
@@ -160,7 +161,7 @@ Provide constructive feedback with specific suggestions.`,
 
 interface SkillFormProps {
   skill?: Skill;
-  onSave: (skill: Partial<Skill>) => void;
+  onSave: (skill: Partial<Skill>, projectPath: string | null) => void;
   onCancel: () => void;
 }
 
@@ -172,14 +173,36 @@ function SkillForm({ skill, onSave, onCancel }: SkillFormProps) {
     skill?.allowedTools?.join(', ') || ''
   );
   const [scope, setScope] = useState<'user' | 'project'>(skill?.scope || 'user');
+  const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
+  const [selectedProjectPath, setSelectedProjectPath] = useState<string | null>(skill?.projectPath || null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleProjectChange = (projectId: number | null, projectPath: string | null) => {
+    setSelectedProjectId(projectId);
+    setSelectedProjectPath(projectPath);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     const allowedTools = allowedToolsString
       .split(',')
       .map((t) => t.trim())
       .filter(Boolean);
+
+    let projectPath: string | null = null;
+
+    if (scope === 'project') {
+      if (selectedProjectPath) {
+        projectPath = selectedProjectPath;
+      } else {
+        // No project selected, prompt for folder
+        const folderPath = await window.clausitron?.selectFolder?.();
+        if (!folderPath) {
+          return; // User cancelled
+        }
+        projectPath = folderPath;
+      }
+    }
 
     onSave({
       id: skill?.id,
@@ -188,7 +211,8 @@ function SkillForm({ skill, onSave, onCancel }: SkillFormProps) {
       content,
       allowedTools: allowedTools.length > 0 ? allowedTools : null,
       scope,
-    });
+      projectPath,
+    }, projectPath);
   };
 
   return (
@@ -196,7 +220,7 @@ function SkillForm({ skill, onSave, onCancel }: SkillFormProps) {
       onSubmit={handleSubmit}
       className="space-y-4 bg-surface-900 rounded-lg p-4 border border-surface-700"
     >
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-3 gap-4">
         <div>
           <label className="block text-sm font-medium text-surface-300 mb-1">
             Skill Name
@@ -221,13 +245,26 @@ function SkillForm({ skill, onSave, onCancel }: SkillFormProps) {
           </label>
           <select
             value={scope}
-            onChange={(e) => setScope(e.target.value as 'user' | 'project')}
+            onChange={(e) => {
+              const newScope = e.target.value as 'user' | 'project';
+              setScope(newScope);
+              if (newScope === 'user') {
+                setSelectedProjectId(null);
+                setSelectedProjectPath(null);
+              }
+            }}
             className="w-full px-3 py-2 bg-surface-800 border border-surface-600 rounded-md text-surface-100 focus:ring-2 focus:ring-accent-purple focus:border-transparent"
           >
             <option value="user">User (Global)</option>
             <option value="project">Project</option>
           </select>
         </div>
+
+        <ProjectSelector
+          scope={scope}
+          selectedProjectId={selectedProjectId}
+          onProjectChange={handleProjectChange}
+        />
       </div>
 
       <div>
@@ -477,7 +514,7 @@ export default function SkillsView() {
     loadSkills();
   }, [loadSkills]);
 
-  const handleSave = async (skillData: Partial<Skill>) => {
+  const handleSave = async (skillData: Partial<Skill>, projectPath: string | null) => {
     try {
       if (skillData.id) {
         await window.clausitron.updateSkill(skillData.id, {
@@ -486,6 +523,7 @@ export default function SkillsView() {
           promptTemplate: skillData.content,
           allowedTools: skillData.allowedTools,
           scope: skillData.scope,
+          projectPath: projectPath || undefined,
         });
       } else {
         await window.clausitron.createSkill({
@@ -493,6 +531,8 @@ export default function SkillsView() {
           description: skillData.description || undefined,
           promptTemplate: skillData.content || '',
           isBuiltIn: false,
+          scope: skillData.scope,
+          projectPath: projectPath || undefined,
         });
       }
       setShowForm(false);

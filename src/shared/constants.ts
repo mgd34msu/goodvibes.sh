@@ -199,8 +199,8 @@ export const NAV_GROUPS: NavGroup[] = [
   },
   {
     id: 'claude',
-    label: 'Claude',
-    views: ['memory', 'agents', 'skills', 'mcp', 'hooks'],
+    label: 'Features',
+    views: ['memory', 'agents', 'skills', 'hooks', 'mcp'],
   },
   {
     id: 'knowledge',

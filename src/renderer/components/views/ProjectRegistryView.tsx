@@ -63,21 +63,7 @@ interface ProjectAnalytics {
   lastActivity: string | null;
 }
 
-interface GlobalAnalytics {
-  totalProjects: number;
-  activeProjects: number;
-  totalSessions: number;
-  totalTokens: number;
-  totalCostUsd: number;
-  avgCostPerProject: number;
-  avgSessionsPerProject: number;
-  topProjectsByCost: ProjectAnalytics[];
-  topProjectsBySessions: ProjectAnalytics[];
-  projectDistribution: { projectId: number; projectName: string; percentage: number }[];
-  recentActivity: { projectId: number; projectName: string; lastActivity: string }[];
-}
-
-type TabType = 'projects' | 'templates' | 'analytics';
+type TabType = 'projects' | 'templates';
 
 // ============================================================================
 // MAIN COMPONENT
@@ -87,7 +73,6 @@ export default function ProjectRegistryView() {
   const [activeTab, setActiveTab] = useState<TabType>('projects');
   const [projects, setProjects] = useState<RegisteredProject[]>([]);
   const [templates, setTemplates] = useState<ProjectTemplate[]>([]);
-  const [globalAnalytics, setGlobalAnalytics] = useState<GlobalAnalytics | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedProject, setSelectedProject] = useState<RegisteredProject | null>(null);
@@ -113,15 +98,13 @@ export default function ProjectRegistryView() {
   async function loadData() {
     setIsLoading(true);
     try {
-      const [projectsResult, templatesResult, analyticsResult] = await Promise.all([
+      const [projectsResult, templatesResult] = await Promise.all([
         window.clausitron?.projectGetAll?.(),
         window.clausitron?.templateGetAll?.(),
-        window.clausitron?.projectGetGlobalAnalytics?.(),
       ]);
 
       setProjects(projectsResult || []);
       setTemplates(templatesResult || []);
-      setGlobalAnalytics(analyticsResult || null);
 
       // Load analytics for each project
       if (projectsResult?.length) {
@@ -240,7 +223,7 @@ export default function ProjectRegistryView() {
 
         {/* Tabs */}
         <div className="flex gap-2 border-b border-surface-700">
-          {(['projects', 'templates', 'analytics'] as TabType[]).map(tab => (
+          {(['projects', 'templates'] as TabType[]).map(tab => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -253,7 +236,6 @@ export default function ProjectRegistryView() {
             >
               {tab === 'projects' && `Projects (${projects.length})`}
               {tab === 'templates' && `Templates (${templates.length})`}
-              {tab === 'analytics' && 'Analytics'}
             </button>
           ))}
         </div>
@@ -378,151 +360,6 @@ export default function ProjectRegistryView() {
                   </div>
                 ))}
               </div>
-            )}
-          </div>
-        )}
-
-        {/* Analytics Tab */}
-        {activeTab === 'analytics' && (
-          <div className="space-y-6">
-            {/* Global Stats */}
-            {globalAnalytics && (
-              <>
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                  <div className="card p-4">
-                    <div className="text-xs text-surface-500">Total Projects</div>
-                    <div className="text-2xl font-bold text-surface-100">
-                      {globalAnalytics.totalProjects}
-                    </div>
-                    <div className="text-xs text-surface-500 mt-1">
-                      {globalAnalytics.activeProjects} active
-                    </div>
-                  </div>
-                  <div className="card p-4">
-                    <div className="text-xs text-surface-500">Total Sessions</div>
-                    <div className="text-2xl font-bold text-surface-100">
-                      {globalAnalytics.totalSessions}
-                    </div>
-                    <div className="text-xs text-surface-500 mt-1">
-                      {globalAnalytics.avgSessionsPerProject.toFixed(1)} avg/project
-                    </div>
-                  </div>
-                  <div className="card p-4">
-                    <div className="text-xs text-surface-500">Total Tokens</div>
-                    <div className="text-2xl font-bold text-surface-100">
-                      {(globalAnalytics.totalTokens / 1000).toFixed(1)}K
-                    </div>
-                  </div>
-                  <div className="card p-4">
-                    <div className="text-xs text-surface-500">Total Cost</div>
-                    <div className="text-2xl font-bold text-surface-100">
-                      {formatCurrency(globalAnalytics.totalCostUsd)}
-                    </div>
-                    <div className="text-xs text-surface-500 mt-1">
-                      {formatCurrency(globalAnalytics.avgCostPerProject)} avg/project
-                    </div>
-                  </div>
-                </div>
-
-                {/* Top Projects */}
-                <div className="grid gap-6 lg:grid-cols-2">
-                  {/* Top by Cost */}
-                  <div className="card p-4">
-                    <h3 className="font-medium text-surface-100 mb-4">Top Projects by Cost</h3>
-                    {globalAnalytics.topProjectsByCost.length === 0 ? (
-                      <div className="text-sm text-surface-500">No data available</div>
-                    ) : (
-                      <div className="space-y-3">
-                        {globalAnalytics.topProjectsByCost.slice(0, 5).map((proj, i) => (
-                          <div key={proj.projectId} className="flex items-center gap-3">
-                            <div className="w-6 h-6 rounded-full bg-surface-700 flex items-center justify-center text-xs text-surface-400">
-                              {i + 1}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="text-sm text-surface-100 truncate">{proj.projectName}</div>
-                              <div className="text-xs text-surface-500">{proj.totalSessions} sessions</div>
-                            </div>
-                            <div className="text-sm font-medium text-surface-200">
-                              {formatCurrency(proj.totalCostUsd)}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Top by Sessions */}
-                  <div className="card p-4">
-                    <h3 className="font-medium text-surface-100 mb-4">Top Projects by Activity</h3>
-                    {globalAnalytics.topProjectsBySessions.length === 0 ? (
-                      <div className="text-sm text-surface-500">No data available</div>
-                    ) : (
-                      <div className="space-y-3">
-                        {globalAnalytics.topProjectsBySessions.slice(0, 5).map((proj, i) => (
-                          <div key={proj.projectId} className="flex items-center gap-3">
-                            <div className="w-6 h-6 rounded-full bg-surface-700 flex items-center justify-center text-xs text-surface-400">
-                              {i + 1}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="text-sm text-surface-100 truncate">{proj.projectName}</div>
-                              <div className="text-xs text-surface-500">
-                                {formatCurrency(proj.totalCostUsd)} spent
-                              </div>
-                            </div>
-                            <div className="text-sm font-medium text-surface-200">
-                              {proj.totalSessions} sessions
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Recent Activity */}
-                {globalAnalytics.recentActivity.length > 0 && (
-                  <div className="card p-4">
-                    <h3 className="font-medium text-surface-100 mb-4">Recent Activity</h3>
-                    <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
-                      {globalAnalytics.recentActivity.map(activity => (
-                        <div
-                          key={activity.projectId}
-                          className="flex items-center gap-3 p-2 rounded-lg bg-surface-800/50"
-                        >
-                          <div className="w-2 h-2 rounded-full bg-green-500" />
-                          <div className="flex-1 min-w-0">
-                            <div className="text-sm text-surface-200 truncate">{activity.projectName}</div>
-                            <div className="text-xs text-surface-500">{formatDate(activity.lastActivity)}</div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Distribution Chart */}
-                {globalAnalytics.projectDistribution.length > 0 && (
-                  <div className="card p-4">
-                    <h3 className="font-medium text-surface-100 mb-4">Cost Distribution</h3>
-                    <div className="space-y-2">
-                      {globalAnalytics.projectDistribution.map(item => (
-                        <div key={item.projectId} className="flex items-center gap-3">
-                          <div className="w-24 text-sm text-surface-300 truncate">{item.projectName}</div>
-                          <div className="flex-1 h-4 bg-surface-700 rounded-full overflow-hidden">
-                            <div
-                              className="h-full bg-primary-500 rounded-full"
-                              style={{ width: `${Math.min(item.percentage, 100)}%` }}
-                            />
-                          </div>
-                          <div className="w-12 text-right text-xs text-surface-400">
-                            {item.percentage.toFixed(1)}%
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </>
             )}
           </div>
         )}
