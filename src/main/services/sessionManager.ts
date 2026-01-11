@@ -14,7 +14,10 @@ import {
   getSessionMessages,
   getAnalytics,
   logActivity,
+  trackToolUsage,
+  clearSessionToolUsage,
 } from '../database/index.js';
+import { resolveToolNames } from '../../shared/toolParser.js';
 import { sendToRenderer } from '../window.js';
 import { Logger } from './logger.js';
 import {
@@ -145,7 +148,7 @@ class SessionManagerInstance {
       return; // Session hasn't changed and has valid token data
     }
 
-    const { messages, tokenStats, costUSD, model } = await this.parseSessionFileWithStats(filePath);
+    const { messages, tokenStats, costUSD, model, toolUsage } = await this.parseSessionFileWithStats(filePath);
 
     // Calculate session stats
     let startTime: string | null = null;
@@ -185,6 +188,12 @@ class SessionManagerInstance {
 
     // Store messages
     storeMessages(filename, messages);
+
+    // Track tool usage for analytics (clear existing data first to avoid duplicates on re-parse)
+    clearSessionToolUsage(filename);
+    for (const [toolName, count] of toolUsage) {
+      trackToolUsage(filename, toolName, count);
+    }
   }
 
   private async parseSessionFileWithStats(filePath: string): Promise<{
@@ -197,6 +206,7 @@ class SessionManagerInstance {
     };
     costUSD: number;
     model: string | null;
+    toolUsage: Map<string, number>;
   }> {
     const messages: Partial<SessionMessage>[] = [];
     let tokenStats = {
@@ -207,6 +217,7 @@ class SessionManagerInstance {
     };
     let costUSD = 0;
     let model: string | null = null;
+    const toolUsage = new Map<string, number>();
 
     try {
       const content = await fs.readFile(filePath, 'utf-8');
@@ -250,6 +261,9 @@ class SessionManagerInstance {
           if (parsed) {
             messages.push(parsed);
           }
+
+          // Extract tool usage from tool_use entries
+          this.extractToolUsage(entry, toolUsage);
         } catch (error) {
           // Skip malformed JSON lines - this is expected for partially written files
           logger.debug('Skipped malformed JSON line in session file', {
@@ -262,7 +276,39 @@ class SessionManagerInstance {
       logger.error(`Failed to parse session file: ${filePath}`, error);
     }
 
-    return { messages, tokenStats, costUSD, model };
+    return { messages, tokenStats, costUSD, model, toolUsage };
+  }
+
+  /**
+   * Extract tool usage from a session entry and update the toolUsage map.
+   * Handles nested tool_use in message.content arrays and direct tool_use entries.
+   */
+  private extractToolUsage(entry: any, toolUsage: Map<string, number>): void {
+    // Check for direct tool_use entry
+    if (entry.type === 'tool_use' || entry.tool_use) {
+      const tool = entry.tool_use || entry;
+      const toolName = tool.name;
+      const toolInput = tool.input;
+
+      if (toolName) {
+        const resolvedNames = resolveToolNames(toolName, toolInput);
+        for (const name of resolvedNames) {
+          toolUsage.set(name, (toolUsage.get(name) || 0) + 1);
+        }
+      }
+    }
+
+    // Check for tool_use in message.content array
+    if (entry.message?.content && Array.isArray(entry.message.content)) {
+      for (const block of entry.message.content) {
+        if (block.type === 'tool_use' && block.name) {
+          const resolvedNames = resolveToolNames(block.name, block.input);
+          for (const name of resolvedNames) {
+            toolUsage.set(name, (toolUsage.get(name) || 0) + 1);
+          }
+        }
+      }
+    }
   }
 
   private async parseSessionFile(filePath: string): Promise<Partial<SessionMessage>[]> {

@@ -742,6 +742,11 @@ export function trackToolUsage(sessionId: string, toolName: string, count: numbe
   database.prepare('INSERT INTO tool_usage (session_id, tool_name, count) VALUES (?, ?, ?)').run(sessionId, toolName, count);
 }
 
+export function clearSessionToolUsage(sessionId: string): void {
+  const database = getDatabase();
+  database.prepare('DELETE FROM tool_usage WHERE session_id = ?').run(sessionId);
+}
+
 // ============================================================================
 // ACTIVITY LOG
 // ============================================================================

@@ -632,6 +632,7 @@ function RecalculateCostsButton() {
         // Invalidate analytics queries to refresh data
         await queryClient.invalidateQueries({ queryKey: ['analytics'] });
         await queryClient.invalidateQueries({ queryKey: ['sessions'] });
+        await queryClient.invalidateQueries({ queryKey: ['tool-usage'] });
         toast.success(`Recalculated costs for ${result.count} sessions`);
       } else {
         toast.error(result.error || 'Failed to recalculate costs');
