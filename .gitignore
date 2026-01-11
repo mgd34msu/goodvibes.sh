@@ -1,0 +1,58 @@
+# Dependencies
+node_modules/
+
+# Build output
+out/
+dist/
+release/
+
+# Do not commit build artifacts in src
+src/**/*.js
+src/**/*.js.map
+src/**/*.d.ts
+src/**/*.d.ts.map
+!src/**/*.test.ts
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Environment and secrets - NEVER commit these
+.env
+.env.local
+.env.*.local
+github-oauth.json
+
+# Test coverage
+coverage/
+
+# Temporary files
+*.tmp
+*.temp
+
+# Database files (development)
+*.db
+*.db-journal
+
+# Electron builder cache
+.electron-builder-cache/
+
+# Vite cache
+.vite/
+
+# Claude files
+.claude/
+.external-docs/
+CLAUDE.md
+nul

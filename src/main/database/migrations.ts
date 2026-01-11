@@ -1,0 +1,299 @@
+// ============================================================================
+// DATABASE MIGRATION SYSTEM
+// ============================================================================
+
+import type Database from 'better-sqlite3';
+import { Logger } from '../services/logger.js';
+
+const logger = new Logger('DatabaseMigrations');
+
+// ============================================================================
+// MIGRATION TYPES
+// ============================================================================
+
+/**
+ * Represents a database migration
+ */
+export interface Migration {
+  /** Unique version number for the migration */
+  version: number;
+  /** Human-readable description of what the migration does */
+  description: string;
+  /** Function to apply the migration (upgrade) */
+  up: (db: Database.Database) => void;
+  /** Function to revert the migration (downgrade) - optional */
+  down?: (db: Database.Database) => void;
+}
+
+/**
+ * Schema version record from the database
+ */
+interface SchemaVersionRow {
+  version: number;
+  applied_at: string;
+  description: string;
+}
+
+// ============================================================================
+// SCHEMA VERSION TABLE
+// ============================================================================
+
+/**
+ * Creates the schema_versions table if it doesn't exist
+ * This table tracks which migrations have been applied
+ */
+function ensureSchemaVersionsTable(db: Database.Database): void {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS schema_versions (
+      version INTEGER PRIMARY KEY,
+      applied_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      description TEXT
+    )
+  `);
+}
+
+/**
+ * Gets the current schema version from the database
+ * @param db - The database instance
+ * @returns The current version number, or 0 if no migrations have been applied
+ */
+export function getCurrentVersion(db: Database.Database): number {
+  ensureSchemaVersionsTable(db);
+
+  const row = db.prepare(`
+    SELECT MAX(version) as version FROM schema_versions
+  `).get() as { version: number | null } | undefined;
+
+  return row?.version ?? 0;
+}
+
+/**
+ * Records that a migration has been applied
+ * @param db - The database instance
+ * @param version - The migration version
+ * @param description - Description of the migration
+ */
+function recordMigration(db: Database.Database, version: number, description: string): void {
+  db.prepare(`
+    INSERT INTO schema_versions (version, description)
+    VALUES (?, ?)
+  `).run(version, description);
+}
+
+/**
+ * Removes a migration record (for rollback)
+ * @param db - The database instance
+ * @param version - The migration version to remove
+ */
+function removeMigrationRecord(db: Database.Database, version: number): void {
+  db.prepare(`
+    DELETE FROM schema_versions WHERE version = ?
+  `).run(version);
+}
+
+// ============================================================================
+// MIGRATION RUNNER
+// ============================================================================
+
+/**
+ * Runs all pending migrations up to the target version
+ * @param db - The database instance
+ * @param migrations - Array of migrations to consider
+ * @param targetVersion - Optional target version (defaults to latest)
+ * @returns The number of migrations applied
+ */
+export function runMigrations(
+  db: Database.Database,
+  migrations: Migration[],
+  targetVersion?: number
+): number {
+  ensureSchemaVersionsTable(db);
+
+  const currentVersion = getCurrentVersion(db);
+  const maxVersion = targetVersion ?? Math.max(...migrations.map(m => m.version), 0);
+
+  if (currentVersion >= maxVersion) {
+    logger.info(`Database is up to date (version ${currentVersion})`);
+    return 0;
+  }
+
+  // Sort migrations by version
+  const sortedMigrations = [...migrations].sort((a, b) => a.version - b.version);
+
+  // Filter to pending migrations
+  const pendingMigrations = sortedMigrations.filter(
+    m => m.version > currentVersion && m.version <= maxVersion
+  );
+
+  if (pendingMigrations.length === 0) {
+    logger.info('No pending migrations');
+    return 0;
+  }
+
+  logger.info(`Running ${pendingMigrations.length} migrations (${currentVersion} -> ${maxVersion})`);
+
+  let appliedCount = 0;
+
+  for (const migration of pendingMigrations) {
+    logger.info(`Applying migration ${migration.version}: ${migration.description}`);
+
+    try {
+      // Run migration in a transaction
+      const runMigration = db.transaction(() => {
+        migration.up(db);
+        recordMigration(db, migration.version, migration.description);
+      });
+
+      runMigration();
+      appliedCount++;
+      logger.info(`Migration ${migration.version} applied successfully`);
+    } catch (error) {
+      logger.error(`Migration ${migration.version} failed`, error);
+      throw new Error(
+        `Migration ${migration.version} failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
+  }
+
+  logger.info(`Applied ${appliedCount} migrations successfully`);
+  return appliedCount;
+}
+
+/**
+ * Rolls back migrations to a target version
+ * @param db - The database instance
+ * @param migrations - Array of migrations to consider
+ * @param targetVersion - The version to roll back to
+ * @returns The number of migrations rolled back
+ */
+export function rollbackMigrations(
+  db: Database.Database,
+  migrations: Migration[],
+  targetVersion: number
+): number {
+  const currentVersion = getCurrentVersion(db);
+
+  if (currentVersion <= targetVersion) {
+    logger.info(`Database is already at or below version ${targetVersion}`);
+    return 0;
+  }
+
+  // Sort migrations by version descending for rollback
+  const sortedMigrations = [...migrations].sort((a, b) => b.version - a.version);
+
+  // Filter to migrations that need rollback
+  const migrationsToRollback = sortedMigrations.filter(
+    m => m.version > targetVersion && m.version <= currentVersion && m.down
+  );
+
+  if (migrationsToRollback.length === 0) {
+    logger.warn('No reversible migrations found for rollback');
+    return 0;
+  }
+
+  logger.info(`Rolling back ${migrationsToRollback.length} migrations (${currentVersion} -> ${targetVersion})`);
+
+  let rolledBackCount = 0;
+
+  for (const migration of migrationsToRollback) {
+    if (!migration.down) {
+      logger.warn(`Migration ${migration.version} has no rollback function, skipping`);
+      continue;
+    }
+
+    logger.info(`Rolling back migration ${migration.version}: ${migration.description}`);
+
+    try {
+      const runRollback = db.transaction(() => {
+        migration.down!(db);
+        removeMigrationRecord(db, migration.version);
+      });
+
+      runRollback();
+      rolledBackCount++;
+      logger.info(`Migration ${migration.version} rolled back successfully`);
+    } catch (error) {
+      logger.error(`Rollback of migration ${migration.version} failed`, error);
+      throw new Error(
+        `Rollback of migration ${migration.version} failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
+  }
+
+  logger.info(`Rolled back ${rolledBackCount} migrations`);
+  return rolledBackCount;
+}
+
+/**
+ * Gets the migration history from the database
+ * @param db - The database instance
+ * @returns Array of applied migrations with their timestamps
+ */
+export function getMigrationHistory(db: Database.Database): SchemaVersionRow[] {
+  ensureSchemaVersionsTable(db);
+
+  const rows = db.prepare(`
+    SELECT version, applied_at, description
+    FROM schema_versions
+    ORDER BY version ASC
+  `).all() as SchemaVersionRow[];
+
+  return rows;
+}
+
+// ============================================================================
+// AVAILABLE MIGRATIONS
+// ============================================================================
+
+/**
+ * All available database migrations
+ * Add new migrations here as the schema evolves
+ */
+export const MIGRATIONS: Migration[] = [
+  // Future migrations will be added here
+  // Example:
+  // {
+  //   version: 1,
+  //   description: 'Add search index to sessions',
+  //   up: (db) => {
+  //     db.exec('CREATE INDEX IF NOT EXISTS idx_sessions_search ON sessions(project_name, custom_title)');
+  //   },
+  //   down: (db) => {
+  //     db.exec('DROP INDEX IF EXISTS idx_sessions_search');
+  //   },
+  // },
+];
+
+// ============================================================================
+// MIGRATION HELPERS
+// ============================================================================
+
+/**
+ * Checks if a specific migration has been applied
+ * @param db - The database instance
+ * @param version - The migration version to check
+ * @returns true if the migration has been applied
+ */
+export function hasMigration(db: Database.Database, version: number): boolean {
+  ensureSchemaVersionsTable(db);
+
+  const row = db.prepare(`
+    SELECT 1 FROM schema_versions WHERE version = ?
+  `).get(version);
+
+  return row !== undefined;
+}
+
+/**
+ * Gets information about pending migrations
+ * @param db - The database instance
+ * @param migrations - Array of available migrations
+ * @returns Array of migrations that haven't been applied yet
+ */
+export function getPendingMigrations(
+  db: Database.Database,
+  migrations: Migration[]
+): Migration[] {
+  const currentVersion = getCurrentVersion(db);
+  return migrations.filter(m => m.version > currentVersion).sort((a, b) => a.version - b.version);
+}

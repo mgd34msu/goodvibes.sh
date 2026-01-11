@@ -1,0 +1,142 @@
+{
+  "name": "clausitron",
+  "version": "2.5.0",
+  "description": "Claude CLI with extras in Electron - Enterprise Edition",
+  "main": "out/main/index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "start": "electron-vite preview",
+    "preview": "electron-vite preview",
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest --coverage",
+    "test:e2e": "playwright test",
+    "lint": "eslint src --ext .ts,.tsx",
+    "lint:fix": "eslint src --ext .ts,.tsx --fix",
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.node.json --noEmit",
+    "package": "npm run build && electron-builder",
+    "package:win": "npm run build && electron-builder --win",
+    "package:mac": "npm run build && electron-builder --mac",
+    "package:linux": "npm run build && electron-builder --linux"
+  },
+  "keywords": [
+    "claude",
+    "cli",
+    "electron",
+    "ai",
+    "terminal",
+    "typescript",
+    "react"
+  ],
+  "author": {
+    "name": "Mike Davis",
+    "email": "mgd34msu@gmail.com"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@octokit/rest": "^22.0.1",
+    "archiver": "^7.0.1",
+    "better-sqlite3": "^12.5.0",
+    "dotenv": "^17.2.3",
+    "electron-store": "^11.0.2",
+    "node-pty": "^1.1.0",
+    "uuid": "^13.0.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.57.0",
+    "@tailwindcss/vite": "^4.1.18",
+    "@tanstack/react-query": "^5.90.15",
+    "@tanstack/react-virtual": "^3.13.13",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.1",
+    "@types/archiver": "^7.0.0",
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/node": "^25.0.3",
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
+    "@types/uuid": "^11.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.51.0",
+    "@typescript-eslint/parser": "^8.51.0",
+    "@vitejs/plugin-react": "^5.1.2",
+    "@vitest/coverage-v8": "^4.0.16",
+    "@vitest/ui": "^4.0.16",
+    "@xterm/addon-fit": "^0.11.0",
+    "@xterm/addon-search": "^0.16.0",
+    "@xterm/addon-web-links": "^0.12.0",
+    "@xterm/xterm": "^6.0",
+    "clsx": "^2.1.1",
+    "electron": "^39.2.7",
+    "electron-builder": "^26.0.12",
+    "electron-router-dom": "^2.1.0",
+    "electron-vite": "^5.0.0",
+    "eslint": "^9.39.2",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "highlight.js": "^11.11.1",
+    "jsdom": "^27.4.0",
+    "lucide-react": "^0.562.0",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3",
+    "react-error-boundary": "^6.0.1",
+    "react-markdown": "^10.1.0",
+    "rehype-highlight": "^7.0.2",
+    "remark-gfm": "^4.0.1",
+    "tailwindcss": "^4.1.18",
+    "terser": "^5.44.1",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3",
+    "vite": "^7.3.0",
+    "vite-tsconfig-paths": "^6.0.3",
+    "vitest": "^4.0.16",
+    "zustand": "^5.0.9"
+  },
+  "build": {
+    "appId": "com.clausitron.app",
+    "productName": "Clausitron",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "out/**/*",
+      "package.json"
+    ],
+    "extraMetadata": {
+      "main": "out/main/index.js"
+    },
+    "extraResources": [
+      {
+        "from": "node_modules/better-sqlite3/build/Release",
+        "to": "better-sqlite3",
+        "filter": [
+          "*.node"
+        ]
+      }
+    ],
+    "protocols": {
+      "name": "Clausitron",
+      "schemes": [
+        "clausitron"
+      ]
+    },
+    "win": {
+      "target": "nsis",
+      "icon": "build/icon.ico"
+    },
+    "mac": {
+      "target": "dmg",
+      "icon": "build/icon.icns"
+    },
+    "linux": {
+      "target": "AppImage",
+      "icon": "build/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  }
+}

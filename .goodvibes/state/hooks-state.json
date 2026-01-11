@@ -1,0 +1,37 @@
+{
+  "session": {
+    "id": "e44578d9-edbd-4dc6-a042-e93b48b40183",
+    "startedAt": "2026-01-11T03:29:31.625Z",
+    "mode": "default",
+    "featureDescription": null
+  },
+  "errors": {},
+  "tests": {
+    "lastFullRun": null,
+    "lastQuickRun": null,
+    "passingFiles": [],
+    "failingFiles": [],
+    "pendingFixes": []
+  },
+  "build": {
+    "lastRun": null,
+    "status": "unknown",
+    "errors": [],
+    "fixAttempts": 0
+  },
+  "git": {
+    "mainBranch": "main",
+    "currentBranch": "main",
+    "featureBranch": null,
+    "featureStartedAt": null,
+    "featureDescription": null,
+    "checkpoints": [],
+    "pendingMerge": false
+  },
+  "files": {
+    "modifiedSinceCheckpoint": [],
+    "modifiedThisSession": [],
+    "createdThisSession": []
+  },
+  "devServers": {}
+}

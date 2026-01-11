@@ -1,0 +1,404 @@
+/* ========================================
+   TAILWIND V4 CSS STRUCTURE
+
+   In Tailwind v4, @import "tailwindcss" comes first, then @theme
+   to customize/extend the theme with custom design tokens.
+   ======================================== */
+
+/* ========================================
+   FONT FACE DECLARATIONS
+   CaskaydiaMonoNerdFontMono for terminal
+   ======================================== */
+
+@font-face {
+  font-family: 'CaskaydiaMonoNerdFontMono';
+  src: url('../../../resources/fonts/CaskaydiaMonoNerdFontMono-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'CaskaydiaMonoNerdFontMono';
+  src: url('../../../resources/fonts/CaskaydiaMonoNerdFontMono-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'CaskaydiaMonoNerdFontMono';
+  src: url('../../../resources/fonts/CaskaydiaMonoNerdFontMono-Italic.ttf') format('truetype');
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'CaskaydiaMonoNerdFontMono';
+  src: url('../../../resources/fonts/CaskaydiaMonoNerdFontMono-BoldItalic.ttf') format('truetype');
+  font-weight: 700;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'CaskaydiaMonoNerdFontMono';
+  src: url('../../../resources/fonts/CaskaydiaMonoNerdFontMono-Light.ttf') format('truetype');
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'CaskaydiaMonoNerdFontMono';
+  src: url('../../../resources/fonts/CaskaydiaMonoNerdFontMono-SemiBold.ttf') format('truetype');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@import "tailwindcss";
+
+@theme {
+  /* ========================================
+     COLOR TOKENS - Refined Dark Theme
+     A cohesive, professional color palette
+     ======================================== */
+
+  /* ========================================
+     PRIMARY COLORS (Indigo)
+     Main interactive color - buttons, links, focus states
+     ======================================== */
+  --color-primary-50: #eef2ff;
+  --color-primary-100: #e0e7ff;
+  --color-primary-200: #c7d2fe;
+  --color-primary-300: #a5b4fc;
+  --color-primary-400: #818cf8;
+  --color-primary-500: #6366f1;
+  --color-primary-600: #4f46e5;
+  --color-primary-700: #4338ca;
+  --color-primary-800: #3730a3;
+  --color-primary-900: #312e81;
+  --color-primary-950: #1e1b4b;
+
+  /* ========================================
+     ACCENT COLORS (Violet)
+     Secondary emphasis - badges, subagents, special states
+     ======================================== */
+  --color-accent-50: #f5f3ff;
+  --color-accent-100: #ede9fe;
+  --color-accent-200: #ddd6fe;
+  --color-accent-300: #c4b5fd;
+  --color-accent-400: #a78bfa;
+  --color-accent-500: #8b5cf6;
+  --color-accent-600: #7c3aed;
+  --color-accent-700: #6d28d9;
+  --color-accent-800: #5b21b6;
+  --color-accent-900: #4c1d95;
+  --color-accent-950: #2e1065;
+
+  /* ========================================
+     SURFACE COLORS (Neutral Slate)
+     UI chrome, backgrounds, cards
+     Using slate for a slightly cooler, modern feel
+     ======================================== */
+  --color-surface-50: #f8fafc;
+  --color-surface-100: #f1f5f9;
+  --color-surface-200: #e2e8f0;
+  --color-surface-300: #cbd5e1;
+  --color-surface-400: #94a3b8;
+  --color-surface-500: #64748b;
+  --color-surface-600: #475569;
+  --color-surface-700: #334155;
+  --color-surface-800: #1e293b;
+  --color-surface-900: #0f172a;
+  --color-surface-950: #020617;
+
+  /* ========================================
+     SEMANTIC COLORS - Success (Emerald)
+     ======================================== */
+  --color-success-50: #ecfdf5;
+  --color-success-100: #d1fae5;
+  --color-success-200: #a7f3d0;
+  --color-success-300: #6ee7b7;
+  --color-success-400: #34d399;
+  --color-success-500: #10b981;
+  --color-success-600: #059669;
+  --color-success-700: #047857;
+  --color-success-800: #065f46;
+  --color-success-900: #064e3b;
+  --color-success-950: #022c22;
+
+  /* ========================================
+     SEMANTIC COLORS - Warning (Amber)
+     ======================================== */
+  --color-warning-50: #fffbeb;
+  --color-warning-100: #fef3c7;
+  --color-warning-200: #fde68a;
+  --color-warning-300: #fcd34d;
+  --color-warning-400: #fbbf24;
+  --color-warning-500: #f59e0b;
+  --color-warning-600: #d97706;
+  --color-warning-700: #b45309;
+  --color-warning-800: #92400e;
+  --color-warning-900: #78350f;
+  --color-warning-950: #451a03;
+
+  /* ========================================
+     SEMANTIC COLORS - Error (Rose)
+     ======================================== */
+  --color-error-50: #fff1f2;
+  --color-error-100: #ffe4e6;
+  --color-error-200: #fecdd3;
+  --color-error-300: #fda4af;
+  --color-error-400: #fb7185;
+  --color-error-500: #f43f5e;
+  --color-error-600: #e11d48;
+  --color-error-700: #be123c;
+  --color-error-800: #9f1239;
+  --color-error-900: #881337;
+  --color-error-950: #4c0519;
+
+  /* ========================================
+     SEMANTIC COLORS - Info (Cyan)
+     For informational states, tool results
+     ======================================== */
+  --color-info-50: #ecfeff;
+  --color-info-100: #cffafe;
+  --color-info-200: #a5f3fc;
+  --color-info-300: #67e8f9;
+  --color-info-400: #22d3ee;
+  --color-info-500: #06b6d4;
+  --color-info-600: #0891b2;
+  --color-info-700: #0e7490;
+  --color-info-800: #155e75;
+  --color-info-900: #164e63;
+  --color-info-950: #083344;
+
+  /* ========================================
+     FUNCTIONAL COLORS - Dark Mode
+     Background, text, and border colors
+     ======================================== */
+
+  /* Backgrounds - neutral, no blue tint */
+  --color-bg-primary: #0a0a0f;
+  --color-bg-secondary: #111118;
+  --color-bg-tertiary: #18181f;
+  --color-bg-hover: #222230;
+  --color-bg-elevated: #1c1c24;
+
+  /* Text - high contrast hierarchy */
+  --color-text-primary: #f1f5f9;
+  --color-text-secondary: #94a3b8;
+  --color-text-muted: #64748b;
+
+  /* Borders - subtle, works with all backgrounds */
+  --color-border: #27272f;
+  --color-border-light: #3a3a45;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-default: 0 4px 12px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
+
+  /* Elevation shadows (Material Design inspired) */
+  --shadow-elevation-1: 0 1px 3px rgba(0, 0, 0, 0.2), 0 1px 2px rgba(0, 0, 0, 0.14);
+  --shadow-elevation-2: 0 2px 4px rgba(0, 0, 0, 0.2), 0 3px 6px rgba(0, 0, 0, 0.14);
+  --shadow-elevation-3: 0 4px 8px rgba(0, 0, 0, 0.2), 0 6px 12px rgba(0, 0, 0, 0.14);
+  --shadow-elevation-4: 0 8px 16px rgba(0, 0, 0, 0.2), 0 12px 24px rgba(0, 0, 0, 0.14);
+  --shadow-elevation-5: 0 16px 32px rgba(0, 0, 0, 0.25), 0 24px 48px rgba(0, 0, 0, 0.18);
+
+  /* ========================================
+     SIZE TOKENS - Single source of truth
+     ======================================== */
+
+  /* Border radius */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+
+  /* Spacing scale */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+
+  /* Component heights */
+  --height-titlebar: 52px;
+  --height-terminal-header: 56px;
+  --height-terminal-footer: 44px;
+  --height-input: 40px;
+  --height-btn: 36px;
+  --height-btn-sm: 32px;
+  --height-btn-lg: 44px;
+  --height-tab: 36px;
+
+  /* Font sizes - Tailwind v4 format */
+  --font-size-2xs: 0.625rem;
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.8125rem;
+  --font-size-base: 0.875rem;
+  --font-size-lg: 1rem;
+  --font-size-xl: 1.125rem;
+  --font-size-2xl: 1.25rem;
+  --font-size-3xl: 1.5rem;
+
+  /* Legacy font size variables for components.css */
+  --text-xs: 0.75rem;
+  --text-sm: 0.8125rem;
+  --text-base: 0.875rem;
+  --text-lg: 1rem;
+  --text-xl: 1.125rem;
+  --text-2xl: 1.25rem;
+  --text-3xl: 1.5rem;
+
+  /* Icon sizes */
+  --icon-sm: 14px;
+  --icon-md: 16px;
+  --icon-lg: 18px;
+
+  /* Terminal colors */
+  --color-xterm-bg: #0a0a12;
+  --color-xterm-fg: #f4f4f5;
+  --color-xterm-cursor: #6366f1;
+  --color-xterm-selection: rgba(99, 102, 241, 0.3);
+}
+
+/* Import custom component styles */
+@import "./components.css";
+
+/* Light theme overrides */
+.light {
+  --color-bg-primary: #f8fafc;
+  --color-bg-secondary: #ffffff;
+  --color-bg-tertiary: #f1f5f9;
+  --color-bg-hover: #e2e8f0;
+  --color-bg-elevated: #ffffff;
+
+  --color-text-primary: #0f172a;
+  --color-text-secondary: #475569;
+  --color-text-muted: #94a3b8;
+
+  --color-accent: #4f46e5;
+  --color-accent-hover: #6366f1;
+  --color-accent-secondary: #7c3aed;
+  --color-success: #16a34a;
+  --color-warning: #d97706;
+  --color-danger: #dc2626;
+
+  --color-border: #e2e8f0;
+  --color-border-light: #cbd5e1;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-default: 0 4px 12px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.15);
+
+  /* Light theme elevation shadows */
+  --shadow-elevation-1: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.06);
+  --shadow-elevation-2: 0 2px 4px rgba(0, 0, 0, 0.08), 0 3px 6px rgba(0, 0, 0, 0.06);
+  --shadow-elevation-3: 0 4px 8px rgba(0, 0, 0, 0.08), 0 6px 12px rgba(0, 0, 0, 0.06);
+  --shadow-elevation-4: 0 8px 16px rgba(0, 0, 0, 0.1), 0 12px 24px rgba(0, 0, 0, 0.08);
+  --shadow-elevation-5: 0 16px 32px rgba(0, 0, 0, 0.12), 0 24px 48px rgba(0, 0, 0, 0.1);
+
+  --color-xterm-bg: #ffffff;
+  --color-xterm-fg: #0f172a;
+  --color-xterm-cursor: #4f46e5;
+  --color-xterm-selection: rgba(79, 70, 229, 0.2);
+}
+
+/* ========================================
+   BASE STYLES
+   In Tailwind v4, base styles MUST be in @layer base
+   to have lower specificity than utility classes.
+   ======================================== */
+
+@layer base {
+  *, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  html {
+    font-size: 16px;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    height: 100vh;
+    font-family: 'Inter', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: var(--text-base);
+    line-height: 1.5;
+    background: var(--color-bg-primary);
+    color: var(--color-text-primary);
+    overflow: hidden;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  /* Typography */
+  h1, h2, h3, h4, h5, h6 {
+    font-weight: 600;
+    line-height: 1.3;
+    letter-spacing: -0.01em;
+  }
+
+  h1 { font-size: var(--text-3xl); }
+  h2 { font-size: var(--text-2xl); }
+  h3 { font-size: var(--text-xl); }
+  h4 { font-size: var(--text-lg); }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-border);
+    border-radius: var(--radius-xs);
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--color-border-light);
+  }
+
+  /* Selection styling */
+  ::selection {
+    background: var(--color-accent);
+    color: white;
+  }
+
+  /* Focus outline */
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+
+  /* Prevent text selection on UI elements */
+  button, .btn, .tab, .modal-close {
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  /* Disable dragging */
+  img, a {
+    -webkit-user-drag: none;
+    user-drag: none;
+  }
+
+  /* Smooth transitions */
+  button, .btn, .tab, input, select, textarea, a {
+    transition: all 0.15s ease;
+  }
+}

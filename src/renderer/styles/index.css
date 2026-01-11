@@ -1,0 +1,630 @@
+/* ============================================================================
+   TAILWIND BASE IMPORTS
+   ============================================================================ */
+
+@import "./main.css";
+
+/* ============================================================================
+   CSS VARIABLES
+   ============================================================================ */
+
+:root {
+  --titlebar-height: 52px;
+  --terminal-header-height: 48px;
+  --terminal-footer-height: 36px;
+  --sidebar-width: 280px;
+  --sidebar-collapsed-width: 64px;
+  --terminal-font-size: 14px;
+  --z-modal: 100;
+  --z-toast: 200;
+  --z-command-palette: 300;
+}
+
+.light {
+  color-scheme: light;
+}
+
+.dark {
+  color-scheme: dark;
+}
+
+/* ============================================================================
+   BASE STYLES
+   ============================================================================ */
+
+@layer base {
+  html {
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+
+  body {
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 0.5rem;
+    height: 0.5rem;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-surface-600);
+    border-radius: 9999px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--color-surface-500);
+  }
+
+  /* Selection */
+  ::selection {
+    background: rgba(99, 102, 241, 0.3); /* primary-500 (indigo) with opacity */
+  }
+
+  /* Focus styles */
+  :focus-visible {
+    outline-width: 2px;
+    outline-offset: 2px;
+    outline-color: var(--color-primary-500);
+    outline-style: solid;
+  }
+}
+
+/* ============================================================================
+   COMPONENT STYLES
+   ============================================================================ */
+
+@layer components {
+  /* Buttons - using CSS variables instead of @apply with custom colors */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    border-radius: 0.5rem;
+    transition: all 150ms ease;
+  }
+
+  .btn:focus-visible {
+    box-shadow: 0 0 0 2px var(--color-surface-900), 0 0 0 4px var(--color-primary-500);
+  }
+
+  .btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .btn-primary {
+    background-color: var(--color-primary-600);
+    color: white;
+  }
+
+  .btn-primary:hover:not(:disabled) {
+    background-color: var(--color-primary-500);
+  }
+
+  .btn-primary:active:not(:disabled) {
+    background-color: var(--color-primary-700);
+  }
+
+  .btn-secondary {
+    background-color: var(--color-surface-700);
+    color: var(--color-surface-100);
+  }
+
+  .btn-secondary:hover:not(:disabled) {
+    background-color: var(--color-surface-600);
+  }
+
+  .btn-secondary:active:not(:disabled) {
+    background-color: var(--color-surface-800);
+  }
+
+  .btn-danger {
+    background-color: var(--color-error-600);
+    color: white;
+  }
+
+  .btn-danger:hover:not(:disabled) {
+    background-color: var(--color-error-500);
+  }
+
+  .btn-danger:active:not(:disabled) {
+    background-color: var(--color-error-700);
+  }
+
+  .btn-ghost {
+    background: transparent;
+    color: var(--color-surface-300);
+  }
+
+  .btn-ghost:hover:not(:disabled) {
+    background-color: var(--color-surface-800);
+    color: var(--color-surface-100);
+  }
+
+  .btn-icon {
+    padding: 0.5rem;
+    border-radius: 0.5rem;
+  }
+
+  .btn-sm {
+    padding: 0.375rem 0.75rem;
+    font-size: 0.75rem;
+  }
+
+  .btn-lg {
+    padding: 0.75rem 1.5rem;
+    font-size: 1rem;
+  }
+
+  /* Inputs */
+  .input {
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    background-color: var(--color-surface-800);
+    border: 1px solid var(--color-surface-700);
+    border-radius: 0.5rem;
+    color: var(--color-surface-100);
+  }
+
+  .input::placeholder {
+    color: var(--color-surface-500);
+  }
+
+  .input:focus {
+    outline: none;
+    border-color: var(--color-primary-500);
+    box-shadow: 0 0 0 1px var(--color-primary-500);
+  }
+
+  .input:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .input-sm {
+    padding: 0.375rem 0.5rem;
+    font-size: 0.75rem;
+  }
+
+  /* Select */
+  .select {
+    width: 100%;
+    padding: 0.5rem 2rem 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    background-color: var(--color-surface-800);
+    border: 1px solid var(--color-surface-700);
+    border-radius: 0.5rem;
+    color: var(--color-surface-100);
+    appearance: none;
+    cursor: pointer;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+    background-position: right 0.5rem center;
+    background-repeat: no-repeat;
+    background-size: 1.5em 1.5em;
+  }
+
+  .select::placeholder {
+    color: var(--color-surface-500);
+  }
+
+  .select:focus {
+    outline: none;
+    border-color: var(--color-primary-500);
+    box-shadow: 0 0 0 1px var(--color-primary-500);
+  }
+
+  .select:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  /* Cards */
+  .card {
+    background-color: rgba(30, 41, 59, 0.5); /* surface-800 (slate) with opacity */
+    border: 1px solid rgba(51, 65, 85, 0.5); /* surface-700 (slate) with opacity */
+    border-radius: 0.75rem;
+    padding: 1rem;
+  }
+
+  .card-hover {
+    background-color: rgba(30, 41, 59, 0.5);
+    border: 1px solid rgba(51, 65, 85, 0.5);
+    border-radius: 0.75rem;
+    padding: 1rem;
+    transition: all 200ms ease;
+  }
+
+  .card-hover:hover {
+    background-color: var(--color-surface-800);
+    border-color: var(--color-surface-600);
+  }
+
+  /* Badges */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.125rem 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    border-radius: 9999px;
+  }
+
+  .badge-primary {
+    background-color: rgba(99, 102, 241, 0.2); /* primary-500 (indigo) */
+    color: var(--color-primary-400);
+  }
+
+  .badge-success {
+    background-color: rgba(16, 185, 129, 0.2); /* success-500 (emerald) */
+    color: var(--color-success-400);
+  }
+
+  .badge-warning {
+    background-color: rgba(245, 158, 11, 0.2); /* warning-500 (amber) */
+    color: var(--color-warning-400);
+  }
+
+  .badge-error {
+    background-color: rgba(244, 63, 94, 0.2); /* error-500 (rose) */
+    color: var(--color-error-400);
+  }
+
+  .badge-info {
+    background-color: rgba(6, 182, 212, 0.2); /* info-500 (cyan) */
+    color: var(--color-info-400);
+  }
+
+  .badge-accent {
+    background-color: rgba(139, 92, 246, 0.2); /* accent-500 (violet) */
+    color: var(--color-accent-400);
+  }
+
+  /* Skeleton loading */
+  .skeleton {
+    background-color: var(--color-surface-700);
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    border-radius: 0.25rem;
+  }
+
+  /* Divider */
+  .divider {
+    border-top: 1px solid var(--color-surface-700);
+  }
+}
+
+/* ============================================================================
+   UTILITY CLASSES
+   ============================================================================ */
+
+@layer utilities {
+  /* Text gradients */
+  .text-gradient {
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+    background-image: linear-gradient(to right, var(--color-primary-400), var(--color-accent-400));
+  }
+
+  /* Glass effect */
+  .glass {
+    background-color: rgba(15, 23, 42, 0.8); /* surface-900 (slate) with opacity */
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+  }
+
+  /* Drag region for titlebar */
+  .drag-region {
+    -webkit-app-region: drag;
+  }
+
+  .no-drag {
+    -webkit-app-region: no-drag;
+  }
+
+  /* Truncate with ellipsis */
+  .truncate-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .truncate-3 {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  /* Hide scrollbar */
+  .scrollbar-hidden {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hidden::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Animation delays */
+  .animation-delay-100 {
+    animation-delay: 100ms;
+  }
+
+  .animation-delay-200 {
+    animation-delay: 200ms;
+  }
+
+  .animation-delay-300 {
+    animation-delay: 300ms;
+  }
+
+  /* Screen reader only - visually hidden but accessible */
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+}
+
+/* ============================================================================
+   TITLEBAR ICON FIXES
+   Ensure icons are always 16px and inline with text
+   ============================================================================ */
+
+.titlebar-nav-icon {
+  width: 16px !important;
+  height: 16px !important;
+  min-width: 16px;
+  min-height: 16px;
+  max-width: 16px;
+  max-height: 16px;
+  flex-shrink: 0;
+}
+
+/* Ensure nav button icons don't grow */
+nav button svg,
+header nav button svg {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+}
+
+/* ============================================================================
+   XTERM OVERRIDES
+   ============================================================================ */
+
+.xterm {
+  height: 100%;
+}
+
+.xterm-viewport {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.xterm .xterm-screen {
+  height: 100%;
+}
+
+/* ============================================================================
+   ANIMATIONS
+   ============================================================================ */
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--color-surface-800) 25%,
+    var(--color-surface-700) 50%,
+    var(--color-surface-800) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes spin-slow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin-slow {
+  animation: spin-slow 3s linear infinite;
+}
+
+/* ============================================================================
+   MODAL TRANSITIONS
+   ============================================================================ */
+
+.modal-enter {
+  opacity: 0;
+}
+
+.modal-enter-active {
+  opacity: 1;
+  transition: opacity 200ms ease;
+}
+
+.modal-exit {
+  opacity: 1;
+}
+
+.modal-exit-active {
+  opacity: 0;
+  transition: opacity 200ms ease;
+}
+
+.modal-content-enter {
+  opacity: 0;
+  transform: scale(0.95) translateY(1rem);
+}
+
+.modal-content-enter-active {
+  opacity: 1;
+  transform: scale(1) translateY(0);
+  transition: all 200ms ease;
+}
+
+.modal-content-exit {
+  opacity: 1;
+  transform: scale(1) translateY(0);
+}
+
+.modal-content-exit-active {
+  opacity: 0;
+  transform: scale(0.95) translateY(1rem);
+  transition: all 200ms ease;
+}
+
+/* ============================================================================
+   HIGHLIGHT.JS SYNTAX THEME - GitHub Dark Dimmed
+   Custom theme optimized for dark backgrounds
+   ============================================================================ */
+
+.hljs {
+  color: #adbac7;
+  background: transparent;
+}
+
+.hljs-doctag,
+.hljs-keyword,
+.hljs-meta .hljs-keyword,
+.hljs-template-tag,
+.hljs-template-variable,
+.hljs-type,
+.hljs-variable.language_ {
+  color: #f47067;
+}
+
+.hljs-title,
+.hljs-title.class_,
+.hljs-title.class_.inherited__,
+.hljs-title.function_ {
+  color: #dcbdfb;
+}
+
+.hljs-attr,
+.hljs-attribute,
+.hljs-literal,
+.hljs-meta,
+.hljs-number,
+.hljs-operator,
+.hljs-selector-attr,
+.hljs-selector-class,
+.hljs-selector-id,
+.hljs-variable {
+  color: #6cb6ff;
+}
+
+.hljs-meta .hljs-string,
+.hljs-regexp,
+.hljs-string {
+  color: #96d0ff;
+}
+
+.hljs-built_in,
+.hljs-symbol {
+  color: #f69d50;
+}
+
+.hljs-code,
+.hljs-comment,
+.hljs-formula {
+  color: #768390;
+}
+
+.hljs-name,
+.hljs-quote,
+.hljs-selector-pseudo,
+.hljs-selector-tag {
+  color: #8ddb8c;
+}
+
+.hljs-subst {
+  color: #adbac7;
+}
+
+.hljs-section {
+  color: #316dca;
+  font-weight: bold;
+}
+
+.hljs-bullet {
+  color: #eac55f;
+}
+
+.hljs-emphasis {
+  color: #adbac7;
+  font-style: italic;
+}
+
+.hljs-strong {
+  color: #adbac7;
+  font-weight: bold;
+}
+
+.hljs-addition {
+  color: #b4f1b4;
+  background-color: #1b4721;
+}
+
+.hljs-deletion {
+  color: #ffd8d3;
+  background-color: #78191b;
+}
+
+/* JSON specific styling */
+.hljs-punctuation {
+  color: #768390;
+}
+
+.hljs-property {
+  color: #6cb6ff;
+}
+
+/* ============================================================================
+   CUSTOM UTILITIES
+   These utilities use custom theme variables that may not be auto-generated
+   by Tailwind v4 (e.g., shadow-elevation-* which use non-standard prefixes).
+   The color utilities (bg-*, text-*, border-*) are now auto-generated by
+   Tailwind v4 from the @theme block in main.css.
+   ============================================================================ */
+
+@layer utilities {
+  /* Shadow Elevation (custom shadow variables not in Tailwind's namespace) */
+  .shadow-elevation-1 { box-shadow: var(--shadow-elevation-1); }
+  .shadow-elevation-2 { box-shadow: var(--shadow-elevation-2); }
+  .shadow-elevation-3 { box-shadow: var(--shadow-elevation-3); }
+  .shadow-elevation-4 { box-shadow: var(--shadow-elevation-4); }
+  .shadow-elevation-5 { box-shadow: var(--shadow-elevation-5); }
+}
