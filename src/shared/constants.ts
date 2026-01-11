@@ -178,7 +178,6 @@ export const VIEWS = [
   'agents',
   'memory',
   'skills',
-  'monitor',
   'projects',
   'settings',
 ] as const;
@@ -204,11 +203,6 @@ export const NAV_GROUPS: NavGroup[] = [
     views: ['memory', 'agents', 'skills', 'mcp', 'hooks'],
   },
   {
-    id: 'monitoring',
-    label: 'Monitoring',
-    views: ['monitor', 'analytics'],
-  },
-  {
     id: 'knowledge',
     label: 'Knowledge',
     views: ['knowledge', 'notes'],
@@ -216,7 +210,7 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     id: 'system',
     label: 'System',
-    views: ['projects', 'settings'],
+    views: ['analytics', 'projects', 'settings'],
   },
 ];
 

@@ -87,6 +87,7 @@ export default function TerminalView() {
                     <TerminalInstance
                       id={terminal.id}
                       zoomLevel={zoomLevel}
+                      isActive={terminal.id === activeTerminalId}
                     />
                   )}
                 </div>
@@ -300,9 +301,10 @@ function TerminalHeader({ showGitPanel, onToggleGitPanel, hasActiveSession }: Te
 interface TerminalInstanceProps {
   id: number;
   zoomLevel: number;
+  isActive: boolean;
 }
 
-function TerminalInstance({ id, zoomLevel }: TerminalInstanceProps) {
+function TerminalInstance({ id, zoomLevel, isActive }: TerminalInstanceProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const terminalRef = useRef<XTermTerminal | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
@@ -538,6 +540,16 @@ function TerminalInstance({ id, zoomLevel }: TerminalInstanceProps) {
       terminalRef.current.options.theme = TERMINAL_THEMES[theme];
     }
   }, [theme]);
+
+  // Focus terminal when it becomes active (with 500ms delay)
+  useEffect(() => {
+    if (isActive && terminalRef.current) {
+      const timeout = setTimeout(() => {
+        terminalRef.current?.focus();
+      }, 500);
+      return () => clearTimeout(timeout);
+    }
+  }, [isActive]);
 
   // Scroll to bottom handler for the button
   const handleScrollToBottom = useCallback(() => {
@@ -2626,11 +2638,13 @@ function GitPanel({ cwd, position }: GitPanelProps) {
 
             {/* Stashes Section */}
             <div className="border border-surface-700 rounded overflow-hidden">
-              <button
-                onClick={() => toggleSection('stashes')}
-                className="w-full flex items-center justify-between px-2 py-1.5 bg-surface-800 hover:bg-surface-750 transition-colors"
+              <div
+                className="w-full flex items-center justify-between px-2 py-1.5 bg-surface-800 hover:bg-surface-750 transition-colors cursor-pointer"
               >
-                <div className="flex items-center gap-2">
+                <button
+                  onClick={() => toggleSection('stashes')}
+                  className="flex items-center gap-2 flex-1 text-left"
+                >
                   <svg
                     className={clsx('w-3 h-3 text-surface-400 transition-transform', state.expandedSections.stashes && 'rotate-90')}
                     fill="none"
@@ -2643,17 +2657,17 @@ function GitPanel({ cwd, position }: GitPanelProps) {
                   {state.stashes.length > 0 && (
                     <span className="text-xs text-surface-500">({state.stashes.length})</span>
                   )}
-                </div>
+                </button>
                 {(state.staged.length > 0 || state.unstaged.length > 0) && (
                   <button
-                    onClick={(e) => { e.stopPropagation(); setState(prev => ({ ...prev, showStashModal: true })); }}
+                    onClick={() => setState(prev => ({ ...prev, showStashModal: true }))}
                     className="px-1.5 py-0.5 text-[10px] bg-surface-700 hover:bg-surface-600 text-surface-300 rounded"
                     title="Stash changes"
                   >
                     + Stash
                   </button>
                 )}
-              </button>
+              </div>
               {state.expandedSections.stashes && (
                 <div className="max-h-32 overflow-y-auto">
                   {state.stashes.length === 0 ? (

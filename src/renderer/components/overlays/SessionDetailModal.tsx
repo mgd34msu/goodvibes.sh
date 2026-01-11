@@ -423,55 +423,57 @@ function EntryCard({ entry, settings, globalExpanded }: { entry: ParsedEntry; se
 
   return (
     <div className={clsx('rounded-lg border overflow-hidden', config.borderColor, config.bgColor)}>
-      <button
-        onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full px-4 py-2 flex items-center gap-3 hover:bg-white/5 transition-colors text-left"
-      >
-        <svg
-          className={clsx('w-4 h-4 flex-shrink-0 transition-transform', config.iconColor, isExpanded && 'rotate-90')}
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
+      <div className="w-full px-4 py-2 flex items-center gap-3 hover:bg-white/5 transition-colors">
+        <button
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="flex items-center gap-3 flex-1 text-left"
         >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-        </svg>
+          <svg
+            className={clsx('w-4 h-4 flex-shrink-0 transition-transform', config.iconColor, isExpanded && 'rotate-90')}
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
 
-        <span className={clsx('px-2 py-0.5 text-xs font-medium rounded', config.badgeBg, config.badgeText)}>
-          {config.label}
-        </span>
-
-        {entry.type === 'tool_use' && entry.toolName && (
-          <span className="text-xs font-mono text-warning-400 bg-warning-500/10 px-2 py-0.5 rounded">
-            {entry.toolName}
+          <span className={clsx('px-2 py-0.5 text-xs font-medium rounded', config.badgeBg, config.badgeText)}>
+            {config.label}
           </span>
-        )}
 
-        {entry.type === 'tool_result' && entry.isError && (
-          <span className="text-xs font-medium text-error-400 bg-error-500/10 px-2 py-0.5 rounded">
-            Error
-          </span>
-        )}
+          {entry.type === 'tool_use' && entry.toolName && (
+            <span className="text-xs font-mono text-warning-400 bg-warning-500/10 px-2 py-0.5 rounded">
+              {entry.toolName}
+            </span>
+          )}
 
-        {!isExpanded && (
-          <span className="flex-1 text-sm text-surface-400 truncate">{preview}</span>
-        )}
+          {entry.type === 'tool_result' && entry.isError && (
+            <span className="text-xs font-medium text-error-400 bg-error-500/10 px-2 py-0.5 rounded">
+              Error
+            </span>
+          )}
 
-        {/* Spacer when expanded to push items to the right */}
-        {isExpanded && <span className="flex-1" />}
+          {!isExpanded && (
+            <span className="flex-1 text-sm text-surface-400 truncate">{preview}</span>
+          )}
 
-        {entry.timestamp && (
-          <span className="text-xs text-surface-500 flex-shrink-0">
-            {new Date(entry.timestamp).toLocaleTimeString()}
-          </span>
-        )}
+          {/* Spacer when expanded to push items to the right */}
+          {isExpanded && <span className="flex-1" />}
 
-        {entry.tokens && entry.tokens > 0 && (
-          <span className="text-xs text-surface-500 flex-shrink-0">
-            {formatNumber(entry.tokens)} tokens
-          </span>
-        )}
+          {entry.timestamp && (
+            <span className="text-xs text-surface-500 flex-shrink-0">
+              {new Date(entry.timestamp).toLocaleTimeString()}
+            </span>
+          )}
 
-        {/* Copy button in header */}
+          {entry.tokens && entry.tokens > 0 && (
+            <span className="text-xs text-surface-500 flex-shrink-0">
+              {formatNumber(entry.tokens)} tokens
+            </span>
+          )}
+        </button>
+
+        {/* Copy button in header - outside the expand button */}
         {copyContent && (
           <CopyButton
             content={copyContent}
@@ -480,7 +482,7 @@ function EntryCard({ entry, settings, globalExpanded }: { entry: ParsedEntry; se
             size="sm"
           />
         )}
-      </button>
+      </div>
 
       {isExpanded && (
         <div className="px-4 py-3 border-t border-inherit">
@@ -750,7 +752,7 @@ function ModalMarkdownRenderer({ content }: { content: string }) {
           );
         },
         pre: ({ children }) => <>{children}</>,
-        p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+        p: ({ children }) => <div className="mb-2 last:mb-0">{children}</div>,
         ul: ({ children }) => <ul className="list-disc list-inside mb-2 space-y-1">{children}</ul>,
         ol: ({ children }) => <ol className="list-decimal list-inside mb-2 space-y-1">{children}</ol>,
         li: ({ children }) => <li className="text-surface-200">{children}</li>,
