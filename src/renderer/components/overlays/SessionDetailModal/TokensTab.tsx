@@ -2,7 +2,6 @@
 // TOKENS TAB COMPONENT
 // ============================================================================
 
-import React from 'react';
 import { clsx } from 'clsx';
 import type { Session } from '../../../../shared/types';
 import { formatCost, formatNumber } from '../../../../shared/utils';

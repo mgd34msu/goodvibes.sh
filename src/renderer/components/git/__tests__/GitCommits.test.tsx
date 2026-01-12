@@ -2,11 +2,10 @@
 // GIT COMMITS COMPONENT TESTS
 // ============================================================================
 
-import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { GitCommits } from '../GitCommits';
-import type { GitCommitInfo, ExpandedSections } from '../types';
+import type { GitCommitInfo } from '../types';
 
 // Helper to create mock commit info
 function createCommitInfo(overrides: Partial<GitCommitInfo> = {}): GitCommitInfo {

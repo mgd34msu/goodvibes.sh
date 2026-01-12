@@ -9,6 +9,7 @@ import fs from 'fs/promises';
 import { existsSync } from 'fs';
 import { EventEmitter } from 'events';
 import { Logger } from './logger.js';
+import { DEFAULT_HOOK_TIMEOUT_MS } from '../../shared/constants.js';
 import {
   createHook,
   getHook,
@@ -80,7 +81,7 @@ export interface ClaudeSettings {
 
 class HooksService extends EventEmitter {
   private runningProcesses: Map<number, ChildProcess> = new Map();
-  private readonly DEFAULT_TIMEOUT_MS = 30000;
+  private readonly DEFAULT_TIMEOUT_MS = DEFAULT_HOOK_TIMEOUT_MS;
 
   constructor() {
     super();

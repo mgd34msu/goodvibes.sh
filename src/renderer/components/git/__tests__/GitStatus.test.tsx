@@ -2,11 +2,10 @@
 // GIT STATUS COMPONENT TESTS
 // ============================================================================
 
-import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { GitStatus } from '../GitStatus';
-import type { GitFileChange, ExpandedSections } from '../types';
+import type { GitFileChange } from '../types';
 
 // Helper to create mock file changes
 function createFileChange(overrides: Partial<GitFileChange> = {}): GitFileChange {
@@ -14,6 +13,8 @@ function createFileChange(overrides: Partial<GitFileChange> = {}): GitFileChange
     file: 'test-file.ts',
     status: 'modified',
     staged: false,
+    indexStatus: ' ',
+    workTreeStatus: 'M',
     ...overrides,
   };
 }

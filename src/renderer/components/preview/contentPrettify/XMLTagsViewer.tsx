@@ -11,7 +11,7 @@ import { stripAnsiCodes } from './utils';
  * Component to render a single XML tag value
  * Handles multi-line content, ANSI codes, and special formatting
  */
-export function XMLTagValue({ value, tagName }: { value: string; tagName: string }): React.ReactElement {
+export function XMLTagValue({ value }: { value: string; tagName?: string }): React.ReactElement {
   const [expanded, setExpanded] = useState(false);
   const MAX_LINES = 10;
 

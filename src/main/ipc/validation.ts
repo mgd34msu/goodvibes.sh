@@ -3,6 +3,7 @@
 // ============================================================================
 
 import { Logger } from '../services/logger.js';
+import { MAX_STRING_LENGTH, MAX_PATH_LENGTH } from '../../shared/constants.js';
 
 const logger = new Logger('IPCValidation');
 
@@ -61,7 +62,7 @@ export function validateString(
 ): string {
   const {
     minLength = 0,
-    maxLength = 10000,
+    maxLength = MAX_STRING_LENGTH,
     pattern,
     allowEmpty = false,
     trim = true,
@@ -278,7 +279,7 @@ export function validateArray<T = unknown>(
 ): T[] {
   const {
     minLength = 0,
-    maxLength = 10000,
+    maxLength = MAX_STRING_LENGTH,
     itemValidator,
   } = options;
 

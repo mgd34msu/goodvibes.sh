@@ -6,7 +6,7 @@
 import React, { useState } from 'react';
 import { CopyButton } from '../../common/CopyButton';
 import { SyntaxHighlightedCode } from './CodeBlock';
-import { ToolResultMarkdownRenderer } from './MarkdownRenderer';
+import { ToolResultMarkdownRenderer } from '../../common/MarkdownRenderer';
 import { PrettifiedObject } from './JsonViewer';
 import { XMLTagsPrettified } from './XMLTagsViewer';
 import {

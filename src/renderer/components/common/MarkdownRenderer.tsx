@@ -1,14 +1,22 @@
 // ============================================================================
-// MARKDOWN RENDERER - With syntax highlighting via rehype-highlight
+// MARKDOWN RENDERER - Shared component with syntax highlighting
 // ============================================================================
 
-import React, { useState, useRef } from 'react';
+import { useState, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
 import { clsx } from 'clsx';
 
-export function MarkdownRenderer({ content }: { content: string }) {
+// ============================================================================
+// MAIN MARKDOWN RENDERER
+// ============================================================================
+
+interface MarkdownRendererProps {
+  content: string;
+}
+
+export function MarkdownRenderer({ content }: MarkdownRendererProps) {
   return (
     <ReactMarkdown
       remarkPlugins={[remarkGfm]}
@@ -103,8 +111,24 @@ export function MarkdownRenderer({ content }: { content: string }) {
   );
 }
 
-// Wrapper for code blocks with copy functionality
-function CodeBlockWrapper({ language, children }: { language: string; children: React.ReactNode }) {
+// ============================================================================
+// TOOL RESULT MARKDOWN RENDERER (Alias for backwards compatibility)
+// ============================================================================
+
+export function ToolResultMarkdownRenderer({ content }: { content: string }) {
+  return <MarkdownRenderer content={content} />;
+}
+
+// ============================================================================
+// CODE BLOCK WRAPPER
+// ============================================================================
+
+interface CodeBlockWrapperProps {
+  language: string;
+  children: React.ReactNode;
+}
+
+function CodeBlockWrapper({ language, children }: CodeBlockWrapperProps) {
   const [copied, setCopied] = useState(false);
   const codeRef = useRef<HTMLPreElement>(null);
 
@@ -148,3 +172,6 @@ function CodeBlockWrapper({ language, children }: { language: string; children: 
     </div>
   );
 }
+
+// Default export for convenience
+export default MarkdownRenderer;

@@ -29,6 +29,7 @@ import { backupSessions } from './services/sessionBackup.js';
 import {
   SESSION_SCAN_INIT_DELAY_MS,
   GRACEFUL_SHUTDOWN_TIMEOUT_MS,
+  AGENT_DEDUP_WINDOW_MS,
 } from '../shared/constants.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -204,27 +205,26 @@ async function initializeApp(): Promise<void> {
       // Deduplication: Track recently seen agent names per terminal to avoid duplicate registrations
       // Key: "terminalId:agentName", Value: timestamp of last detection
       const recentAgentDetections = new Map<string, number>();
-      const DEDUP_WINDOW_MS = 5000; // 5 seconds - same agent name detected within this window is ignored
 
-      logger.info('[DEBUG] Setting up agent:spawn event listener on streamAnalyzer');
+      logger.debug('Setting up agent:spawn event listener on streamAnalyzer');
 
       streamAnalyzer.on('agent:spawn', (data: { terminalId: number; agentName: string; description?: string; timestamp: number; isRealAgent?: boolean }) => {
-        logger.info('[DEBUG] agent:spawn event received!', data);
+        logger.debug('agent:spawn event received', data);
 
         const { terminalId, agentName, description, timestamp, isRealAgent } = data;
 
         // Deduplication: Check if we recently detected this same agent in this terminal
         const dedupKey = `${terminalId}:${agentName}`;
         const lastDetection = recentAgentDetections.get(dedupKey);
-        if (lastDetection && (timestamp - lastDetection) < DEDUP_WINDOW_MS) {
-          logger.debug(`[DEBUG] Skipping duplicate agent detection: ${agentName} (detected ${timestamp - lastDetection}ms ago)`);
+        if (lastDetection && (timestamp - lastDetection) < AGENT_DEDUP_WINDOW_MS) {
+          logger.debug(`Skipping duplicate agent detection: ${agentName} (detected ${timestamp - lastDetection}ms ago)`);
           return;
         }
         recentAgentDetections.set(dedupKey, timestamp);
 
         // Clean up old dedup entries periodically (every 10 detections)
         if (recentAgentDetections.size > 50) {
-          const cutoff = Date.now() - DEDUP_WINDOW_MS * 2;
+          const cutoff = Date.now() - AGENT_DEDUP_WINDOW_MS * 2;
           for (const [key, ts] of recentAgentDetections) {
             if (ts < cutoff) {
               recentAgentDetections.delete(key);
@@ -241,14 +241,14 @@ async function initializeApp(): Promise<void> {
         const displayName = instanceNumber > 1 ? `${agentName} #${instanceNumber}` : agentName;
 
         // Register the new agent (always create a new one for each spawn)
-        logger.info(`[DEBUG] Spawning new agent in registry: ${displayName} (isRealAgent: ${isRealAgent})`);
+        logger.debug(`Spawning new agent in registry: ${displayName} (isRealAgent: ${isRealAgent})`);
         const agent = agentRegistry.spawn({
           name: displayName,
           cwd: process.cwd(), // Will be updated if we can determine it
           initialPrompt: description,
         });
 
-        logger.info(`[DEBUG] Agent spawned successfully: ${displayName} (${agent.id})`);
+        logger.debug(`Agent spawned successfully: ${displayName} (${agent.id})`);
 
         // Track which agents belong to which terminal for cleanup
         if (!terminalToAgents.has(terminalId)) {
@@ -266,7 +266,7 @@ async function initializeApp(): Promise<void> {
 
         // Notify renderer of new agent
         const mainWindow = getMainWindow();
-        logger.info(`[DEBUG] Notifying renderer, mainWindow exists: ${!!mainWindow}, isDestroyed: ${mainWindow?.isDestroyed()}`);
+        logger.debug(`Notifying renderer, mainWindow exists: ${!!mainWindow}, isDestroyed: ${mainWindow?.isDestroyed()}`);
         if (mainWindow && !mainWindow.isDestroyed()) {
           mainWindow.webContents.send('agent:detected', {
             id: agent.id,
@@ -274,7 +274,7 @@ async function initializeApp(): Promise<void> {
             description,
             terminalId,
           });
-          logger.info('[DEBUG] Sent agent:detected event to renderer');
+          logger.debug('Sent agent:detected event to renderer');
         }
       });
 

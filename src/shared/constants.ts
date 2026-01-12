@@ -99,6 +99,48 @@ export const MAX_PATH_LENGTH = 1000;
 /** Graceful shutdown timeout (ms) */
 export const GRACEFUL_SHUTDOWN_TIMEOUT_MS = 10000;
 
+/** Git command timeout (ms) */
+export const GIT_COMMAND_TIMEOUT_MS = 30000;
+
+/** Default hook timeout (ms) */
+export const DEFAULT_HOOK_TIMEOUT_MS = 30000;
+
+/** Hook script HTTP timeout (ms) */
+export const HOOK_SCRIPT_TIMEOUT_MS = 5000;
+
+/** Deduplication window for agent detection (ms) */
+export const AGENT_DEDUP_WINDOW_MS = 5000;
+
+/** Default retry delay (ms) */
+export const DEFAULT_RETRY_DELAY_MS = 1000;
+
+/** Maximum retry delay (ms) */
+export const MAX_RETRY_DELAY_MS = 30000;
+
+/** Default number of retries */
+export const DEFAULT_MAX_RETRIES = 3;
+
+/** File watch interval (ms) */
+export const DEFAULT_FILE_WATCH_INTERVAL_MS = 1000;
+
+// ============================================================================
+// ARRAY VALIDATION HELPERS
+// ============================================================================
+
+/**
+ * Check if an array has elements
+ */
+export function hasElements<T>(arr: T[] | null | undefined): arr is T[] {
+  return Array.isArray(arr) && arr.length > 0;
+}
+
+/**
+ * Check if an array is empty or undefined
+ */
+export function isEmpty<T>(arr: T[] | null | undefined): boolean {
+  return !hasElements(arr);
+}
+
 // Terminal themes
 export const TERMINAL_THEMES = {
   dark: {

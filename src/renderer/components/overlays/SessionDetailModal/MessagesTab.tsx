@@ -19,7 +19,6 @@ import {
   prettifySummary,
   SyntaxHighlightedCode,
   getCopyLabel,
-  detectLanguageFromContent,
 } from '../../preview/contentPrettify';
 import type { RawEntry, ParsedEntry } from './types';
 import { getEntryConfig, parseRawEntries, detectLanguage, getModalEntryCopyInfo } from './utils';

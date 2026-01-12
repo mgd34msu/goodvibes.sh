@@ -44,7 +44,9 @@ export function formatDateToISO(date: Date): string {
  */
 export function getISODateString(date?: Date): string {
   const d = date ?? new Date();
-  return d.toISOString().split('T')[0];
+  const isoString = d.toISOString();
+  // Format is always YYYY-MM-DDTHH:mm:ss.sssZ, so split is safe
+  return isoString.slice(0, 10);
 }
 
 /**

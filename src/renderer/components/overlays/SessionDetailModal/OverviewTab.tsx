@@ -2,7 +2,6 @@
 // OVERVIEW TAB COMPONENT
 // ============================================================================
 
-import React from 'react';
 import type { Session } from '../../../../shared/types';
 import { formatCost, formatNumber, formatDateTime, formatDuration } from '../../../../shared/utils';
 import { StatCard, DetailRow, OutcomeBadge } from './HelperComponents';

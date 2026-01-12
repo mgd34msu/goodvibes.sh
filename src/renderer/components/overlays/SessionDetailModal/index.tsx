@@ -3,10 +3,9 @@
 // Main modal component for viewing session details
 // ============================================================================
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { clsx } from 'clsx';
-import type { Session } from '../../../../shared/types';
 import { decodeProjectName, decodeProjectPath } from '../../../../shared/utils';
 import { useAppStore } from '../../../stores/appStore';
 import { useSettingsStore } from '../../../stores/settingsStore';

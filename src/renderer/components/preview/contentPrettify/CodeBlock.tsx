@@ -2,7 +2,7 @@
 // SYNTAX HIGHLIGHTED CODE COMPONENT
 // ============================================================================
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { hljs } from './hljs-config';
 import { escapeHtml, getLanguageDisplayLabel } from './utils';
 import type { SyntaxHighlightedCodeProps } from './types';

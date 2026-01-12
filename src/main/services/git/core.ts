@@ -5,13 +5,14 @@
 import { execFile } from 'child_process';
 import { promisify } from 'util';
 import { Logger } from '../logger.js';
+import { GIT_COMMAND_TIMEOUT_MS } from '../../../shared/constants.js';
 import type { GitStatus } from '../../../shared/types/index.js';
 import type { RateLimiterState, RateLimitConfig } from './types.js';
 
 const execFileAsync = promisify(execFile);
 export const logger = new Logger('Git');
 
-export const GIT_TIMEOUT = 30000;
+export const GIT_TIMEOUT = GIT_COMMAND_TIMEOUT_MS;
 export const GIT_MAX_BUFFER = 1024 * 1024 * 10; // 10MB
 
 // ============================================================================

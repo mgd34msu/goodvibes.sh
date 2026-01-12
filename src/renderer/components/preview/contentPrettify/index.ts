@@ -27,7 +27,7 @@ export {
 
 // Re-export components
 export { SyntaxHighlightedCode } from './CodeBlock';
-export { ToolResultMarkdownRenderer } from './MarkdownRenderer';
+export { ToolResultMarkdownRenderer } from '../../common/MarkdownRenderer';
 export { prettifyJSON, PrettifiedObject } from './JsonViewer';
 export { XMLTagValue, XMLTagsPrettified } from './XMLTagsViewer';
 export { ToolResultPrettified, TruncationButton } from './ToolResultPrettified';

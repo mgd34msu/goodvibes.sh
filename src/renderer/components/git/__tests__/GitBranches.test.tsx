@@ -14,7 +14,7 @@ function createBranchInfo(overrides: Partial<ExtendedGitBranchInfo> = {}): Exten
     name: 'main',
     isCurrent: false,
     isRemote: false,
-    lastCommit: 'abc123',
+    hash: 'abc123',
     ...overrides,
   };
 }

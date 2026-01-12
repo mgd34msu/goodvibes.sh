@@ -2,7 +2,6 @@
 // COUNT BADGE COMPONENT
 // ============================================================================
 
-import React from 'react';
 import { clsx } from 'clsx';
 import type { SessionEntryType } from '../../../../shared/types';
 import { getTypeConfig } from './utils';

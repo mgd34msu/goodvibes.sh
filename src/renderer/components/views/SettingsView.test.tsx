@@ -7,7 +7,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useSettingsStore } from '../../stores/settingsStore';
-import SettingsView from './SettingsView';
+import SettingsView from './SettingsView/index';
 import { DEFAULT_SETTINGS } from '../../../shared/types';
 
 // Create test wrapper with QueryClientProvider

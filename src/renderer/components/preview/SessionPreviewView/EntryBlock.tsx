@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { clsx } from 'clsx';
-import type { AppSettings, ParsedSessionEntry, SessionEntryType } from '../../../../shared/types';
+import type { AppSettings, ParsedSessionEntry } from '../../../../shared/types';
 import { CopyButton } from '../../common/CopyButton';
 import {
   prettifyToolUse,
@@ -15,7 +15,7 @@ import {
   getCopyLabel,
   detectLanguageFromContent,
 } from '../contentPrettify';
-import { MarkdownRenderer } from './MarkdownRenderer';
+import { MarkdownRenderer } from '../../common/MarkdownRenderer';
 import { getTypeConfig, formatTime, getEntryCopyInfo } from './utils';
 
 interface EntryBlockProps {

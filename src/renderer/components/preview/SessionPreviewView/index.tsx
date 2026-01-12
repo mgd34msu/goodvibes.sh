@@ -3,7 +3,7 @@
 // Shows ALL entry types from Claude JSONL with expand/collapse functionality
 // ============================================================================
 
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useSettingsStore } from '../../../stores/settingsStore';
 import type { RawEntry, SessionPreviewViewProps } from './types';
