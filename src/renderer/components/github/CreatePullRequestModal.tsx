@@ -2,7 +2,7 @@
 // CREATE PULL REQUEST MODAL COMPONENT
 // ============================================================================
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import type { CreatePRData } from '../../../shared/types/github';
 
 interface CreatePullRequestModalProps {
@@ -31,9 +31,26 @@ export default function CreatePullRequestModal({
   const [branches, setBranches] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const isMountedRef = useRef(true);
+
+  const loadBranches = useCallback(async () => {
+    try {
+      const result = await window.goodvibes.githubListBranches(owner, repo);
+      if (isMountedRef.current && result.success && result.data) {
+        setBranches(result.data.map((b: { name: string }) => b.name));
+      }
+    } catch (err) {
+      // Use defaults if loading fails - this is a non-blocking fallback
+      console.debug('Failed to load branches, using defaults:', err);
+      if (isMountedRef.current) {
+        setBranches(['main', 'master', 'develop']);
+      }
+    }
+  }, [owner, repo]);
 
   // Load available branches
   useEffect(() => {
+    isMountedRef.current = true;
     if (isOpen) {
       loadBranches();
       // Set default title from branch name
@@ -42,20 +59,10 @@ export default function CreatePullRequestModal({
         .replace(/\b\w/g, (c) => c.toUpperCase());
       setTitle(branchTitle);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, currentBranch]);
-
-  const loadBranches = async () => {
-    try {
-      const result = await window.goodvibes.githubListBranches(owner, repo);
-      if (result.success && result.data) {
-        setBranches(result.data.map((b: { name: string }) => b.name));
-      }
-    } catch {
-      // Use defaults if loading fails
-      setBranches(['main', 'master', 'develop']);
-    }
-  };
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, [isOpen, currentBranch, loadBranches]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

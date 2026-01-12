@@ -53,16 +53,6 @@ interface ParsedSkill {
 }
 
 /**
- * Indexing progress event
- */
-interface _IndexProgress {
-  current: number;
-  total: number;
-  currentFile: string;
-  phase: 'scanning' | 'parsing' | 'indexing' | 'complete';
-}
-
-/**
  * Indexer configuration
  */
 interface SkillIndexerConfig {

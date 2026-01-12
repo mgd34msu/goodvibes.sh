@@ -4,6 +4,9 @@
 
 import type { Session, SessionMessage } from '../../../shared/types/index.js';
 
+// Re-export for convenience
+export type { Session, SessionMessage };
+
 export type StatusCallback = (status: string, message?: string, progress?: { current: number; total: number }) => void;
 
 export interface SessionFile {

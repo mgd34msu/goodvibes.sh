@@ -3,7 +3,7 @@
 // ============================================================================
 
 import { ipcMain } from 'electron';
-import { getProjectRegistry } from '../../services/projectRegistry.js';
+import { getProjectRegistry } from '../../services/projectRegistry/index.js';
 import {
   getTestMonitor,
   startTestMonitor,

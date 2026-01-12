@@ -7,7 +7,10 @@
 //
 // ============================================================================
 
-import { ipcRenderer } from 'electron';
+import { ipcRenderer, IpcRendererEvent } from 'electron';
+
+/** Type-safe IPC event callback that receives the event and unknown args */
+type IpcEventCallback = (event: IpcRendererEvent, ...args: unknown[]) => void;
 
 // ============================================================================
 // TYPES
@@ -329,13 +332,11 @@ export const phase5to8Api = {
   // EVENT LISTENERS
   // =====================
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  on: (channel: string, callback: (...args: any[]) => void): void => {
+  on: (channel: string, callback: IpcEventCallback): void => {
     ipcRenderer.on(channel, callback);
   },
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  off: (channel: string, callback: (...args: any[]) => void): void => {
+  off: (channel: string, callback: IpcEventCallback): void => {
     ipcRenderer.removeListener(channel, callback);
   },
 };

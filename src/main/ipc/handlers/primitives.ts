@@ -108,12 +108,7 @@ export function registerPrimitivesHandlers(): void {
   // ============================================================================
 
   ipcMain.handle('get-agent-registry-entries', withContext('get-agent-registry-entries', async () => {
-    const agents = primitives.getAllAgents();
-    logger.info('[DEBUG] get-agent-registry-entries called, returning:', {
-      count: agents.length,
-      agents: agents.map(a => ({ id: a.id, name: a.name, status: a.status })),
-    });
-    return agents;
+    return primitives.getAllAgents();
   }));
 
   ipcMain.handle('get-agent-registry-entry', withContext('get-agent-registry-entry', async (_, id: string) => {

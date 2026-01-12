@@ -1,0 +1,144 @@
+// ============================================================================
+// PROJECT REGISTRY VIEW - CUSTOM HOOKS
+// ============================================================================
+
+import { useState, useEffect, useCallback } from 'react';
+import { createLogger } from '../../../../shared/logger';
+import type {
+  RegisteredProject,
+  ProjectSettings,
+  ProjectTemplate,
+  ProjectAnalytics,
+} from './types';
+
+const logger = createLogger('ProjectRegistryView');
+
+export function useProjectRegistry() {
+  const [projects, setProjects] = useState<RegisteredProject[]>([]);
+  const [templates, setTemplates] = useState<ProjectTemplate[]>([]);
+  const [projectAnalytics, setProjectAnalytics] = useState<Map<number, ProjectAnalytics>>(new Map());
+  const [isLoading, setIsLoading] = useState(true);
+
+  const loadData = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const [projectsResult, templatesResult] = await Promise.all([
+        window.goodvibes?.projectGetAll?.(),
+        window.goodvibes?.templateGetAll?.(),
+      ]);
+
+      setProjects(projectsResult || []);
+      setTemplates(templatesResult || []);
+
+      // Load analytics for all projects in parallel (avoiding N+1 pattern)
+      if (projectsResult?.length) {
+        const analyticsResults = await Promise.all(
+          projectsResult.map((project: RegisteredProject) =>
+            window.goodvibes?.projectGetAnalytics?.(project.id)
+          )
+        );
+        const analyticsMap = new Map<number, ProjectAnalytics>();
+        projectsResult.forEach((project: RegisteredProject, index: number) => {
+          const analytics = analyticsResults[index];
+          if (analytics) {
+            analyticsMap.set(project.id, analytics);
+          }
+        });
+        setProjectAnalytics(analyticsMap);
+      }
+    } catch (error) {
+      logger.error('Failed to load project registry data:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  // Listen for project events
+  useEffect(() => {
+    const handleProjectEvent = () => {
+      loadData();
+    };
+
+    const cleanup = window.goodvibes?.onProjectEvent?.(handleProjectEvent);
+    return () => cleanup?.();
+  }, [loadData]);
+
+  const registerProject = async () => {
+    const path = await window.goodvibes?.selectFolder?.();
+    if (path) {
+      await window.goodvibes?.projectRegister?.({ path });
+      loadData();
+    }
+  };
+
+  const removeProject = async (projectId: number) => {
+    await window.goodvibes?.projectRemove?.(projectId);
+    loadData();
+  };
+
+  const switchProject = async (projectId: number) => {
+    await window.goodvibes?.projectSwitch?.(projectId);
+    loadData();
+  };
+
+  const saveSettings = async (projectId: number, settings: ProjectSettings) => {
+    await window.goodvibes?.projectUpdateSettings?.(projectId, settings as unknown as Record<string, unknown>);
+    loadData();
+  };
+
+  const createTemplate = async (projectId: number, name: string, description: string) => {
+    await window.goodvibes?.templateCreateFromProject?.({
+      projectId,
+      templateName: name,
+      description,
+    });
+    loadData();
+  };
+
+  const applyTemplate = async (projectId: number, templateId: number) => {
+    await window.goodvibes?.templateApply?.(projectId, templateId);
+    loadData();
+  };
+
+  const deleteTemplate = async (templateId: number) => {
+    await window.goodvibes?.templateDelete?.(templateId);
+    loadData();
+  };
+
+  return {
+    projects,
+    templates,
+    projectAnalytics,
+    isLoading,
+    loadData,
+    registerProject,
+    removeProject,
+    switchProject,
+    saveSettings,
+    createTemplate,
+    applyTemplate,
+    deleteTemplate,
+  };
+}
+
+export function useProjectFilters(projects: RegisteredProject[]) {
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const filteredProjects = searchQuery
+    ? projects.filter(p =>
+        p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        p.path.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        p.description?.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : projects;
+
+  return {
+    searchQuery,
+    setSearchQuery,
+    filteredProjects,
+  };
+}

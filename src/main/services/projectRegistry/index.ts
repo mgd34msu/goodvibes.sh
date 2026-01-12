@@ -9,7 +9,7 @@
 
 import path from 'path';
 import { EventEmitter } from 'events';
-import { Logger } from './logger.js';
+import { Logger } from '../logger.js';
 import {
   createProjectRegistryTables,
   registerProject,
@@ -24,51 +24,47 @@ import {
   getProjectAgents,
   updateProjectAgent,
   removeAgentFromProject,
-  createProjectTemplate,
-  getProjectTemplate,
-  getProjectTemplateByName,
-  getAllProjectTemplates,
-  updateProjectTemplate,
-  deleteProjectTemplate,
-  applyTemplateToProject,
-  createTemplateFromProject,
-  recordCrossProjectSession,
-  getCrossProjectSessionBySessionId,
-  getProjectSessions,
-  getActiveCrossProjectSessions,
-  updateCrossProjectSession,
-  incrementSessionMetrics,
-  getProjectAnalytics,
-  getGlobalAnalytics,
-  getAgentUsageByProject,
-  getSessionDistribution,
-  compareProjects,
-  cleanupOldSessions,
   type RegisteredProject,
   type ProjectSettings,
   type ProjectAgent,
   type ProjectAgentSettings,
-  type ProjectTemplate,
-  type TemplateAgent,
-  type CrossProjectSession,
-  type ProjectAnalytics,
-  type GlobalAnalytics,
-} from '../database/projectRegistry.js';
+} from '../../database/projectRegistry.js';
+
+import type { ProjectContext } from './types.js';
+import {
+  createTemplate,
+  getTemplate,
+  getTemplateByName,
+  getAllTemplates,
+  updateTemplate,
+  removeTemplate,
+  applyTemplate,
+  createTemplateFromExistingProject,
+  setTemplateEventEmitter,
+} from './templates.js';
+import {
+  startProjectSession,
+  getSessionTracking,
+  getSessionsForProject,
+  getActiveSessionsAcrossProjects,
+  completeSession,
+  updateSessionUsage,
+  getAnalyticsForProject,
+  getGlobalProjectAnalytics,
+  getAgentUsageStats,
+  getSessionDistributionStats,
+  compareProjectAnalytics,
+  getTotalCostAcrossProjects,
+  cleanup,
+  setAnalyticsContexts,
+  setAnalyticsEventEmitter,
+} from './analytics.js';
 
 const logger = new Logger('ProjectRegistryService');
 
 // ============================================================================
 // SERVICE STATE
 // ============================================================================
-
-interface ProjectContext {
-  projectId: number;
-  projectPath: string;
-  activeSessionId: string | null;
-  activatedAgents: number[];
-  injectedSkills: number[];
-  lastActivity: Date;
-}
 
 let projectContexts: Map<number, ProjectContext> = new Map();
 let currentProjectId: number | null = null;
@@ -90,6 +86,12 @@ export function initProjectRegistry(emitter?: EventEmitter): void {
 
   createProjectRegistryTables();
   eventEmitter = emitter || new EventEmitter();
+
+  // Wire up event emitters for sub-modules
+  setTemplateEventEmitter(emitEvent);
+  setAnalyticsEventEmitter(emitEvent);
+  setAnalyticsContexts(projectContexts);
+
   initialized = true;
 
   logger.info('Project registry service initialized');
@@ -283,7 +285,6 @@ export function preserveContext(projectId: number): void {
   const context = projectContexts.get(projectId);
   if (context) {
     context.lastActivity = new Date();
-    // Context is already in memory; could be persisted to DB if needed
     logger.debug(`Preserved context for project ${projectId}`);
   }
 }
@@ -297,7 +298,6 @@ export function restoreContext(projectId: number): ProjectContext | null {
 
   let context = projectContexts.get(projectId);
   if (!context) {
-    // Create fresh context
     context = {
       projectId,
       projectPath: project.path,
@@ -407,231 +407,8 @@ export function getAutoActivateAgents(projectId: number): ProjectAgent[] {
 }
 
 // ============================================================================
-// TEMPLATE MANAGEMENT
+// SERVICE STATUS
 // ============================================================================
-
-/**
- * Create a new project template
- */
-export function createTemplate(
-  name: string,
-  description?: string,
-  settings?: ProjectSettings,
-  agents?: TemplateAgent[]
-): ProjectTemplate {
-  const template = createProjectTemplate(name, description, settings, agents);
-  emitEvent('template:created', { template });
-  logger.info(`Created project template: ${name}`);
-  return template;
-}
-
-/**
- * Get a template by ID
- */
-export function getTemplate(templateId: number): ProjectTemplate | null {
-  return getProjectTemplate(templateId);
-}
-
-/**
- * Get a template by name
- */
-export function getTemplateByName(name: string): ProjectTemplate | null {
-  return getProjectTemplateByName(name);
-}
-
-/**
- * Get all templates
- */
-export function getAllTemplates(): ProjectTemplate[] {
-  return getAllProjectTemplates();
-}
-
-/**
- * Update a template
- */
-export function updateTemplate(
-  templateId: number,
-  updates: Partial<{
-    name: string;
-    description: string | null;
-    settings: ProjectSettings;
-    agents: TemplateAgent[];
-  }>
-): ProjectTemplate | null {
-  const template = updateProjectTemplate(templateId, updates);
-  if (template) {
-    emitEvent('template:updated', { template });
-  }
-  return template;
-}
-
-/**
- * Delete a template
- */
-export function removeTemplate(templateId: number): void {
-  const template = getProjectTemplate(templateId);
-  if (!template) return;
-
-  deleteProjectTemplate(templateId);
-  emitEvent('template:deleted', { templateId, templateName: template.name });
-  logger.info(`Deleted project template: ${template.name}`);
-}
-
-/**
- * Apply a template to a project
- */
-export function applyTemplate(projectId: number, templateId: number): RegisteredProject | null {
-  const result = applyTemplateToProject(projectId, templateId);
-  if (result) {
-    emitEvent('template:applied', { projectId, templateId });
-    logger.info(`Applied template ${templateId} to project ${projectId}`);
-  }
-  return result;
-}
-
-/**
- * Create a template from an existing project
- */
-export function createTemplateFromExistingProject(
-  projectId: number,
-  templateName: string,
-  description?: string
-): ProjectTemplate | null {
-  const template = createTemplateFromProject(projectId, templateName, description);
-  if (template) {
-    emitEvent('template:created-from-project', { template, projectId });
-    logger.info(`Created template '${templateName}' from project ${projectId}`);
-  }
-  return template;
-}
-
-// ============================================================================
-// SESSION TRACKING
-// ============================================================================
-
-/**
- * Start tracking a session for a project
- */
-export function startProjectSession(
-  sessionId: string,
-  projectId: number,
-  agentSessionId?: string,
-  metadata?: Record<string, unknown>
-): CrossProjectSession {
-  const session = recordCrossProjectSession(sessionId, projectId, agentSessionId, metadata);
-
-  // Update context
-  updateProjectContext(projectId, { activeSessionId: sessionId });
-
-  emitEvent('session:started', { sessionId, projectId });
-  return session;
-}
-
-/**
- * Get session tracking info
- */
-export function getSessionTracking(sessionId: string): CrossProjectSession | null {
-  return getCrossProjectSessionBySessionId(sessionId);
-}
-
-/**
- * Get all sessions for a project
- */
-export function getSessionsForProject(projectId: number, limit: number = 50): CrossProjectSession[] {
-  return getProjectSessions(projectId, limit);
-}
-
-/**
- * Get all active sessions across projects
- */
-export function getActiveSessionsAcrossProjects(): CrossProjectSession[] {
-  return getActiveCrossProjectSessions();
-}
-
-/**
- * Complete a session
- */
-export function completeSession(sessionId: string, success: boolean = true): void {
-  updateCrossProjectSession(sessionId, {
-    status: success ? 'completed' : 'failed',
-  });
-
-  // Clear from context
-  const session = getCrossProjectSessionBySessionId(sessionId);
-  if (session) {
-    const context = projectContexts.get(session.projectId);
-    if (context && context.activeSessionId === sessionId) {
-      context.activeSessionId = null;
-    }
-  }
-
-  emitEvent('session:completed', { sessionId, success });
-}
-
-/**
- * Update session metrics
- */
-export function updateSessionUsage(sessionId: string, tokens: number, cost: number): void {
-  incrementSessionMetrics(sessionId, tokens, cost);
-}
-
-// ============================================================================
-// ANALYTICS
-// ============================================================================
-
-/**
- * Get analytics for a specific project
- */
-export function getAnalyticsForProject(projectId: number): ProjectAnalytics | null {
-  return getProjectAnalytics(projectId);
-}
-
-/**
- * Get global analytics across all projects
- */
-export function getGlobalProjectAnalytics(): GlobalAnalytics {
-  return getGlobalAnalytics();
-}
-
-/**
- * Get agent usage statistics by project
- */
-export function getAgentUsageStats(): ReturnType<typeof getAgentUsageByProject> {
-  return getAgentUsageByProject();
-}
-
-/**
- * Get session distribution across projects
- */
-export function getSessionDistributionStats(): ReturnType<typeof getSessionDistribution> {
-  return getSessionDistribution();
-}
-
-/**
- * Compare analytics between multiple projects
- */
-export function compareProjectAnalytics(projectIds: number[]): ProjectAnalytics[] {
-  return compareProjects(projectIds);
-}
-
-/**
- * Get total cost across all projects
- */
-export function getTotalCostAcrossProjects(): number {
-  const analytics = getGlobalAnalytics();
-  return analytics.totalCostUsd;
-}
-
-// ============================================================================
-// MAINTENANCE
-// ============================================================================
-
-/**
- * Clean up old session records
- */
-export function cleanup(maxAgeDays: number = 90): number {
-  return cleanupOldSessions(maxAgeDays);
-}
 
 /**
  * Get service status
@@ -696,7 +473,7 @@ let instance: {
   removeTemplate: typeof removeTemplate;
   applyTemplate: typeof applyTemplate;
   createTemplateFromExistingProject: typeof createTemplateFromExistingProject;
-  startProjectSession: typeof startProjectSession;
+  startProjectSession: typeof startProjectSessionWrapper;
   getSessionTracking: typeof getSessionTracking;
   getSessionsForProject: typeof getSessionsForProject;
   getActiveSessionsAcrossProjects: typeof getActiveSessionsAcrossProjects;
@@ -712,6 +489,16 @@ let instance: {
   getStatus: typeof getStatus;
   getEventEmitter: typeof getProjectEventEmitter;
 } | null = null;
+
+// Wrapper to inject updateProjectContext
+function startProjectSessionWrapper(
+  sessionId: string,
+  projectId: number,
+  agentSessionId?: string,
+  metadata?: Record<string, unknown>
+) {
+  return startProjectSession(sessionId, projectId, agentSessionId, metadata, updateProjectContext);
+}
 
 export function getProjectRegistry() {
   if (!instance) {
@@ -746,7 +533,7 @@ export function getProjectRegistry() {
       removeTemplate,
       applyTemplate,
       createTemplateFromExistingProject,
-      startProjectSession,
+      startProjectSession: startProjectSessionWrapper,
       getSessionTracking,
       getSessionsForProject,
       getActiveSessionsAcrossProjects,
@@ -778,4 +565,32 @@ export type {
   ProjectAnalytics,
   GlobalAnalytics,
   ProjectContext,
-};
+} from './types.js';
+
+// Re-export sub-module functions for direct access
+export {
+  createTemplate,
+  getTemplate,
+  getTemplateByName,
+  getAllTemplates,
+  updateTemplate,
+  removeTemplate,
+  applyTemplate,
+  createTemplateFromExistingProject,
+} from './templates.js';
+
+export {
+  startProjectSession,
+  getSessionTracking,
+  getSessionsForProject,
+  getActiveSessionsAcrossProjects,
+  completeSession,
+  updateSessionUsage,
+  getAnalyticsForProject,
+  getGlobalProjectAnalytics,
+  getAgentUsageStats,
+  getSessionDistributionStats,
+  compareProjectAnalytics,
+  getTotalCostAcrossProjects,
+  cleanup,
+} from './analytics.js';

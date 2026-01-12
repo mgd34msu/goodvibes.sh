@@ -17,6 +17,7 @@ import {
   Check,
 } from 'lucide-react';
 import { FocusTrap } from '../common/FocusTrap';
+import { useConfirm } from './ConfirmModal';
 import {
   useShortcutState,
   bindingToDisplayString,
@@ -50,6 +51,15 @@ export function KeyboardShortcutsPanel() {
   );
   const [editingShortcut, setEditingShortcut] = useState<string | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // Confirm dialog for reset all
+  const { confirm: confirmReset, ConfirmDialog } = useConfirm({
+    title: 'Reset All Shortcuts',
+    message: 'Reset all keyboard shortcuts to their defaults?',
+    confirmText: 'Reset',
+    cancelText: 'Cancel',
+    variant: 'warning',
+  });
 
   // Focus search input when opened
   useEffect(() => {
@@ -117,11 +127,12 @@ export function KeyboardShortcutsPanel() {
   );
 
   // Handle reset all
-  const handleResetAll = useCallback(() => {
-    if (confirm('Reset all keyboard shortcuts to their defaults?')) {
+  const handleResetAll = useCallback(async () => {
+    const confirmed = await confirmReset();
+    if (confirmed) {
       resetAllBindings();
     }
-  }, [resetAllBindings]);
+  }, [resetAllBindings, confirmReset]);
 
   if (!isHelpOpen) return null;
 
@@ -129,6 +140,8 @@ export function KeyboardShortcutsPanel() {
   const hasConflicts = conflicts.length > 0;
 
   return (
+    <>
+    <ConfirmDialog />
     <div
       className="fixed inset-0 z-[9999] flex items-center justify-center"
       role="dialog"
@@ -258,6 +271,7 @@ export function KeyboardShortcutsPanel() {
         </div>
       </FocusTrap>
     </div>
+    </>
   );
 }
 

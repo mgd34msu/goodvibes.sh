@@ -3,6 +3,7 @@
 // ============================================================================
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useConfirm } from '../overlays/ConfirmModal';
 import {
   Brain,
   Save,
@@ -380,6 +381,18 @@ export default function MemoryView() {
   const [copied, setCopied] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
+  // Track if initial file selection has been done
+  const hasSelectedInitialFile = useRef(false);
+
+  // Confirm dialog for unsaved changes
+  const { confirm: confirmDiscard, ConfirmDialog } = useConfirm({
+    title: 'Unsaved Changes',
+    message: 'You have unsaved changes. Discard them?',
+    confirmText: 'Discard',
+    cancelText: 'Cancel',
+    variant: 'warning',
+  });
+
   // Load files - uses knowledge base as storage for CLAUDE.md content
   // Each file scope (user/project/local) is stored as a knowledge entry with a special category
   const loadFiles = useCallback(async () => {
@@ -435,10 +448,13 @@ export default function MemoryView() {
 
       setFiles(loadedFiles);
 
-      // Select first file by default
+      // Select first file by default (only on initial load)
       const firstFile = loadedFiles[0];
-      if (loadedFiles.length > 0 && !selectedFile && firstFile) {
-        handleSelectFile(firstFile);
+      if (loadedFiles.length > 0 && !hasSelectedInitialFile.current && firstFile) {
+        hasSelectedInitialFile.current = true;
+        setSelectedFile(firstFile);
+        setContent(firstFile.content);
+        setOriginalContent(firstFile.content);
       }
     } catch (error) {
       logger.error('Failed to load CLAUDE.md files:', error);
@@ -452,8 +468,7 @@ export default function MemoryView() {
     } finally {
       setLoading(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedFile]);
+  }, []);
 
   useEffect(() => {
     loadFiles();
@@ -464,16 +479,17 @@ export default function MemoryView() {
     setHasUnsavedChanges(content !== originalContent);
   }, [content, originalContent]);
 
-  const handleSelectFile = (file: ClaudeMdFile) => {
+  const handleSelectFile = useCallback(async (file: ClaudeMdFile) => {
     if (hasUnsavedChanges) {
-      if (!confirm('You have unsaved changes. Discard them?')) {
+      const confirmed = await confirmDiscard();
+      if (!confirmed) {
         return;
       }
     }
     setSelectedFile(file);
     setContent(file.content);
     setOriginalContent(file.content);
-  };
+  }, [hasUnsavedChanges, confirmDiscard]);
 
   const handleSave = async () => {
     if (!selectedFile) return;
@@ -542,6 +558,8 @@ export default function MemoryView() {
   };
 
   return (
+    <>
+    <ConfirmDialog />
     <div className="h-full flex flex-col">
       {/* Header */}
       <div className="flex-shrink-0 px-6 py-4 border-b border-surface-800">
@@ -662,5 +680,6 @@ export default function MemoryView() {
         </div>
       </div>
     </div>
+    </>
   );
 }

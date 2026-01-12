@@ -21,6 +21,7 @@ import {
   Zap,
   Terminal,
 } from 'lucide-react';
+import { useConfirm } from '../overlays/ConfirmModal';
 import { createLogger } from '../../../shared/logger';
 import { formatTimestamp } from '../../../shared/dateUtils';
 
@@ -386,6 +387,13 @@ export default function HooksView() {
   const [editingHook, setEditingHook] = useState<Hook | undefined>();
   const [filter, setFilter] = useState<HookEventType | 'all'>('all');
 
+  const { confirm: confirmDeleteHook, ConfirmDialog: DeleteHookDialog } = useConfirm({
+    title: 'Delete Hook',
+    message: 'Are you sure you want to delete this hook?',
+    confirmText: 'Delete',
+    variant: 'danger',
+  });
+
   // Load hooks
   const loadHooks = useCallback(async () => {
     setLoading(true);
@@ -436,7 +444,8 @@ export default function HooksView() {
   };
 
   const handleDelete = async (id: number) => {
-    if (confirm('Are you sure you want to delete this hook?')) {
+    const confirmed = await confirmDeleteHook();
+    if (confirmed) {
       try {
         await window.goodvibes.deleteHook(id);
         loadHooks();
@@ -615,6 +624,7 @@ export default function HooksView() {
           </div>
         </div>
       </div>
+      <DeleteHookDialog />
     </div>
   );
 }

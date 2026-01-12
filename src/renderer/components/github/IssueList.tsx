@@ -2,7 +2,7 @@
 // ISSUE LIST COMPONENT
 // ============================================================================
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { clsx } from 'clsx';
 import type { GitHubIssue } from '../../../shared/types/github';
 
@@ -24,13 +24,9 @@ export default function IssueList({
   const [issues, setIssues] = useState<GitHubIssue[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const isMountedRef = useRef(true);
 
-  useEffect(() => {
-    loadIssues();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [owner, repo]);
-
-  const loadIssues = async () => {
+  const loadIssues = useCallback(async () => {
     setLoading(true);
     setError(null);
 
@@ -41,17 +37,31 @@ export default function IssueList({
         per_page: maxItems,
       });
 
-      if (result.success && result.data) {
-        setIssues(result.data);
-      } else {
-        setError(result.error || 'Failed to load issues');
+      if (isMountedRef.current) {
+        if (result.success && result.data) {
+          setIssues(result.data);
+        } else {
+          setError(result.error || 'Failed to load issues');
+        }
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load issues');
+      if (isMountedRef.current) {
+        setError(err instanceof Error ? err.message : 'Failed to load issues');
+      }
     } finally {
-      setLoading(false);
+      if (isMountedRef.current) {
+        setLoading(false);
+      }
     }
-  };
+  }, [owner, repo, maxItems]);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    loadIssues();
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, [loadIssues]);
 
   const openIssue = (url: string) => {
     window.open(url, '_blank', 'noopener,noreferrer');

@@ -3,10 +3,11 @@
 // Refactored from 2,842 lines to <200 lines
 // ============================================================================
 
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { clsx } from 'clsx';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { GitHubPanel } from '../github';
+import { ConfirmModal } from '../overlays/ConfirmModal';
 import { createLogger } from '../../../shared/logger';
 
 import { useGitState, formatRelativeTime } from './hooks/useGitState';
@@ -29,6 +30,23 @@ const logger = createLogger('GitPanel');
 export function GitPanel({ cwd, position }: GitPanelProps) {
   const githubEnabled = useSettingsStore((s) => s.settings.githubEnabled);
   const githubShowInGitPanel = useSettingsStore((s) => s.settings.githubShowInGitPanel);
+
+  // Confirmation dialog state for git operations
+  const [confirmState, setConfirmState] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    variant: 'danger' | 'warning' | 'default';
+    onConfirm: () => void;
+  }>({ isOpen: false, title: '', message: '', variant: 'danger', onConfirm: () => {} });
+
+  const showConfirm = useCallback((title: string, message: string, variant: 'danger' | 'warning' | 'default', onConfirm: () => void) => {
+    setConfirmState({ isOpen: true, title, message, variant, onConfirm });
+  }, []);
+
+  const closeConfirm = useCallback(() => {
+    setConfirmState(prev => ({ ...prev, isOpen: false }));
+  }, []);
 
   const {
     state,
@@ -144,26 +162,183 @@ export function GitPanel({ cwd, position }: GitPanelProps) {
     setState(prev => ({ ...prev, operationInProgress: null, rebaseBranch: null }));
   }, [cwd, state.rebaseBranch, fetchGitInfo, setState]);
 
-  const handleRebaseAbort = useCallback(async () => { try { await window.goodvibes.gitRebaseAbort(cwd); await fetchGitInfo(); } catch (err) { logger.error('Failed to abort rebase:', err); } }, [cwd, fetchGitInfo]);
-  const handleRebaseContinue = useCallback(async () => { setState(prev => ({ ...prev, operationInProgress: 'rebase-continue' })); try { const result = await window.goodvibes.gitRebaseContinue(cwd); if (!result.success) setState(prev => ({ ...prev, error: `Continue failed: ${result.error}` })); await fetchGitInfo(); } catch (err) { logger.error('Failed to continue rebase:', err); } setState(prev => ({ ...prev, operationInProgress: null })); }, [cwd, fetchGitInfo, setState]);
-  const handleRebaseSkip = useCallback(async () => { try { await window.goodvibes.gitRebaseSkip(cwd); await fetchGitInfo(); } catch (err) { logger.error('Failed to skip rebase step:', err); } }, [cwd, fetchGitInfo]);
+  const handleRebaseAbort = useCallback(async () => {
+    try {
+      await window.goodvibes.gitRebaseAbort(cwd);
+      await fetchGitInfo();
+    } catch (err) {
+      logger.error('Failed to abort rebase:', err);
+    }
+  }, [cwd, fetchGitInfo]);
+
+  const handleRebaseContinue = useCallback(async () => {
+    setState(prev => ({ ...prev, operationInProgress: 'rebase-continue' }));
+    try {
+      const result = await window.goodvibes.gitRebaseContinue(cwd);
+      if (!result.success) {
+        setState(prev => ({ ...prev, error: `Continue failed: ${result.error}` }));
+      }
+      await fetchGitInfo();
+    } catch (err) {
+      logger.error('Failed to continue rebase:', err);
+    }
+    setState(prev => ({ ...prev, operationInProgress: null }));
+  }, [cwd, fetchGitInfo, setState]);
+
+  const handleRebaseSkip = useCallback(async () => {
+    try {
+      await window.goodvibes.gitRebaseSkip(cwd);
+      await fetchGitInfo();
+    } catch (err) {
+      logger.error('Failed to skip rebase step:', err);
+    }
+  }, [cwd, fetchGitInfo]);
 
   // Stash handlers
-  const handleStashPush = useCallback(async () => { setState(prev => ({ ...prev, operationInProgress: 'stashing', showStashModal: false })); try { const result = await window.goodvibes.gitStashPush(cwd, state.stashMessage || undefined); if (!result.success) setState(prev => ({ ...prev, error: `Stash failed: ${result.error}` })); await fetchGitInfo(); } catch (err) { logger.error('Failed to stash:', err); } setState(prev => ({ ...prev, operationInProgress: null, stashMessage: '' })); }, [cwd, state.stashMessage, fetchGitInfo, setState]);
-  const handleStashPop = useCallback(async (index?: number) => { setState(prev => ({ ...prev, operationInProgress: 'popping-stash' })); try { const result = await window.goodvibes.gitStashPop(cwd, index); if (!result.success) setState(prev => ({ ...prev, error: `Stash pop failed: ${result.error}` })); await fetchGitInfo(); } catch (err) { logger.error('Failed to pop stash:', err); } setState(prev => ({ ...prev, operationInProgress: null })); }, [cwd, fetchGitInfo, setState]);
-  const handleStashApply = useCallback(async (index?: number) => { setState(prev => ({ ...prev, operationInProgress: 'applying-stash' })); try { const result = await window.goodvibes.gitStashApply(cwd, index); if (!result.success) setState(prev => ({ ...prev, error: `Stash apply failed: ${result.error}` })); await fetchGitInfo(); } catch (err) { logger.error('Failed to apply stash:', err); } setState(prev => ({ ...prev, operationInProgress: null })); }, [cwd, fetchGitInfo, setState]);
-  const handleStashDrop = useCallback(async (index: number) => { if (!confirm(`Drop stash@{${index}}? This cannot be undone.`)) return; setState(prev => ({ ...prev, operationInProgress: 'dropping-stash' })); try { const result = await window.goodvibes.gitStashDrop(cwd, index); if (!result.success) setState(prev => ({ ...prev, error: `Stash drop failed: ${result.error}` })); await fetchGitInfo(); } catch (err) { logger.error('Failed to drop stash:', err); } setState(prev => ({ ...prev, operationInProgress: null })); }, [cwd, fetchGitInfo, setState]);
+  const handleStashPush = useCallback(async () => {
+    setState(prev => ({ ...prev, operationInProgress: 'stashing', showStashModal: false }));
+    try {
+      const result = await window.goodvibes.gitStashPush(cwd, state.stashMessage || undefined);
+      if (!result.success) {
+        setState(prev => ({ ...prev, error: `Stash failed: ${result.error}` }));
+      }
+      await fetchGitInfo();
+    } catch (err) {
+      logger.error('Failed to stash:', err);
+    }
+    setState(prev => ({ ...prev, operationInProgress: null, stashMessage: '' }));
+  }, [cwd, state.stashMessage, fetchGitInfo, setState]);
+
+  const handleStashPop = useCallback(async (index?: number) => {
+    setState(prev => ({ ...prev, operationInProgress: 'popping-stash' }));
+    try {
+      const result = await window.goodvibes.gitStashPop(cwd, index);
+      if (!result.success) {
+        setState(prev => ({ ...prev, error: `Stash pop failed: ${result.error}` }));
+      }
+      await fetchGitInfo();
+    } catch (err) {
+      logger.error('Failed to pop stash:', err);
+    }
+    setState(prev => ({ ...prev, operationInProgress: null }));
+  }, [cwd, fetchGitInfo, setState]);
+
+  const handleStashApply = useCallback(async (index?: number) => {
+    setState(prev => ({ ...prev, operationInProgress: 'applying-stash' }));
+    try {
+      const result = await window.goodvibes.gitStashApply(cwd, index);
+      if (!result.success) {
+        setState(prev => ({ ...prev, error: `Stash apply failed: ${result.error}` }));
+      }
+      await fetchGitInfo();
+    } catch (err) {
+      logger.error('Failed to apply stash:', err);
+    }
+    setState(prev => ({ ...prev, operationInProgress: null }));
+  }, [cwd, fetchGitInfo, setState]);
+  const handleStashDrop = useCallback((index: number) => {
+    showConfirm('Drop Stash', `Drop stash@{${index}}? This cannot be undone.`, 'danger', async () => {
+      closeConfirm();
+      setState(prev => ({ ...prev, operationInProgress: 'dropping-stash' }));
+      try {
+        const result = await window.goodvibes.gitStashDrop(cwd, index);
+        if (!result.success) setState(prev => ({ ...prev, error: `Stash drop failed: ${result.error}` }));
+        await fetchGitInfo();
+      } catch (err) {
+        logger.error('Failed to drop stash:', err);
+      }
+      setState(prev => ({ ...prev, operationInProgress: null }));
+    });
+  }, [cwd, fetchGitInfo, setState, showConfirm, closeConfirm]);
 
   // Tag handlers
-  const handleCreateTag = useCallback(async () => { if (!state.newTagName.trim()) return; setState(prev => ({ ...prev, operationInProgress: 'creating-tag' })); try { const result = await window.goodvibes.gitCreateTag(cwd, state.newTagName.trim(), { message: state.newTagMessage.trim() || undefined, commit: state.newTagCommit.trim() || undefined }); if (!result.success) setState(prev => ({ ...prev, error: `Failed to create tag: ${result.error}` })); await fetchGitInfo(); } catch (err) { logger.error('Failed to create tag:', err); } setState(prev => ({ ...prev, operationInProgress: null, showTagModal: false, newTagName: '', newTagMessage: '', newTagCommit: '' })); }, [cwd, state.newTagName, state.newTagMessage, state.newTagCommit, fetchGitInfo, setState]);
-  const handleDeleteTag = useCallback(async (name: string) => { if (!confirm(`Delete tag "${name}"?`)) return; setState(prev => ({ ...prev, operationInProgress: 'deleting-tag' })); try { const result = await window.goodvibes.gitDeleteTag(cwd, name); if (!result.success) setState(prev => ({ ...prev, error: `Failed to delete tag: ${result.error}` })); await fetchGitInfo(); } catch (err) { logger.error('Failed to delete tag:', err); } setState(prev => ({ ...prev, operationInProgress: null })); }, [cwd, fetchGitInfo, setState]);
+  const handleCreateTag = useCallback(async () => {
+    if (!state.newTagName.trim()) return;
+    setState(prev => ({ ...prev, operationInProgress: 'creating-tag' }));
+    try {
+      const result = await window.goodvibes.gitCreateTag(cwd, state.newTagName.trim(), {
+        message: state.newTagMessage.trim() || undefined,
+        commit: state.newTagCommit.trim() || undefined,
+      });
+      if (!result.success) {
+        setState(prev => ({ ...prev, error: `Failed to create tag: ${result.error}` }));
+      }
+      await fetchGitInfo();
+    } catch (err) {
+      logger.error('Failed to create tag:', err);
+    }
+    setState(prev => ({
+      ...prev,
+      operationInProgress: null,
+      showTagModal: false,
+      newTagName: '',
+      newTagMessage: '',
+      newTagCommit: '',
+    }));
+  }, [cwd, state.newTagName, state.newTagMessage, state.newTagCommit, fetchGitInfo, setState]);
+  const handleDeleteTag = useCallback((name: string) => {
+    showConfirm('Delete Tag', `Delete tag "${name}"?`, 'danger', async () => {
+      closeConfirm();
+      setState(prev => ({ ...prev, operationInProgress: 'deleting-tag' }));
+      try {
+        const result = await window.goodvibes.gitDeleteTag(cwd, name);
+        if (!result.success) setState(prev => ({ ...prev, error: `Failed to delete tag: ${result.error}` }));
+        await fetchGitInfo();
+      } catch (err) {
+        logger.error('Failed to delete tag:', err);
+      }
+      setState(prev => ({ ...prev, operationInProgress: null }));
+    });
+  }, [cwd, fetchGitInfo, setState, showConfirm, closeConfirm]);
 
   // Conflict resolution
-  const handleResolveOurs = useCallback(async (file: string) => { setState(prev => ({ ...prev, operationInProgress: 'resolving' })); try { const result = await window.goodvibes.gitResolveOurs(cwd, file); if (!result.success) setState(prev => ({ ...prev, error: `Failed to resolve: ${result.error}` })); await fetchGitInfo(); } catch (err) { logger.error('Failed to resolve conflict:', err); } setState(prev => ({ ...prev, operationInProgress: null })); }, [cwd, fetchGitInfo, setState]);
-  const handleResolveTheirs = useCallback(async (file: string) => { setState(prev => ({ ...prev, operationInProgress: 'resolving' })); try { const result = await window.goodvibes.gitResolveTheirs(cwd, file); if (!result.success) setState(prev => ({ ...prev, error: `Failed to resolve: ${result.error}` })); await fetchGitInfo(); } catch (err) { logger.error('Failed to resolve conflict:', err); } setState(prev => ({ ...prev, operationInProgress: null })); }, [cwd, fetchGitInfo, setState]);
+  const handleResolveOurs = useCallback(async (file: string) => {
+    setState(prev => ({ ...prev, operationInProgress: 'resolving' }));
+    try {
+      const result = await window.goodvibes.gitResolveOurs(cwd, file);
+      if (!result.success) {
+        setState(prev => ({ ...prev, error: `Failed to resolve: ${result.error}` }));
+      }
+      await fetchGitInfo();
+    } catch (err) {
+      logger.error('Failed to resolve conflict:', err);
+    }
+    setState(prev => ({ ...prev, operationInProgress: null }));
+  }, [cwd, fetchGitInfo, setState]);
+
+  const handleResolveTheirs = useCallback(async (file: string) => {
+    setState(prev => ({ ...prev, operationInProgress: 'resolving' }));
+    try {
+      const result = await window.goodvibes.gitResolveTheirs(cwd, file);
+      if (!result.success) {
+        setState(prev => ({ ...prev, error: `Failed to resolve: ${result.error}` }));
+      }
+      await fetchGitInfo();
+    } catch (err) {
+      logger.error('Failed to resolve conflict:', err);
+    }
+    setState(prev => ({ ...prev, operationInProgress: null }));
+  }, [cwd, fetchGitInfo, setState]);
 
   // Reflog reset
-  const handleResetToReflog = useCallback(async (index: number, hard: boolean = false) => { const confirmMsg = hard ? `Hard reset to HEAD@{${index}}? This will discard all uncommitted changes!` : `Reset to HEAD@{${index}}?`; if (!confirm(confirmMsg)) return; setState(prev => ({ ...prev, operationInProgress: 'resetting' })); try { const result = await window.goodvibes.gitResetToReflog(cwd, index, { hard }); if (!result.success) setState(prev => ({ ...prev, error: `Failed to reset: ${result.error}` })); await fetchGitInfo(); } catch (err) { logger.error('Failed to reset:', err); } setState(prev => ({ ...prev, operationInProgress: null, showReflogModal: false })); }, [cwd, fetchGitInfo, setState]);
+  const handleResetToReflog = useCallback((index: number, hard: boolean = false) => {
+    const confirmMsg = hard
+      ? `Hard reset to HEAD@{${index}}? This will discard all uncommitted changes!`
+      : `Reset to HEAD@{${index}}?`;
+    const variant = hard ? 'danger' : 'warning';
+    showConfirm('Reset to Reflog', confirmMsg, variant, async () => {
+      closeConfirm();
+      setState(prev => ({ ...prev, operationInProgress: 'resetting' }));
+      try {
+        const result = await window.goodvibes.gitResetToReflog(cwd, index, { hard });
+        if (!result.success) setState(prev => ({ ...prev, error: `Failed to reset: ${result.error}` }));
+        await fetchGitInfo();
+      } catch (err) {
+        logger.error('Failed to reset:', err);
+      }
+      setState(prev => ({ ...prev, operationInProgress: null, showReflogModal: false }));
+    });
+  }, [cwd, fetchGitInfo, setState, showConfirm, closeConfirm]);
 
   // Initialize repo
   const handleInitRepo = useCallback(async () => { await window.goodvibes.gitInit(cwd); fetchGitInfo(); }, [cwd, fetchGitInfo]);
@@ -217,6 +392,14 @@ export function GitPanel({ cwd, position }: GitPanelProps) {
       <GitBlame isOpen={state.showBlameModal} blameFile={state.blameFile} blameLines={state.blameLines} isLoadingBlame={state.isLoadingBlame} onClose={() => setState(prev => ({ ...prev, showBlameModal: false, blameFile: null, blameLines: [] }))} />
       <CheckoutConfirmModal isOpen={state.showCheckoutConfirmModal} pendingCheckoutBranch={state.pendingCheckoutBranch} stagedCount={state.staged.length} unstagedCount={state.unstaged.length} onCancel={handleCancelCheckout} onDiscardAndCheckout={handleDiscardAndCheckout} />
       <DeleteBranchModal isOpen={state.showDeleteBranchModal} branchToDelete={state.branchToDelete} deleteBranchForce={state.deleteBranchForce} onClose={() => setState(prev => ({ ...prev, showDeleteBranchModal: false, branchToDelete: null, deleteBranchForce: false }))} onDelete={handleDeleteBranch} onForceChange={(force) => setState(prev => ({ ...prev, deleteBranchForce: force }))} />
+      <ConfirmModal
+        isOpen={confirmState.isOpen}
+        title={confirmState.title}
+        message={confirmState.message}
+        variant={confirmState.variant}
+        onConfirm={confirmState.onConfirm}
+        onCancel={closeConfirm}
+      />
     </div>
   );
 }

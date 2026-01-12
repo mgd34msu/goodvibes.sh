@@ -10,7 +10,7 @@
 
 import { EventEmitter } from 'events';
 import { Logger } from './logger.js';
-import { getProjectRegistry } from './projectRegistry.js';
+import { getProjectRegistry } from './projectRegistry/index.js';
 import { formatTimestamp } from '../../shared/dateUtils.js';
 
 const logger = new Logger('ProjectCoordinator');

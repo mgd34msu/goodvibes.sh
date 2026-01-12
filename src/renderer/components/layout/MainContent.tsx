@@ -13,7 +13,7 @@ const logger = createLogger('MainContent');
 
 // Lazy load views for code splitting
 const TerminalView = lazy(() => import('../views/TerminalView'));
-const SessionsView = lazy(() => import('../views/SessionsView'));
+const SessionsView = lazy(() => import('../views/SessionsView/index'));
 const AnalyticsView = lazy(() => import('../views/AnalyticsView'));
 const TasksView = lazy(() => import('../views/TasksView'));
 const KnowledgeView = lazy(() => import('../views/KnowledgeView'));
@@ -22,9 +22,9 @@ const HooksView = lazy(() => import('../views/HooksView'));
 const MCPView = lazy(() => import('../views/MCPView'));
 const AgentsView = lazy(() => import('../views/AgentsView'));
 const MemoryView = lazy(() => import('../views/MemoryView'));
-const SkillsView = lazy(() => import('../views/SkillsView'));
+const SkillsView = lazy(() => import('../views/SkillsView/index'));
 // Phase 9-12 views
-const ProjectRegistryView = lazy(() => import('../views/ProjectRegistryView'));
+const ProjectRegistryView = lazy(() => import('../views/ProjectRegistryView/index'));
 
 const VIEW_COMPONENTS: Record<ViewName, React.LazyExoticComponent<() => React.JSX.Element>> = {
   terminal: TerminalView,

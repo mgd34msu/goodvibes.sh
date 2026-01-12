@@ -1,6 +1,11 @@
 // ============================================================================
 // DATABASE MODULE - Better-SQLite3 Implementation
 // ============================================================================
+//
+// This file provides the main database entry point and re-exports all
+// database operations from domain-specific modules.
+//
+// ============================================================================
 
 import Database from 'better-sqlite3';
 import path from 'path';
@@ -8,22 +13,10 @@ import fs from 'fs';
 import { Logger } from '../services/logger.js';
 import { getTodayString } from '../../shared/dateUtils.js';
 import type {
-  Session,
-  SessionMessage,
-  Tag,
   Analytics,
-  ToolUsageStat,
-  ActivityLogEntry,
 } from '../../shared/types/index.js';
 import {
-  mapRowToSession,
-  mapRowToMessage,
-  mapRowToTag,
-  mapRowToActivity,
   type SessionRow,
-  type MessageRow,
-  type TagRow,
-  type ActivityLogRow,
 } from './mappers.js';
 import { createPrimitiveTables } from './primitives.js';
 import { createAgencyIndexTables } from './agencyIndex.js';
@@ -35,6 +28,35 @@ import {
 
 // Re-export getDatabase from connection.ts for backward compatibility
 export { getDatabase } from './connection.js';
+
+// Re-export session operations
+export {
+  upsertSession,
+  getAllSessions,
+  getSession,
+  deleteSession,
+  toggleFavorite,
+  toggleArchive,
+  getActiveSessions,
+  getFavoriteSessions,
+  getArchivedSessions,
+} from './sessions.js';
+
+// Re-export message operations
+export {
+  storeMessages,
+  getSessionMessages,
+} from './messages.js';
+
+// Re-export tag operations
+export {
+  getAllTags,
+  createTag,
+  deleteTag,
+  addTagToSession,
+  removeTagFromSession,
+  getSessionTags,
+} from './tags.js';
 
 const logger = new Logger('Database');
 
@@ -361,177 +383,14 @@ function createIndexes(): void {
     try {
       db.exec(index);
     } catch (e: unknown) {
-      // SQLite returns an error even with IF NOT EXISTS in some edge cases (e.g., concurrent access)
-      // Log non-trivial errors but don't fail the application
       const error = e as Error;
       const message = error?.message || String(e);
-      // Only log if it's not an "already exists" error (which shouldn't happen with IF NOT EXISTS, but just in case)
       if (!message.includes('already exists')) {
         logger.warn(`Failed to create index: ${message}`, { index });
       }
     }
   }
 }
-
-// ============================================================================
-// SESSION OPERATIONS
-// ============================================================================
-
-export function upsertSession(session: Partial<Session> & { id: string }): void {
-  const database = getDatabase();
-
-  const existing = database.prepare('SELECT id FROM sessions WHERE id = ?').get(session.id);
-
-  if (existing) {
-    database.prepare(`
-      UPDATE sessions SET
-        project_name = ?,
-        file_path = ?,
-        start_time = ?,
-        end_time = ?,
-        message_count = ?,
-        token_count = ?,
-        cost = ?,
-        status = ?,
-        input_tokens = ?,
-        output_tokens = ?,
-        cache_write_tokens = ?,
-        cache_read_tokens = ?,
-        file_mtime = ?,
-        updated_at = datetime('now')
-      WHERE id = ?
-    `).run(
-      session.projectName ?? null,
-      session.filePath ?? null,
-      session.startTime ?? null,
-      session.endTime ?? null,
-      session.messageCount ?? 0,
-      session.tokenCount ?? 0,
-      session.cost ?? 0,
-      session.status ?? 'unknown',
-      session.inputTokens ?? 0,
-      session.outputTokens ?? 0,
-      session.cacheWriteTokens ?? 0,
-      session.cacheReadTokens ?? 0,
-      session.fileMtime ?? null,
-      session.id
-    );
-  } else {
-    database.prepare(`
-      INSERT INTO sessions (
-        id, project_name, file_path, start_time, end_time,
-        message_count, token_count, cost, status,
-        input_tokens, output_tokens, cache_write_tokens, cache_read_tokens,
-        file_mtime
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(
-      session.id,
-      session.projectName ?? null,
-      session.filePath ?? null,
-      session.startTime ?? null,
-      session.endTime ?? null,
-      session.messageCount ?? 0,
-      session.tokenCount ?? 0,
-      session.cost ?? 0,
-      session.status ?? 'unknown',
-      session.inputTokens ?? 0,
-      session.outputTokens ?? 0,
-      session.cacheWriteTokens ?? 0,
-      session.cacheReadTokens ?? 0,
-      session.fileMtime ?? null
-    );
-  }
-}
-
-export function getAllSessions(): Session[] {
-  const database = getDatabase();
-  const rows = database.prepare('SELECT * FROM sessions ORDER BY end_time DESC').all() as SessionRow[];
-  return rows.map(mapRowToSession);
-}
-
-export function getSession(sessionId: string): Session | null {
-  const database = getDatabase();
-  const row = database.prepare('SELECT * FROM sessions WHERE id = ?').get(sessionId) as SessionRow | undefined;
-  return row ? mapRowToSession(row) : null;
-}
-
-export function deleteSession(sessionId: string): void {
-  const database = getDatabase();
-  database.prepare('DELETE FROM sessions WHERE id = ?').run(sessionId);
-}
-
-export function toggleFavorite(sessionId: string): void {
-  const database = getDatabase();
-  database.prepare("UPDATE sessions SET favorite = NOT favorite, updated_at = datetime('now') WHERE id = ?").run(sessionId);
-}
-
-export function toggleArchive(sessionId: string): void {
-  const database = getDatabase();
-  database.prepare("UPDATE sessions SET archived = NOT archived, updated_at = datetime('now') WHERE id = ?").run(sessionId);
-}
-
-export function getActiveSessions(): Session[] {
-  const database = getDatabase();
-  const rows = database.prepare('SELECT * FROM sessions WHERE archived = 0 OR archived IS NULL ORDER BY end_time DESC').all() as SessionRow[];
-  return rows.map(mapRowToSession);
-}
-
-export function getFavoriteSessions(): Session[] {
-  const database = getDatabase();
-  const rows = database.prepare('SELECT * FROM sessions WHERE favorite = 1 AND (archived = 0 OR archived IS NULL) ORDER BY end_time DESC').all() as SessionRow[];
-  return rows.map(mapRowToSession);
-}
-
-export function getArchivedSessions(): Session[] {
-  const database = getDatabase();
-  const rows = database.prepare('SELECT * FROM sessions WHERE archived = 1 ORDER BY end_time DESC').all() as SessionRow[];
-  return rows.map(mapRowToSession);
-}
-
-// mapRowToSession is now imported from './mappers.js'
-
-// ============================================================================
-// MESSAGE OPERATIONS
-// ============================================================================
-
-export function storeMessages(sessionId: string, messages: Partial<SessionMessage>[]): void {
-  const database = getDatabase();
-
-  // Delete existing messages
-  database.prepare('DELETE FROM messages WHERE session_id = ?').run(sessionId);
-
-  // Insert new messages
-  const insert = database.prepare(`
-    INSERT INTO messages (session_id, message_index, role, content, timestamp, token_count, tool_name, tool_input, tool_result)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `);
-
-  const insertMany = database.transaction((msgs: Partial<SessionMessage>[]) => {
-    msgs.forEach((msg, index) => {
-      insert.run(
-        sessionId,
-        index,
-        msg.role ?? 'unknown',
-        typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content),
-        msg.timestamp ?? null,
-        msg.tokenCount ?? 0,
-        msg.toolName ?? null,
-        msg.toolInput ?? null,
-        msg.toolResult ?? null
-      );
-    });
-  });
-
-  insertMany(messages);
-}
-
-export function getSessionMessages(sessionId: string): SessionMessage[] {
-  const database = getDatabase();
-  const rows = database.prepare('SELECT * FROM messages WHERE session_id = ? ORDER BY message_index ASC').all(sessionId) as MessageRow[];
-  return rows.map(mapRowToMessage);
-}
-
-// mapRowToMessage is now imported from './mappers.js'
 
 // ============================================================================
 // SETTINGS OPERATIONS
@@ -543,7 +402,8 @@ export function getSetting<T>(key: string): T | null {
   if (!row) return null;
   try {
     return JSON.parse(row.value) as T;
-  } catch {
+  } catch (error) {
+    logger.debug(`Failed to parse setting value for key '${key}'`, { error });
     return null;
   }
 }
@@ -565,7 +425,8 @@ export function getAllSettings(): Record<string, unknown> {
   for (const row of rows) {
     try {
       settings[row.key] = JSON.parse(row.value);
-    } catch {
+    } catch (error) {
+      logger.debug(`Failed to parse setting value for key '${row.key}', using raw value`, { error });
       settings[row.key] = row.value;
     }
   }
@@ -608,7 +469,6 @@ export function getAnalytics(): Analytics {
   });
 
   // Sessions over time - get aggregated data from database
-  // Query sessions for last 12 weeks (84 days) to support heatmap
   const sessionsFromDb = database.prepare(`
     SELECT
       DATE(start_time) as date,
@@ -621,13 +481,11 @@ export function getAnalytics(): Analytics {
     ORDER BY date
   `).all() as { date: string; count: number; tokens: number; cost: number }[];
 
-  // Create a map from date string to data for quick lookup
   const dateDataMap = new Map<string, { count: number; tokens: number; cost: number }>();
   for (const row of sessionsFromDb) {
     dateDataMap.set(row.date, { count: row.count, tokens: row.tokens, cost: row.cost });
   }
 
-  // Generate full 84 days array (12 weeks for heatmap), filling in zeros for missing days
   const sessionsOverTime: { date: string; count: number; tokens: number; cost: number }[] = [];
   const now = new Date();
   for (let i = 83; i >= 0; i--) {
@@ -648,7 +506,7 @@ export function getAnalytics(): Analytics {
   const todaySessions = sessions.filter(s => s.start_time?.startsWith(today));
   const dailyCost = todaySessions.reduce((sum, s) => sum + (s.cost ?? 0), 0);
 
-  // Messages today - only count messages from sessions that started today
+  // Messages today
   const messagesToday = todaySessions.reduce((sum, s) => sum + (s.message_count ?? 0), 0);
 
   // Subagent count
@@ -674,59 +532,11 @@ export function getAnalytics(): Analytics {
 }
 
 // ============================================================================
-// TAG OPERATIONS
-// ============================================================================
-
-export function getAllTags(): Tag[] {
-  const database = getDatabase();
-  const rows = database.prepare('SELECT * FROM tags ORDER BY name').all() as TagRow[];
-  return rows.map(mapRowToTag);
-}
-
-export function createTag(name: string, color: string): void {
-  const database = getDatabase();
-  try {
-    database.prepare('INSERT OR IGNORE INTO tags (name, color) VALUES (?, ?)').run(name, color);
-  } catch {
-    // Tag may already exist
-  }
-}
-
-export function deleteTag(tagId: number): void {
-  const database = getDatabase();
-  database.prepare('DELETE FROM session_tags WHERE tag_id = ?').run(tagId);
-  database.prepare('DELETE FROM tags WHERE id = ?').run(tagId);
-}
-
-export function addTagToSession(sessionId: string, tagId: number): void {
-  const database = getDatabase();
-  try {
-    database.prepare('INSERT OR IGNORE INTO session_tags (session_id, tag_id) VALUES (?, ?)').run(sessionId, tagId);
-  } catch {
-    // Already exists
-  }
-}
-
-export function removeTagFromSession(sessionId: string, tagId: number): void {
-  const database = getDatabase();
-  database.prepare('DELETE FROM session_tags WHERE session_id = ? AND tag_id = ?').run(sessionId, tagId);
-}
-
-export function getSessionTags(sessionId: string): Tag[] {
-  const database = getDatabase();
-  const rows = database.prepare(`
-    SELECT t.* FROM tags t
-    JOIN session_tags st ON t.id = st.tag_id
-    WHERE st.session_id = ?
-  `).all(sessionId) as TagRow[];
-  return rows.map(mapRowToTag);
-}
-
-// mapRowToTag is now imported from './mappers.js'
-
-// ============================================================================
 // TOOL USAGE OPERATIONS
 // ============================================================================
+
+import type { ToolUsageStat, ActivityLogEntry } from '../../shared/types/index.js';
+import { mapRowToActivity, type ActivityLogRow } from './mappers.js';
 
 export function getToolUsageStats(): ToolUsageStat[] {
   const database = getDatabase();
@@ -779,9 +589,7 @@ export function clearActivityLog(): void {
   database.prepare('DELETE FROM activity_log').run();
 }
 
-// mapRowToActivity is now imported from './mappers.js'
-
-// Export all operations
+// Export all operations from other modules
 export * from './collections.js';
 export * from './prompts.js';
 export * from './notes.js';

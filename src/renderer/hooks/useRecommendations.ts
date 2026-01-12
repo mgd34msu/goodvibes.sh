@@ -137,14 +137,6 @@ export function useRecommendations(options: UseRecommendationsOptions = {}): Use
     };
   }, [sessionId]);
 
-  // Auto-fetch project recommendations if configured
-  useEffect(() => {
-    if (autoFetch && projectPath) {
-      getForProject();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoFetch, projectPath]);
-
   /**
    * Get recommendations for a prompt
    */
@@ -203,6 +195,14 @@ export function useRecommendations(options: UseRecommendationsOptions = {}): Use
       setIsLoading(false);
     }
   }, [projectPath]);
+
+  // Auto-fetch project recommendations if configured
+  // Note: This effect is placed after getForProject is defined to ensure proper dependency resolution
+  useEffect(() => {
+    if (autoFetch && projectPath) {
+      getForProject();
+    }
+  }, [autoFetch, projectPath, getForProject]);
 
   /**
    * Accept a recommendation

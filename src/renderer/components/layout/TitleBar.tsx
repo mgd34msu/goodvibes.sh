@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { useAppStore } from '../../stores/appStore';
 import { NAV_GROUPS, type ViewName, type NavGroup } from '../../../shared/constants';
+import { toast } from '../../stores/toastStore';
 import appIcon from '../../assets/icon.png';
 
 const ICON_SIZE = 16;
@@ -291,8 +292,9 @@ function NotificationBell() {
       try {
         const count = await window.goodvibes.getUnreadNotificationCount();
         setUnreadCount(count);
-      } catch {
-        // Ignore errors
+      } catch (err) {
+        // Only show error toast once per session to avoid spam
+        console.error('Failed to load notification count:', err);
       }
     };
 
@@ -307,7 +309,9 @@ function NotificationBell() {
         try {
           const notifs = await window.goodvibes.getNotifications();
           setNotifications(notifs || []);
-        } catch {
+        } catch (err) {
+          console.error('Failed to load notifications:', err);
+          toast.error('Failed to load notifications');
           setNotifications([]);
         }
       }
@@ -334,8 +338,9 @@ function NotificationBell() {
       await window.goodvibes.markAllNotificationsRead();
       setUnreadCount(0);
       setNotifications(notifications.map(n => ({ ...n, read: true })));
-    } catch {
-      // Ignore errors
+    } catch (err) {
+      console.error('Failed to mark notifications as read:', err);
+      toast.error('Failed to mark notifications as read');
     }
   };
 
@@ -344,8 +349,9 @@ function NotificationBell() {
       await window.goodvibes.dismissAllNotifications();
       setNotifications([]);
       setUnreadCount(0);
-    } catch {
-      // Ignore errors
+    } catch (err) {
+      console.error('Failed to clear notifications:', err);
+      toast.error('Failed to clear notifications');
     }
   };
 

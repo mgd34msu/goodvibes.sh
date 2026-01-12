@@ -372,8 +372,9 @@ function ModalMarkdownRenderer({ content }: { content: string }) {
       remarkPlugins={[remarkGfm]}
       rehypePlugins={[rehypeHighlight]}
       components={{
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        code: ({ inline, className, children, ...props }: any) => {
+        code: ({ className, children, ...props }) => {
+          // react-markdown passes inline prop but it's not in the standard type
+          const inline = (props as { inline?: boolean }).inline;
           const match = /language-(\w+)/.exec(className || '');
           const language = match ? match[1] : '';
 
@@ -381,7 +382,6 @@ function ModalMarkdownRenderer({ content }: { content: string }) {
             return (
               <code
                 className="px-1.5 py-0.5 bg-surface-700 rounded text-sm font-mono text-primary-300"
-                {...props}
               >
                 {children}
               </code>
@@ -390,7 +390,7 @@ function ModalMarkdownRenderer({ content }: { content: string }) {
 
           return (
             <ModalCodeBlockWrapper language={language || ''}>
-              <code className={clsx('hljs', className)} {...props}>
+              <code className={clsx('hljs', className)}>
                 {children}
               </code>
             </ModalCodeBlockWrapper>

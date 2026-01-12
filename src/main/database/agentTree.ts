@@ -107,20 +107,6 @@ interface AgentMetricsRow {
   updated_at: string;
 }
 
-/**
- * Database row type for hierarchy summary query
- */
-interface _HierarchySummaryRow {
-  root_session_id: string;
-  total_agents: number;
-  max_depth: number;
-  total_budget_allocated: number;
-  total_budget_spent: number;
-  running_agents: number;
-  completed_agents: number;
-  failed_agents: number;
-}
-
 // ============================================================================
 // TABLE CREATION
 // ============================================================================

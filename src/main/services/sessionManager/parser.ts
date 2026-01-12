@@ -6,9 +6,44 @@ import fs from 'fs/promises';
 import { Logger } from '../logger.js';
 import type { SessionMessage } from '../../../shared/types/index.js';
 import type { TokenStats, ParsedSessionData } from './types.js';
-import { resolveToolNames } from './toolParser.js';
+import { resolveToolNames } from '../../../shared/toolParser.js';
 
 const logger = new Logger('SessionParser');
+
+// ============================================================================
+// TYPE GUARDS FOR PARSED JSON
+// ============================================================================
+
+/**
+ * Type guard to check if a value is a non-null object
+ */
+function isObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/**
+ * Safely get a string property from an unknown object
+ */
+function getString(obj: Record<string, unknown>, key: string): string | undefined {
+  const value = obj[key];
+  return typeof value === 'string' ? value : undefined;
+}
+
+/**
+ * Safely get a number property from an unknown object
+ */
+function getNumber(obj: Record<string, unknown>, key: string): number | undefined {
+  const value = obj[key];
+  return typeof value === 'number' ? value : undefined;
+}
+
+/**
+ * Safely get an object property from an unknown object
+ */
+function getObject(obj: Record<string, unknown>, key: string): Record<string, unknown> | undefined {
+  const value = obj[key];
+  return isObject(value) ? value : undefined;
+}
 
 // ============================================================================
 // SESSION FILE PARSING
@@ -90,33 +125,50 @@ export async function parseSessionFileWithStats(filePath: string): Promise<Parse
 /**
  * Parse a single entry from a session file
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function parseEntry(entry: any): Partial<SessionMessage> | null {
-  let role = entry.type || entry.role || 'unknown';
+export function parseEntry(entry: unknown): Partial<SessionMessage> | null {
+  if (!isObject(entry)) return null;
+
+  let role: SessionMessage['role'] = 'unknown';
+  const entryRole = getString(entry, 'type') || getString(entry, 'role');
+  if (entryRole === 'user' || entryRole === 'assistant' || entryRole === 'system' ||
+      entryRole === 'tool' || entryRole === 'tool_result' || entryRole === 'thinking') {
+    role = entryRole;
+  }
   let content = '';
   let tokenCount = 0;
 
   // Extract token count from usage data
-  if (entry.usage) {
-    tokenCount = (entry.usage.input_tokens ?? 0) + (entry.usage.output_tokens ?? 0);
+  const usage = getObject(entry, 'usage');
+  if (usage) {
+    tokenCount = (getNumber(usage, 'input_tokens') ?? 0) + (getNumber(usage, 'output_tokens') ?? 0);
   }
 
+  const entryType = getString(entry, 'type');
+  const thinking = entry['thinking'];
+  const toolUse = getObject(entry, 'tool_use');
+  const toolResult = getObject(entry, 'tool_result');
+  const message = entry['message'];
+  const entryContent = entry['content'];
+
   // Handle different entry types
-  if (entry.type === 'thinking' || entry.thinking) {
+  if (entryType === 'thinking' || thinking !== undefined) {
     role = 'thinking';
-    content = entry.thinking || entry.content || '';
-  } else if (entry.type === 'tool_use' || entry.tool_use) {
+    content = typeof thinking === 'string' ? thinking : (typeof entryContent === 'string' ? entryContent : '');
+  } else if (entryType === 'tool_use' || toolUse) {
     role = 'tool';
-    const tool = entry.tool_use || entry;
-    content = `[Tool: ${tool.name || 'unknown'}]\n${JSON.stringify(tool.input || {}, null, 2)}`;
-  } else if (entry.type === 'tool_result' || entry.tool_result) {
+    const tool = toolUse || entry;
+    const toolName = isObject(tool) ? getString(tool, 'name') : undefined;
+    const toolInput = isObject(tool) ? tool['input'] : undefined;
+    content = `[Tool: ${toolName || 'unknown'}]\n${JSON.stringify(toolInput || {}, null, 2)}`;
+  } else if (entryType === 'tool_result' || toolResult) {
     role = 'tool_result';
-    const result = entry.tool_result || entry;
-    content = typeof result.content === 'string' ? result.content : JSON.stringify(result.content || result, null, 2);
-  } else if (entry.message !== undefined) {
-    content = extractContent(entry.message);
-  } else if (entry.content) {
-    content = typeof entry.content === 'string' ? entry.content : JSON.stringify(entry.content);
+    const result = toolResult || entry;
+    const resultContent = isObject(result) ? result['content'] : undefined;
+    content = typeof resultContent === 'string' ? resultContent : JSON.stringify(resultContent || result, null, 2);
+  } else if (message !== undefined) {
+    content = extractContent(message);
+  } else if (entryContent !== undefined) {
+    content = typeof entryContent === 'string' ? entryContent : JSON.stringify(entryContent);
   }
 
   if (!content.trim()) return null;
@@ -124,7 +176,7 @@ export function parseEntry(entry: any): Partial<SessionMessage> | null {
   return {
     role,
     content,
-    timestamp: entry.timestamp,
+    timestamp: getString(entry, 'timestamp'),
     tokenCount,
   };
 }
@@ -132,24 +184,27 @@ export function parseEntry(entry: any): Partial<SessionMessage> | null {
 /**
  * Extract content from a message
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function extractContent(message: any): string {
+export function extractContent(message: unknown): string {
   if (typeof message === 'string') return message;
 
   if (Array.isArray(message)) {
     return message
-      .map(block => {
+      .map((block: unknown) => {
         if (typeof block === 'string') return block;
-        if (block.type === 'text') return block.text || '';
+        if (isObject(block) && getString(block, 'type') === 'text') {
+          return getString(block, 'text') || '';
+        }
         return '';
       })
       .filter(Boolean)
       .join('\n');
   }
 
-  if (typeof message === 'object') {
-    if (message.content) return extractContent(message.content);
-    if (message.text) return message.text;
+  if (isObject(message)) {
+    const content = message['content'];
+    if (content !== undefined) return extractContent(content);
+    const text = getString(message, 'text');
+    if (text) return text;
   }
 
   return '';
@@ -158,16 +213,21 @@ export function extractContent(message: any): string {
 /**
  * Extract tool usage from a session entry and update the toolUsage map
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function extractToolUsage(entry: any, toolUsage: Map<string, number>): void {
+export function extractToolUsage(entry: unknown, toolUsage: Map<string, number>): void {
+  if (!isObject(entry)) return;
+
+  const entryType = getString(entry, 'type');
+  const toolUse = getObject(entry, 'tool_use');
+
   // Check for direct tool_use entry
-  if (entry.type === 'tool_use' || entry.tool_use) {
-    const tool = entry.tool_use || entry;
-    const toolName = tool.name;
-    const toolInput = tool.input;
+  if (entryType === 'tool_use' || toolUse) {
+    const tool = toolUse || entry;
+    const toolName = isObject(tool) ? getString(tool, 'name') : undefined;
+    const toolInput = isObject(tool) ? tool['input'] : undefined;
 
     if (toolName) {
-      const resolvedNames = resolveToolNames(toolName, toolInput);
+      const inputObj = isObject(toolInput) ? toolInput : null;
+      const resolvedNames = resolveToolNames(toolName, inputObj);
       for (const name of resolvedNames) {
         toolUsage.set(name, (toolUsage.get(name) || 0) + 1);
       }
@@ -175,12 +235,20 @@ export function extractToolUsage(entry: any, toolUsage: Map<string, number>): vo
   }
 
   // Check for tool_use in message.content array
-  if (entry.message?.content && Array.isArray(entry.message.content)) {
-    for (const block of entry.message.content) {
-      if (block.type === 'tool_use' && block.name) {
-        const resolvedNames = resolveToolNames(block.name, block.input);
-        for (const name of resolvedNames) {
-          toolUsage.set(name, (toolUsage.get(name) || 0) + 1);
+  const message = getObject(entry, 'message');
+  const messageContent = message ? message['content'] : undefined;
+  if (messageContent && Array.isArray(messageContent)) {
+    for (const block of messageContent) {
+      if (isObject(block)) {
+        const blockType = getString(block, 'type');
+        const blockName = getString(block, 'name');
+        if (blockType === 'tool_use' && blockName) {
+          const blockInput = block['input'];
+          const inputObj = isObject(blockInput) ? blockInput : null;
+          const resolvedNames = resolveToolNames(blockName, inputObj);
+          for (const name of resolvedNames) {
+            toolUsage.set(name, (toolUsage.get(name) || 0) + 1);
+          }
         }
       }
     }

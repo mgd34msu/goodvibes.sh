@@ -2,7 +2,7 @@
 // GITHUB AUTH BUTTON COMPONENT
 // ============================================================================
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { clsx } from 'clsx';
 import type { GitHubUser, GitHubAuthState } from '../../../shared/types/github';
 import { createLogger } from '../../../shared/logger';
@@ -28,22 +28,34 @@ export default function GitHubAuthButton({
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const isMountedRef = useRef(true);
+  const onAuthChangeRef = useRef(onAuthChange);
 
-  // Load auth state on mount
+  // Keep the ref updated with latest callback
   useEffect(() => {
-    loadAuthState();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    onAuthChangeRef.current = onAuthChange;
+  }, [onAuthChange]);
 
-  const loadAuthState = async () => {
+  const loadAuthState = useCallback(async () => {
     try {
       const state = await window.goodvibes.githubGetAuthState();
-      setAuthState(state);
-      onAuthChange?.(state.isAuthenticated, state.user);
+      if (isMountedRef.current) {
+        setAuthState(state);
+        onAuthChangeRef.current?.(state.isAuthenticated, state.user);
+      }
     } catch (err) {
       logger.error('Failed to load GitHub auth state:', err);
     }
-  };
+  }, []);
+
+  // Load auth state on mount
+  useEffect(() => {
+    isMountedRef.current = true;
+    loadAuthState();
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, [loadAuthState]);
 
   const handleLogin = async () => {
     setIsLoading(true);

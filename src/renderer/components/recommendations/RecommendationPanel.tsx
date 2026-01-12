@@ -268,10 +268,9 @@ export const RecommendationPanel = memo(function RecommendationPanel({
 
   // Auto-expand when new recommendations come in
   useEffect(() => {
-    if (recommendations.length > 0 && isCollapsed) {
+    if (recommendations.length > 0) {
       setIsCollapsed(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [recommendations.length]);
 
   const toggleCollapse = useCallback(() => {

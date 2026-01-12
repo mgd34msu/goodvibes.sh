@@ -1,6 +1,11 @@
 // ============================================================================
 // MARKDOWN RENDERER - Shared component with syntax highlighting
 // ============================================================================
+//
+// NOTE: react-markdown's component prop typing is complex due to hast/unist types.
+// We use type assertions for custom component renderers as the actual runtime props
+// don't match the library's strict TypeScript definitions.
+//
 
 import { useState, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
@@ -22,8 +27,9 @@ export function MarkdownRenderer({ content }: MarkdownRendererProps) {
       remarkPlugins={[remarkGfm]}
       rehypePlugins={[rehypeHighlight]}
       components={{
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        code: ({ inline, className, children, ...props }: any) => {
+        code: ({ className, children, ...props }) => {
+          // react-markdown passes inline prop but it's not in the standard type
+          const inline = (props as { inline?: boolean }).inline;
           const match = /language-(\w+)/.exec(className || '');
           const language = match ? match[1] : '';
 
@@ -31,7 +37,6 @@ export function MarkdownRenderer({ content }: MarkdownRendererProps) {
             return (
               <code
                 className="px-1.5 py-0.5 bg-surface-700 rounded text-sm font-mono text-primary-300"
-                {...props}
               >
                 {children}
               </code>
@@ -41,19 +46,20 @@ export function MarkdownRenderer({ content }: MarkdownRendererProps) {
           // For code blocks, wrap in a styled container with copy button
           return (
             <CodeBlockWrapper language={language || ''}>
-              <code className={clsx('hljs', className)} {...props}>
+              <code className={clsx('hljs', className)}>
                 {children}
               </code>
             </CodeBlockWrapper>
           );
         },
         pre: ({ children }) => <>{children}</>,
-        p: ({ children, node }) => {
+        p: ({ children, ...props }) => {
+          // react-markdown passes node prop with hast element info
+          const node = (props as { node?: { children?: Array<{ tagName?: string }> } }).node;
           // Check if paragraph contains block-level elements (like code blocks)
           // If so, render as div to avoid invalid HTML nesting (<pre> cannot be inside <p>)
           const hasBlockChild = node?.children?.some(
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            (child: any) =>
+            (child) =>
               child.tagName === 'pre' ||
               child.tagName === 'div' ||
               child.tagName === 'table' ||

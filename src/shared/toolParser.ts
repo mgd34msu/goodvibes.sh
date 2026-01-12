@@ -16,6 +16,11 @@ export function parseBashCommand(command: string): string[] {
 
   // Check for mcp-cli calls first (highest priority)
   const mcpMatch = command.match(/mcp-cli\s+(?:call|info)\s+([^\s'"]+)/);
+  // Also match mcp-cli tools, servers, grep, resources, read
+  const mcpOtherMatch = command.match(/^mcp-cli\s+(tools|servers|grep|resources|read)\b/i);
+  if (mcpOtherMatch) {
+    return [`mcp-cli ${mcpOtherMatch[1]}`];
+  }
   if (mcpMatch && mcpMatch[1]) {
     const mcpTool = parseMcpCliTool(mcpMatch[1]);
     if (mcpTool) {
@@ -28,10 +33,12 @@ export function parseBashCommand(command: string): string[] {
     return tools;
   }
 
-  // Extract the first command (handle cd prefix)
+  // Extract the first command (handle cd prefix - including Windows cd /d)
   const cleanedCommand = command
-    .replace(/^cd\s+"[^"]+"\s*&&\s*/i, '') // Remove cd "path" &&
-    .replace(/^cd\s+[^\s]+\s*&&\s*/i, '')  // Remove cd path &&
+    .replace(/^cd\s+\/d\s+"[^"]+"\s*&&\s*/i, '')  // Windows: cd /d "path" &&
+    .replace(/^cd\s+\/d\s+[^\s]+\s*&&\s*/i, '')   // Windows: cd /d path &&
+    .replace(/^cd\s+"[^"]+"\s*&&\s*/i, '')        // Unix: cd "path" &&
+    .replace(/^cd\s+[^\s]+\s*&&\s*/i, '')         // Unix: cd path &&
     .trim();
 
   // Known command patterns to extract
@@ -41,7 +48,7 @@ export function parseBashCommand(command: string): string[] {
     { pattern: /^git\s+/i, name: 'git' },
 
     // Package managers
-    { pattern: /^npm\s+(install|run|test|build|start|publish|update|outdated|audit|ci|init|link|pack)/i, name: (m) => `npm ${m[1] ?? ''}` },
+    { pattern: /^npm\s+(install|run|test|build|start|publish|update|outdated|audit|ci|init|link|pack|uninstall)/i, name: (m) => `npm ${m[1] ?? ''}` },
     { pattern: /^npm\s+/i, name: 'npm' },
     { pattern: /^pnpm\s+(install|run|test|build|add|remove|update)/i, name: (m) => `pnpm ${m[1] ?? ''}` },
     { pattern: /^pnpm\s+/i, name: 'pnpm' },
@@ -72,6 +79,22 @@ export function parseBashCommand(command: string): string[] {
 
     // Windows-specific
     { pattern: /^(taskkill|tasklist|netstat|ipconfig|ping)/i, name: (m) => (m[1] ?? 'unknown').toLowerCase() },
+
+    // npx commands
+    { pattern: /^npx\s+(\S+)/i, name: (m) => `npx ${m[1] ?? ''}` },
+
+    // More Windows-specific commands
+    { pattern: /^(rd|del|copy|move|type|where|attrib|icacls)/i, name: (m) => (m[1] ?? 'unknown').toLowerCase() },
+    { pattern: /^(echo|set|setx|cls|exit|pause)/i, name: (m) => (m[1] ?? 'unknown').toLowerCase() },
+
+    // SQLite
+    { pattern: /^sqlite3?\s+/i, name: 'sqlite' },
+
+    // Shell utilities
+    { pattern: /^(wc|timeout|sleep|pkill|kill)\b/i, name: (m) => (m[1] ?? 'unknown').toLowerCase() },
+
+    // Command check
+    { pattern: /^command\s+-v\s+/i, name: 'command' },
   ];
 
   for (const { pattern, name } of commandPatterns) {

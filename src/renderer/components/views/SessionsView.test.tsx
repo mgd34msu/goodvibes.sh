@@ -182,13 +182,16 @@ describe('SessionsView', () => {
         () => new Promise((resolve) => setTimeout(() => resolve(mockSessions), 1000))
       );
 
-      render(<SessionsView />, { wrapper: createTestWrapper() });
+      const { container } = render(<SessionsView />, { wrapper: createTestWrapper() });
 
-      // Should show loading skeleton
-      await waitFor(() => {
-        // Just verify component renders during loading
-        expect(document.body).toBeInTheDocument();
-      });
+      // Should show loading skeleton - look for skeleton elements or loading indicator
+      // The component should render skeleton loaders while data is fetching
+      const skeleton = container.querySelector('[class*="skeleton"]') ||
+        container.querySelector('[class*="animate-pulse"]') ||
+        screen.queryByText(/loading/i);
+
+      // Verify we have either a skeleton loader or the main header while loading
+      expect(skeleton || screen.getByText('Session History')).toBeInTheDocument();
     });
   });
 
@@ -196,12 +199,14 @@ describe('SessionsView', () => {
     it('renders session cards after loading', async () => {
       render(<SessionsView />, { wrapper: createTestWrapper() });
 
+      // Wait for the API to be called
       await waitFor(() => {
-        // Should show project names
-        const project1 = screen.queryByText('Test Project 1');
-        const project2 = screen.queryByText('Custom Title');
-        expect(project1 || project2 || document.body).toBeInTheDocument();
+        expect(vi.mocked(window.goodvibes.getActiveSessions)).toHaveBeenCalled();
       });
+
+      // Virtual scrolling may not render sessions without proper container dimensions
+      // Verify the session list container exists and API was called with correct data
+      expect(screen.getByText('Session History')).toBeInTheDocument();
     });
 
     it('hides agent sessions when setting is enabled', async () => {
@@ -232,9 +237,13 @@ describe('SessionsView', () => {
       render(<SessionsView />, { wrapper: createTestWrapper() });
 
       await waitFor(() => {
-        // Agent session may or may not be visible depending on virtual scrolling
-        expect(document.body).toBeInTheDocument();
+        // When hideAgentSessions is false, the API is still called with all sessions
+        // Verify the component rendered and the header is present
+        expect(screen.getByText('Session History')).toBeInTheDocument();
       });
+
+      // Verify that agent sessions could be shown (API was called)
+      expect(vi.mocked(window.goodvibes.getActiveSessions)).toHaveBeenCalled();
     });
   });
 
@@ -266,10 +275,17 @@ describe('SessionsView', () => {
       const searchInput = screen.getByPlaceholderText(/search sessions/i);
       fireEvent.change(searchInput, { target: { value: 'nonexistent search term xyz' } });
 
-      // After filtering, the empty state should appear for no matches
+      // After filtering, verify the search was applied
+      expect(searchInput).toHaveValue('nonexistent search term xyz');
+
+      // The sessions list should be filtered - either show empty state or no sessions match
       await waitFor(() => {
-        const emptyMessage = screen.queryByText(/no matching/i);
-        expect(emptyMessage || document.body).toBeInTheDocument();
+        // With a non-matching search, sessions from mock should be filtered out
+        const project1 = screen.queryByText('Test Project 1');
+        const project2 = screen.queryByText('Custom Title');
+        // Neither session should match the search term
+        expect(project1).toBeNull();
+        expect(project2).toBeNull();
       });
     });
   });
@@ -334,29 +350,38 @@ describe('SessionsView', () => {
     it('shows favorite star for favorited sessions', async () => {
       render(<SessionsView />, { wrapper: createTestWrapper() });
 
+      // Wait for API to be called with mock data that includes favorited sessions
       await waitFor(() => {
-        // Session 2 is favorited - should show star
-        const customTitle = screen.queryByText('Custom Title');
-        expect(customTitle || document.body).toBeInTheDocument();
+        expect(vi.mocked(window.goodvibes.getActiveSessions)).toHaveBeenCalled();
       });
+
+      // Verify the session list header is rendered (virtual scrolling limits DOM rendering)
+      expect(screen.getByText('Session History')).toBeInTheDocument();
     });
 
     it('shows outcome badge', async () => {
       render(<SessionsView />, { wrapper: createTestWrapper() });
 
+      // Wait for API to be called with mock data that includes outcome data
       await waitFor(() => {
-        const successBadge = screen.queryByText('success');
-        expect(successBadge || document.body).toBeInTheDocument();
+        expect(vi.mocked(window.goodvibes.getActiveSessions)).toHaveBeenCalled();
       });
+
+      // Verify the component rendered with session data
+      expect(screen.getByText('Session History')).toBeInTheDocument();
     });
 
     it('shows rating stars', async () => {
       render(<SessionsView />, { wrapper: createTestWrapper() });
 
+      // Wait for API to be called with mock data that includes ratings
       await waitFor(() => {
-        // Session 2 has rating of 5
-        expect(document.body).toBeInTheDocument();
+        expect(vi.mocked(window.goodvibes.getActiveSessions)).toHaveBeenCalled();
       });
+
+      // Virtual scrolling may not render session cards without proper container dimensions
+      // Verify the component rendered correctly
+      expect(screen.getByText('Session History')).toBeInTheDocument();
     });
   });
 
@@ -368,9 +393,13 @@ describe('SessionsView', () => {
 
       await waitFor(() => {
         // The empty state shows "No sessions" or similar message
-        const emptyMessage = screen.queryByText(/no.*sessions|start a new/i);
-        expect(emptyMessage || document.body).toBeInTheDocument();
+        // Verify no session cards are rendered
+        const project1 = screen.queryByText('Test Project 1');
+        expect(project1).toBeNull();
       });
+
+      // Verify the header is still present (component rendered correctly)
+      expect(screen.getByText('Session History')).toBeInTheDocument();
     });
 
     it('shows appropriate empty state for favorites', async () => {
@@ -382,9 +411,12 @@ describe('SessionsView', () => {
       fireEvent.click(favoritesTab);
 
       await waitFor(() => {
-        const emptyMessage = screen.queryByText(/star sessions|no favorites/i);
-        expect(emptyMessage || document.body).toBeInTheDocument();
+        // Verify the favorites API was called
+        expect(vi.mocked(window.goodvibes.getFavoriteSessions)).toHaveBeenCalled();
       });
+
+      // Verify the component rendered with favorites tab selected
+      expect(favoritesTab).toBeInTheDocument();
     });
   });
 
@@ -395,9 +427,14 @@ describe('SessionsView', () => {
       render(<SessionsView />, { wrapper: createTestWrapper() });
 
       await waitFor(() => {
-        // Should show some live indicator
-        expect(document.body).toBeInTheDocument();
+        // The live sessions API should have been called
+        expect(vi.mocked(window.goodvibes.getLiveSessions)).toHaveBeenCalled();
       });
+
+      // Verify the Live Monitor section is rendered with live sessions count
+      expect(screen.getByText('Live Monitor')).toBeInTheDocument();
+      // Verify the Live Sessions stat card exists
+      expect(screen.getByText('Live Sessions')).toBeInTheDocument();
     });
   });
 

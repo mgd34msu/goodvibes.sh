@@ -103,47 +103,7 @@ export async function startTerminal(options: TerminalStartOptions): Promise<Term
 
       // Analyze stream for agent detection and other patterns
       const analyzer = getPTYStreamAnalyzer();
-
-      // DEBUG: Log data that might contain agent patterns
-      // Strip ANSI codes for pattern matching
-      // eslint-disable-next-line no-control-regex
-      const cleanData = data.replace(/\x1b\[[0-9;?]*[a-zA-Z]/g, '');
-      const hasArrow = data.includes('→') || data.includes('\u2192') || data.includes('\u279C');
-      const hasParenthesis = data.includes('(') && data.includes(')');
-      const hasKnownAgent = /orchestrator|frontend-ui|backend-data|auth-specialist|fullstack-developer|factory/i.test(cleanData);
-      const hasCreateAgent = /Create\s+[\w-]+\s+agent/i.test(cleanData);
-      // NEW: Check for Claude CLI agent format: hyphenated-name(task)
-      const hasClaudeAgentFormat = /[●·✻✽✶✢*]\s*[a-z][a-z0-9]*(?:-[a-z0-9]+)+\s*\([^)]+\)/i.test(cleanData);
-      // NEW: Check for @agent invocation
-      const hasAtAgent = /@[a-z][a-z0-9]*(?:-[a-z0-9]+)+\s+/i.test(cleanData);
-      // CRITICAL: Check for Task(description) pattern - this indicates subagent activity
-      const hasTaskPattern = /Task\s*\(\s*[^)]{3,}\s*\)/i.test(cleanData);
-
-      if (hasArrow || hasKnownAgent || hasCreateAgent || hasClaudeAgentFormat || hasAtAgent || hasTaskPattern) {
-        logger.info(`[DEBUG] PTY data with potential agent pattern:`, {
-          terminalId,
-          hasArrow,
-          hasParenthesis,
-          hasKnownAgent,
-          hasCreateAgent,
-          hasClaudeAgentFormat,
-          hasAtAgent,
-          hasTaskPattern,
-          dataPreview: cleanData.substring(0, 200),
-        });
-      }
-
-      const events = analyzer.analyze(terminalId, data, options.resumeSessionId);
-
-      // DEBUG: Log if any events were detected
-      if (events.length > 0) {
-        logger.info(`[DEBUG] PTYStreamAnalyzer detected events:`, {
-          terminalId,
-          eventCount: events.length,
-          eventTypes: events.map(e => e.type),
-          events: events.map(e => ({ type: e.type, data: e.data })),
-        });
-      }
+      analyzer.analyze(terminalId, data, options.resumeSessionId);
     });
 
     // Handle PTY exit

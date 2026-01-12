@@ -446,7 +446,7 @@ const DANGEROUS_PATH_PATTERNS = [
  * @returns The validated path or throws ValidationError
  */
 export function validatePath(value: unknown, fieldName: string = 'path'): string {
-  const path = validateString(value, fieldName, { maxLength: 1000 });
+  const path = validateString(value, fieldName, { maxLength: MAX_PATH_LENGTH });
 
   for (const pattern of DANGEROUS_PATH_PATTERNS) {
     if (pattern.test(path)) {

@@ -2,7 +2,7 @@
 // PULL REQUEST LIST COMPONENT
 // ============================================================================
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { clsx } from 'clsx';
 import type { GitHubPullRequest, GitHubCheckRun, GitHubCheckConclusion } from '../../../shared/types/github';
 import CIStatusBadge from './CIStatusBadge';
@@ -26,34 +26,9 @@ export default function PullRequestList({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [ciStatuses, setCIStatuses] = useState<Record<number, GitHubCheckRun[]>>({});
+  const isMountedRef = useRef(true);
 
-  useEffect(() => {
-    loadPullRequests();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [owner, repo]);
-
-  const loadPullRequests = async () => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const result = await window.goodvibes.githubListPRs(owner, repo, { state: 'open' });
-
-      if (result.success && result.data) {
-        setPullRequests(result.data);
-        // Load CI status for each PR
-        loadCIStatuses(result.data);
-      } else {
-        setError(result.error || 'Failed to load pull requests');
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load pull requests');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const loadCIStatuses = async (prs: GitHubPullRequest[]) => {
+  const loadCIStatuses = useCallback(async (prs: GitHubPullRequest[]) => {
     const statuses: Record<number, GitHubCheckRun[]> = {};
 
     for (const pr of prs) {
@@ -62,13 +37,52 @@ export default function PullRequestList({
         if (result.success && result.data) {
           statuses[pr.number] = result.data;
         }
-      } catch {
-        // Ignore errors for individual CI status fetches
+      } catch (err) {
+        // CI status is non-critical - log but don't show user-facing error
+        // This prevents toast spam when checking multiple PRs
+        console.debug(`Failed to load CI status for PR #${pr.number}:`, err);
       }
     }
 
-    setCIStatuses(statuses);
-  };
+    if (isMountedRef.current) {
+      setCIStatuses(statuses);
+    }
+  }, [owner, repo]);
+
+  const loadPullRequests = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const result = await window.goodvibes.githubListPRs(owner, repo, { state: 'open' });
+
+      if (isMountedRef.current) {
+        if (result.success && result.data) {
+          setPullRequests(result.data);
+          // Load CI status for each PR
+          loadCIStatuses(result.data);
+        } else {
+          setError(result.error || 'Failed to load pull requests');
+        }
+      }
+    } catch (err) {
+      if (isMountedRef.current) {
+        setError(err instanceof Error ? err.message : 'Failed to load pull requests');
+      }
+    } finally {
+      if (isMountedRef.current) {
+        setLoading(false);
+      }
+    }
+  }, [owner, repo, loadCIStatuses]);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    loadPullRequests();
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, [loadPullRequests]);
 
   const openPR = (url: string) => {
     window.open(url, '_blank', 'noopener,noreferrer');

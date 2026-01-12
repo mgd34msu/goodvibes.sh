@@ -2,12 +2,13 @@
 // AGENTS VIEW - Agent Template Library Management
 // ============================================================================
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { Users, Plus, Settings } from 'lucide-react';
 import { AgentForm } from './AgentForm';
 import { AgentList } from './AgentList';
 import { AgentFilters } from './AgentFilters';
 import { useAgents, useAgentFilters } from './hooks';
+import { useConfirm } from '../../overlays/ConfirmModal';
 import { BUILT_IN_AGENTS } from './constants';
 import type { AgentTemplate } from './types';
 
@@ -15,6 +16,14 @@ export default function AgentsView() {
   const { agents, loading, saveAgent, deleteAgent, copyToClipboard } = useAgents();
   const [showForm, setShowForm] = useState(false);
   const [editingAgent, setEditingAgent] = useState<AgentTemplate | undefined>();
+
+  const { confirm: confirmDelete, ConfirmDialog } = useConfirm({
+    title: 'Delete Agent Template',
+    message: 'Are you sure you want to delete this agent template?',
+    confirmText: 'Delete',
+    cancelText: 'Cancel',
+    variant: 'danger',
+  });
 
   const {
     searchQuery,
@@ -41,11 +50,12 @@ export default function AgentsView() {
     await copyToClipboard(content);
   };
 
-  const handleDelete = async (id: string) => {
-    if (confirm('Are you sure you want to delete this agent template?')) {
+  const handleDelete = useCallback(async (id: string) => {
+    const confirmed = await confirmDelete();
+    if (confirmed) {
       await deleteAgent(id);
     }
-  };
+  }, [confirmDelete, deleteAgent]);
 
   const handleEdit = (agent: AgentTemplate) => {
     setEditingAgent(agent);
@@ -58,6 +68,8 @@ export default function AgentsView() {
   };
 
   return (
+    <>
+    <ConfirmDialog />
     <div className="h-full flex flex-col">
       {/* Header */}
       <div className="flex-shrink-0 px-6 py-4 border-b border-surface-800">
@@ -142,6 +154,7 @@ export default function AgentsView() {
         </div>
       </div>
     </div>
+    </>
   );
 }
 
