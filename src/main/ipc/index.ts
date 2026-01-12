@@ -8,7 +8,7 @@
 
 import { Logger } from '../services/logger.js';
 import { initProjectRegistry } from '../services/projectRegistry/index.js';
-import { initProjectCoordinator } from '../services/projectCoordinator.js';
+import { initProjectCoordinator } from '../services/projectCoordinator/index.js';
 import { registerPhase5to8Handlers } from './phase5to8Handlers.js';
 import { registerPhase9to12Handlers } from './phase9to12Handlers.js';
 

@@ -4,6 +4,7 @@
 
 import { ipcMain } from 'electron';
 import { getProjectRegistry } from '../../services/projectRegistry/index.js';
+import { getProjectCoordinator } from '../../services/projectCoordinator/index.js';
 import type {
   ProjectSettings,
   ProjectAgentSettings,
@@ -208,7 +209,6 @@ export function registerTemplateHandlers(): void {
 // ============================================================================
 
 export function registerCoordinationHandlers(): void {
-  const { getProjectCoordinator } = require('../../services/projectCoordinator.js');
   const coordinator = getProjectCoordinator();
 
   // Register cross-project agent

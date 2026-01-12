@@ -4,6 +4,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { clsx } from 'clsx';
+import { Folder } from 'lucide-react';
 import { useAppStore } from '../../stores/appStore';
 import { useTerminalStore } from '../../stores/terminalStore';
 
@@ -144,7 +145,7 @@ export function FolderPickerModal() {
                       selectedFolder === project.path && 'bg-primary-500/20'
                     )}
                   >
-                    <span className="template-icon" aria-hidden="true">folder</span>
+                    <Folder className="w-5 h-5 text-primary-400" aria-hidden="true" />
                     <div className="template-info">
                       <span className="template-label">{project.name}</span>
                     </div>

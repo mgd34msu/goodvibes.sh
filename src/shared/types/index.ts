@@ -88,3 +88,16 @@ export type {
   GitSubmodule,
   GitWorktree,
 } from './git-types.js';
+
+// IPC result types
+export type {
+  IPCResult,
+  IPCBooleanResult,
+} from './ipc-types.js';
+
+export {
+  ipcOk,
+  ipcErr,
+  ipcBoolOk,
+  ipcBoolErr,
+} from './ipc-types.js';

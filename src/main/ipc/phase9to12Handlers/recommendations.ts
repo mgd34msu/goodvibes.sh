@@ -18,7 +18,17 @@ import {
   type RecommendationAction,
   type RecommendationType,
   type RecommendationStats,
+  type RecommendationRecord,
+  type ItemSuccessRate,
 } from '../../database/recommendations.js';
+import {
+  type IPCResult,
+  type IPCBooleanResult,
+  ipcOk,
+  ipcErr,
+  ipcBoolOk,
+  ipcBoolErr,
+} from '../../../shared/types/ipc-types.js';
 
 const logger = new Logger('RecommendationIPC');
 
@@ -44,17 +54,18 @@ export function registerRecommendationHandlers(): void {
       sessionId?: string;
       projectPath?: string;
     }
-  ): Promise<Recommendation[]> => {
+  ): Promise<IPCResult<Recommendation[]>> => {
     try {
       engine.initialize();
-      return await engine.getRecommendationsForPrompt(
+      const recommendations = await engine.getRecommendationsForPrompt(
         options.prompt,
         options.sessionId ?? null,
         options.projectPath ?? null
       );
+      return ipcOk(recommendations);
     } catch (error) {
       logger.error('Failed to get prompt recommendations:', error);
-      return [];
+      return ipcErr(error, []);
     }
   });
 
@@ -65,13 +76,14 @@ export function registerRecommendationHandlers(): void {
   ipcMain.handle('recommendations:getForProject', async (
     _event,
     projectPath: string
-  ): Promise<Recommendation[]> => {
+  ): Promise<IPCResult<Recommendation[]>> => {
     try {
       engine.initialize();
-      return await engine.getRecommendationsForProject(projectPath);
+      const recommendations = await engine.getRecommendationsForProject(projectPath);
+      return ipcOk(recommendations);
     } catch (error) {
       logger.error('Failed to get project recommendations:', error);
-      return [];
+      return ipcErr(error, []);
     }
   });
 
@@ -82,19 +94,21 @@ export function registerRecommendationHandlers(): void {
   ipcMain.handle('recommendations:analyzePrompt', async (
     _event,
     prompt: string
-  ): Promise<PromptAnalysis> => {
+  ): Promise<IPCResult<PromptAnalysis>> => {
+    const emptyAnalysis: PromptAnalysis = {
+      keywords: [],
+      intents: [],
+      technologies: [],
+      frameworks: [],
+      actions: [],
+    };
     try {
       engine.initialize();
-      return engine.analyzePrompt(prompt);
+      const analysis = engine.analyzePrompt(prompt);
+      return ipcOk(analysis);
     } catch (error) {
       logger.error('Failed to analyze prompt:', error);
-      return {
-        keywords: [],
-        intents: [],
-        technologies: [],
-        frameworks: [],
-        actions: [],
-      };
+      return ipcErr(error, emptyAnalysis);
     }
   });
 
@@ -105,21 +119,23 @@ export function registerRecommendationHandlers(): void {
   ipcMain.handle('recommendations:analyzeProject', async (
     _event,
     projectPath: string
-  ): Promise<ProjectContext> => {
+  ): Promise<IPCResult<ProjectContext>> => {
+    const emptyContext: ProjectContext = {
+      name: null,
+      technologies: [],
+      frameworks: [],
+      hasTests: false,
+      hasDocker: false,
+      hasTypeScript: false,
+      packageDependencies: [],
+    };
     try {
       engine.initialize();
-      return await engine.analyzeProjectContext(projectPath);
+      const context = await engine.analyzeProjectContext(projectPath);
+      return ipcOk(context);
     } catch (error) {
       logger.error('Failed to analyze project context:', error);
-      return {
-        name: null,
-        technologies: [],
-        frameworks: [],
-        hasTests: false,
-        hasDocker: false,
-        hasTypeScript: false,
-        packageDependencies: [],
-      };
+      return ipcErr(error, emptyContext);
     }
   });
 
@@ -137,14 +153,14 @@ export function registerRecommendationHandlers(): void {
       recommendationId: number;
       action: RecommendationAction;
     }
-  ): Promise<boolean> => {
+  ): Promise<IPCBooleanResult> => {
     try {
       engine.initialize();
       engine.recordFeedback(options.recommendationId, options.action);
-      return true;
+      return ipcBoolOk();
     } catch (error) {
       logger.error('Failed to record recommendation feedback:', error);
-      return false;
+      return ipcBoolErr(error);
     }
   });
 
@@ -155,14 +171,14 @@ export function registerRecommendationHandlers(): void {
   ipcMain.handle('recommendations:accept', async (
     _event,
     recommendationId: number
-  ): Promise<boolean> => {
+  ): Promise<IPCBooleanResult> => {
     try {
       engine.initialize();
       engine.recordFeedback(recommendationId, 'accepted');
-      return true;
+      return ipcBoolOk();
     } catch (error) {
       logger.error('Failed to accept recommendation:', error);
-      return false;
+      return ipcBoolErr(error);
     }
   });
 
@@ -173,14 +189,14 @@ export function registerRecommendationHandlers(): void {
   ipcMain.handle('recommendations:reject', async (
     _event,
     recommendationId: number
-  ): Promise<boolean> => {
+  ): Promise<IPCBooleanResult> => {
     try {
       engine.initialize();
       engine.recordFeedback(recommendationId, 'rejected');
-      return true;
+      return ipcBoolOk();
     } catch (error) {
       logger.error('Failed to reject recommendation:', error);
-      return false;
+      return ipcBoolErr(error);
     }
   });
 
@@ -191,14 +207,14 @@ export function registerRecommendationHandlers(): void {
   ipcMain.handle('recommendations:ignore', async (
     _event,
     recommendationId: number
-  ): Promise<boolean> => {
+  ): Promise<IPCBooleanResult> => {
     try {
       engine.initialize();
       engine.recordFeedback(recommendationId, 'ignored');
-      return true;
+      return ipcBoolOk();
     } catch (error) {
       logger.error('Failed to ignore recommendation:', error);
-      return false;
+      return ipcBoolErr(error);
     }
   });
 
@@ -210,31 +226,33 @@ export function registerRecommendationHandlers(): void {
    * Get overall recommendation statistics
    * Returns acceptance rate, breakdown by type/source, top items
    */
-  ipcMain.handle('recommendations:getStats', async (): Promise<RecommendationStats> => {
+  ipcMain.handle('recommendations:getStats', async (): Promise<IPCResult<RecommendationStats>> => {
+    const emptyStats: RecommendationStats = {
+      totalRecommendations: 0,
+      acceptedCount: 0,
+      rejectedCount: 0,
+      ignoredCount: 0,
+      pendingCount: 0,
+      acceptanceRate: 0,
+      byType: {
+        agent: { total: 0, accepted: 0, rate: 0 },
+        skill: { total: 0, accepted: 0, rate: 0 },
+      },
+      bySource: {
+        prompt: { total: 0, accepted: 0, rate: 0 },
+        project: { total: 0, accepted: 0, rate: 0 },
+        context: { total: 0, accepted: 0, rate: 0 },
+        historical: { total: 0, accepted: 0, rate: 0 },
+      },
+      topAcceptedItems: [],
+    };
     try {
       engine.initialize();
-      return engine.getStats();
+      const stats = engine.getStats();
+      return ipcOk(stats);
     } catch (error) {
       logger.error('Failed to get recommendation stats:', error);
-      return {
-        totalRecommendations: 0,
-        acceptedCount: 0,
-        rejectedCount: 0,
-        ignoredCount: 0,
-        pendingCount: 0,
-        acceptanceRate: 0,
-        byType: {
-          agent: { total: 0, accepted: 0, rate: 0 },
-          skill: { total: 0, accepted: 0, rate: 0 },
-        },
-        bySource: {
-          prompt: { total: 0, accepted: 0, rate: 0 },
-          project: { total: 0, accepted: 0, rate: 0 },
-          context: { total: 0, accepted: 0, rate: 0 },
-          historical: { total: 0, accepted: 0, rate: 0 },
-        },
-        topAcceptedItems: [],
-      };
+      return ipcErr(error, emptyStats);
     }
   });
 
@@ -247,12 +265,13 @@ export function registerRecommendationHandlers(): void {
       sessionId: string;
       limit?: number;
     }
-  ) => {
+  ): Promise<IPCResult<RecommendationRecord[]>> => {
     try {
-      return getRecommendationsForSession(options.sessionId, options.limit ?? 50);
+      const recommendations = getRecommendationsForSession(options.sessionId, options.limit ?? 50);
+      return ipcOk(recommendations);
     } catch (error) {
       logger.error('Failed to get session recommendations:', error);
-      return [];
+      return ipcErr(error, []);
     }
   });
 
@@ -265,12 +284,13 @@ export function registerRecommendationHandlers(): void {
       projectPath: string;
       limit?: number;
     }
-  ) => {
+  ): Promise<IPCResult<RecommendationRecord[]>> => {
     try {
-      return getRecommendationsForProject(options.projectPath, options.limit ?? 50);
+      const recommendations = getRecommendationsForProject(options.projectPath, options.limit ?? 50);
+      return ipcOk(recommendations);
     } catch (error) {
       logger.error('Failed to get project recommendation history:', error);
-      return [];
+      return ipcErr(error, []);
     }
   });
 
@@ -283,12 +303,13 @@ export function registerRecommendationHandlers(): void {
       sessionId?: string;
       limit?: number;
     }
-  ) => {
+  ): Promise<IPCResult<RecommendationRecord[]>> => {
     try {
-      return getPendingRecommendations(options?.sessionId, options?.limit ?? 20);
+      const recommendations = getPendingRecommendations(options?.sessionId, options?.limit ?? 20);
+      return ipcOk(recommendations);
     } catch (error) {
       logger.error('Failed to get pending recommendations:', error);
-      return [];
+      return ipcErr(error, []);
     }
   });
 
@@ -302,16 +323,17 @@ export function registerRecommendationHandlers(): void {
       minRecommendations?: number;
       limit?: number;
     }
-  ) => {
+  ): Promise<IPCResult<ItemSuccessRate[]>> => {
     try {
-      return getTopPerformingItems(
+      const items = getTopPerformingItems(
         options?.type,
         options?.minRecommendations ?? 3,
         options?.limit ?? 20
       );
+      return ipcOk(items);
     } catch (error) {
       logger.error('Failed to get top performing items:', error);
-      return [];
+      return ipcErr(error, []);
     }
   });
 
@@ -322,13 +344,13 @@ export function registerRecommendationHandlers(): void {
   /**
    * Clear all recommendation caches
    */
-  ipcMain.handle('recommendations:clearCache', async (): Promise<boolean> => {
+  ipcMain.handle('recommendations:clearCache', async (): Promise<IPCBooleanResult> => {
     try {
       engine.clearCaches();
-      return true;
+      return ipcBoolOk();
     } catch (error) {
       logger.error('Failed to clear recommendation caches:', error);
-      return false;
+      return ipcBoolErr(error);
     }
   });
 
@@ -338,13 +360,13 @@ export function registerRecommendationHandlers(): void {
   ipcMain.handle('recommendations:clearSessionCache', async (
     _event,
     sessionId: string
-  ): Promise<boolean> => {
+  ): Promise<IPCBooleanResult> => {
     try {
       engine.clearSessionCache(sessionId);
-      return true;
+      return ipcBoolOk();
     } catch (error) {
       logger.error('Failed to clear session cache:', error);
-      return false;
+      return ipcBoolErr(error);
     }
   });
 
@@ -364,13 +386,13 @@ export function registerRecommendationHandlers(): void {
       projectContextWeight?: number;
       cacheTimeoutMs?: number;
     }
-  ): Promise<boolean> => {
+  ): Promise<IPCBooleanResult> => {
     try {
       engine.configure(config);
-      return true;
+      return ipcBoolOk();
     } catch (error) {
       logger.error('Failed to configure recommendation engine:', error);
-      return false;
+      return ipcBoolErr(error);
     }
   });
 

@@ -83,7 +83,7 @@ export function GitStash({
             ) : (
               stashes.map((stash) => (
                 <div
-                  key={stash.index}
+                  key={`stash-${stash.index}-${stash.message || 'wip'}-${stash.branch || 'none'}`}
                   className="group flex items-center gap-2 px-2 py-1.5 hover:bg-surface-700/50 transition-colors"
                 >
                   <span className="text-accent-400 font-mono text-[10px] flex-shrink-0">

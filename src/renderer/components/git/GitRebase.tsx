@@ -257,7 +257,7 @@ function ReflogModal({
           ) : (
             <div className="divide-y divide-surface-800">
               {reflogEntries.map((entry) => (
-                <div key={entry.index} className="group flex items-center gap-3 px-4 py-2 hover:bg-surface-800/50">
+                <div key={entry.hash} className="group flex items-center gap-3 px-4 py-2 hover:bg-surface-800/50">
                   <span className="text-primary-400 font-mono text-xs">{entry.shortHash}</span>
                   <span className="px-1.5 py-0.5 text-[10px] bg-surface-700 text-surface-400 rounded">{entry.action}</span>
                   <span className="flex-1 text-sm text-surface-200 truncate">{entry.message}</span>

@@ -7,6 +7,7 @@ import { Logger } from '../../services/logger.js';
 import { withContext } from '../utils.js';
 import { getSessionManager } from '../../services/sessionManager.js';
 import * as db from '../../database/index.js';
+import * as sessionSummaries from '../../database/sessionSummaries/index.js';
 
 const logger = new Logger('IPC:Sessions');
 
@@ -84,6 +85,23 @@ export function registerSessionHandlers(): void {
     } catch (error) {
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error', count: 0 };
     }
+  }));
+
+  // Session summary handlers (for phase5to8Api)
+  ipcMain.handle('session:get', withContext('session:get', async (_, sessionId: string) => {
+    return sessionSummaries.getSessionSummaryBySessionId(sessionId);
+  }));
+
+  ipcMain.handle('session:getRecent', withContext('session:getRecent', async (_, limit?: number) => {
+    return sessionSummaries.getRecentSessions(limit ?? 50);
+  }));
+
+  ipcMain.handle('session:getForProject', withContext('session:getForProject', async (_, projectPath: string, limit?: number) => {
+    return sessionSummaries.getRecentSessionsForProject(projectPath, limit ?? 5);
+  }));
+
+  ipcMain.handle('session:search', withContext('session:search', async (_, query: string, projectPath?: string, limit?: number) => {
+    return sessionSummaries.searchSessions(query, projectPath, limit ?? 20);
   }));
 
   logger.info('Session handlers registered');

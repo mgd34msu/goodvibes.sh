@@ -33,4 +33,7 @@ export const sessionsApi = {
     ipcRenderer.invoke('is-session-live', id),
   recalculateSessionCosts: () =>
     ipcRenderer.invoke('recalculate-session-costs'),
+  // Session summaries (for project-based session lookup)
+  getProjectSessions: (projectPath: string, limit?: number) =>
+    ipcRenderer.invoke('session:getForProject', projectPath, limit ?? 5),
 };

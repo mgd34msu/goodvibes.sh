@@ -1,42 +1,12 @@
 {
-  "cycle": 1,
-  "agents": [
-    {
-      "id": "a4a7568",
-      "type": "test-engineer",
-      "task": "Fix test mocks and skipped tests",
-      "status": "running"
-    },
-    {
-      "id": "a37c97f",
-      "type": "backend-engineer",
-      "task": "Fix circular deps and swallowed error",
-      "status": "running"
-    },
-    {
-      "id": "a664dc4",
-      "type": "frontend-architect",
-      "task": "Split TerminalView component",
-      "status": "running"
-    },
-    {
-      "id": "aaeeb45",
-      "type": "code-architect",
-      "task": "Create ESLint config and fix any types",
-      "status": "running"
-    },
-    {
-      "id": "a9f8bb1",
-      "type": "devops-deployer",
-      "task": "Fix security vulns and update deps",
-      "status": "running"
-    },
-    {
-      "id": "afd4051",
-      "type": "fullstack-integrator",
-      "task": "Add logger and README",
-      "status": "running"
-    }
-  ],
-  "startTime": "2026-01-12T06:32:00Z"
+  "a641422": {
+    "agent_id": "a641422",
+    "agent_type": "Bash",
+    "session_id": "7b8a7e8d-38e7-47fe-9e43-7c1f1f1caaf5",
+    "project": "C:\\Users\\buzzkill\\Documents\\clausitron",
+    "project_name": "clausitron",
+    "git_branch": "main",
+    "git_commit": "8898716",
+    "started_at": "2026-01-12T23:15:48.665Z"
+  }
 }

@@ -82,9 +82,11 @@ export function prettifyThinking(content: string): React.ReactNode {
         iconOnly
       />
       {parts.map((part, index) => {
+        // Create stable key from part type, tag name (if present), and content hash
+        const contentKey = `${part.type}-${part.tagName || 'text'}-${index}-${part.content.slice(0, 50)}`;
         if (part.type === 'tag') {
           return (
-            <div key={index} className="relative pl-3 border-l-2 border-accent-500/30">
+            <div key={contentKey} className="relative pl-3 border-l-2 border-accent-500/30">
               <span className="absolute -left-0.5 top-0 text-accent-400/60 text-xs font-mono">
                 {part.tagName}
               </span>
@@ -95,7 +97,7 @@ export function prettifyThinking(content: string): React.ReactNode {
           );
         }
         return (
-          <div key={index} className="text-surface-300 whitespace-pre-wrap">
+          <div key={contentKey} className="text-surface-300 whitespace-pre-wrap">
             {part.content}
           </div>
         );

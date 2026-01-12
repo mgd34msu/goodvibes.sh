@@ -11,6 +11,7 @@ import { ProjectFilters } from './ProjectFilters';
 import { ProjectSettingsDialog } from './ProjectSettingsDialog';
 import { CreateTemplateDialog } from './CreateTemplateDialog';
 import { TemplateList } from './TemplateList';
+import { PreviousSessionsModal } from './PreviousSessionsModal';
 import type { RegisteredProject, ProjectSettings } from './types';
 
 type TabType = 'projects' | 'templates';
@@ -20,6 +21,8 @@ export default function ProjectRegistryView() {
   const [selectedProject, setSelectedProject] = useState<RegisteredProject | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [showTemplateDialog, setShowTemplateDialog] = useState(false);
+  const [showPreviousSessions, setShowPreviousSessions] = useState(false);
+  const [previousSessionsProject, setPreviousSessionsProject] = useState<RegisteredProject | null>(null);
 
   const {
     projects,
@@ -28,7 +31,6 @@ export default function ProjectRegistryView() {
     isLoading,
     registerProject,
     removeProject,
-    switchProject,
     saveSettings,
     createTemplate,
     applyTemplate,
@@ -81,6 +83,24 @@ export default function ProjectRegistryView() {
       await deleteTemplate(templateId);
     }
   }, [confirmDeleteTemplate, deleteTemplate]);
+
+  const handleNewSession = useCallback((project: RegisteredProject) => {
+    // Start a new Claude session in the project's directory
+    window.goodvibes?.startClaude?.({
+      cwd: project.path,
+      name: project.name,
+    }).catch(console.error);
+  }, []);
+
+  const handleLoadSession = useCallback((sessionId: string, projectPath: string) => {
+    // Resume the selected session
+    window.goodvibes?.startClaude?.({
+      cwd: projectPath,
+      resumeSessionId: sessionId,
+    }).catch(console.error);
+    setShowPreviousSessions(false);
+    setPreviousSessionsProject(null);
+  }, []);
 
   function formatDate(dateString: string): string {
     return new Date(dateString).toLocaleDateString(undefined, {
@@ -169,7 +189,11 @@ export default function ProjectRegistryView() {
                     templates={templates}
                     isSelected={selectedProject?.id === project.id}
                     onSelect={() => setSelectedProject(project)}
-                    onSwitch={() => switchProject(project.id)}
+                    onNewSession={() => handleNewSession(project)}
+                    onOpenPreviousSession={() => {
+                      setPreviousSessionsProject(project);
+                      setShowPreviousSessions(true);
+                    }}
                     onRemove={() => handleRemoveProject(project.id)}
                     onOpenSettings={() => {
                       setSelectedProject(project);
@@ -215,6 +239,19 @@ export default function ProjectRegistryView() {
             project={selectedProject}
             onCreate={handleCreateTemplate}
             onClose={() => setShowTemplateDialog(false)}
+          />
+        )}
+
+        {/* Previous Sessions Modal */}
+        {showPreviousSessions && previousSessionsProject && (
+          <PreviousSessionsModal
+            project={previousSessionsProject}
+            onLoadSession={(sessionId) => handleLoadSession(sessionId, previousSessionsProject.path)}
+            onClose={() => {
+              setShowPreviousSessions(false);
+              setPreviousSessionsProject(null);
+            }}
+            formatCurrency={formatCurrency}
           />
         )}
       </div>

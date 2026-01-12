@@ -4,6 +4,7 @@
 
 import { useState } from 'react';
 import { clsx } from 'clsx';
+import { Plus, History } from 'lucide-react';
 import type { RegisteredProject, ProjectTemplate, ProjectAnalytics } from './types';
 
 interface ProjectCardProps {
@@ -12,7 +13,8 @@ interface ProjectCardProps {
   templates: ProjectTemplate[];
   isSelected: boolean;
   onSelect: () => void;
-  onSwitch: () => void;
+  onNewSession: () => void;
+  onOpenPreviousSession: () => void;
   onRemove: () => void;
   onOpenSettings: () => void;
   onApplyTemplate: (templateId: number) => void;
@@ -27,7 +29,8 @@ export function ProjectCard({
   templates,
   isSelected,
   onSelect,
-  onSwitch,
+  onNewSession,
+  onOpenPreviousSession,
   onRemove,
   onOpenSettings,
   onApplyTemplate,
@@ -83,10 +86,20 @@ export function ProjectCard({
         {/* Actions */}
         <div className="flex items-center gap-2">
           <button
-            onClick={e => { e.stopPropagation(); onSwitch(); }}
-            className="btn btn-sm btn-secondary"
+            onClick={e => { e.stopPropagation(); onNewSession(); }}
+            className="btn btn-sm btn-primary flex items-center gap-1.5"
+            title="Start a new Claude session for this project"
           >
-            Switch
+            <Plus className="w-4 h-4" />
+            New Session
+          </button>
+          <button
+            onClick={e => { e.stopPropagation(); onOpenPreviousSession(); }}
+            className="btn btn-sm btn-secondary flex items-center gap-1.5"
+            title="Open a previous session"
+          >
+            <History className="w-4 h-4" />
+            Previous
           </button>
           <div className="relative">
             <button
