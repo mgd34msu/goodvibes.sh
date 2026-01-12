@@ -121,8 +121,8 @@ const path = require('path');
 const os = require('os');
 
 // Configuration
-const CLAUSITRON_PORT = ${HOOK_SERVER_PORT};
-const CLAUSITRON_HOST = '127.0.0.1';
+const GOODVIBES_PORT = ${HOOK_SERVER_PORT};
+const GOODVIBES_HOST = '127.0.0.1';
 const TIMEOUT_MS = 5000;
 const HOOK_EVENT_NAME = '${eventType}';
 const HOOK_CATEGORY = '${hookCategory}';
@@ -274,8 +274,8 @@ function postToGoodVibes(path, data) {
     const postData = JSON.stringify(data);
 
     const req = http.request({
-      hostname: CLAUSITRON_HOST,
-      port: CLAUSITRON_PORT,
+      hostname: GOODVIBES_HOST,
+      port: GOODVIBES_PORT,
       path: path,
       method: 'POST',
       headers: {

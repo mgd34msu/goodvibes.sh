@@ -176,12 +176,12 @@ class ConfigManager {
 
   private applyEnvironmentOverrides(): void {
     // Environment variable overrides
-    if (process.env.CLAUSITRON_LOG_LEVEL) {
-      this.config.logging.level = process.env.CLAUSITRON_LOG_LEVEL as AppConfig['logging']['level'];
+    if (process.env.GOODVIBES_LOG_LEVEL) {
+      this.config.logging.level = process.env.GOODVIBES_LOG_LEVEL as AppConfig['logging']['level'];
     }
 
-    if (process.env.CLAUSITRON_SESSIONS_PATH) {
-      this.config.paths.sessions = process.env.CLAUSITRON_SESSIONS_PATH;
+    if (process.env.GOODVIBES_SESSIONS_PATH) {
+      this.config.paths.sessions = process.env.GOODVIBES_SESSIONS_PATH;
     }
 
     // Development overrides

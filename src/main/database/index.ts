@@ -602,6 +602,7 @@ export function getAnalytics(): Analytics {
   });
 
   // Sessions over time - get aggregated data from database
+  // Query sessions for last 12 weeks (84 days) to support heatmap
   const sessionsFromDb = database.prepare(`
     SELECT
       DATE(start_time) as date,
@@ -609,7 +610,7 @@ export function getAnalytics(): Analytics {
       COALESCE(SUM(token_count), 0) as tokens,
       COALESCE(SUM(cost), 0) as cost
     FROM sessions
-    WHERE start_time IS NOT NULL AND start_time >= datetime('now', '-30 days')
+    WHERE start_time IS NOT NULL AND start_time >= datetime('now', '-84 days')
     GROUP BY DATE(start_time)
     ORDER BY date
   `).all() as { date: string; count: number; tokens: number; cost: number }[];
@@ -620,10 +621,10 @@ export function getAnalytics(): Analytics {
     dateDataMap.set(row.date, { count: row.count, tokens: row.tokens, cost: row.cost });
   }
 
-  // Generate full 30 days array, filling in zeros for missing days
+  // Generate full 84 days array (12 weeks for heatmap), filling in zeros for missing days
   const sessionsOverTime: { date: string; count: number; tokens: number; cost: number }[] = [];
   const now = new Date();
-  for (let i = 29; i >= 0; i--) {
+  for (let i = 83; i >= 0; i--) {
     const d = new Date(now);
     d.setDate(d.getDate() - i);
     const dateStr = d.toISOString().split('T')[0];

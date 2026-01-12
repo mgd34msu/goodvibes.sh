@@ -213,13 +213,13 @@ class HooksService extends EventEmitter {
       // Prepare environment
       const env = {
         ...process.env,
-        CLAUSITRON_HOOK_EVENT: context.eventType,
-        CLAUSITRON_HOOK_TOOL: context.toolName || '',
-        CLAUSITRON_HOOK_INPUT: context.toolInput ? JSON.stringify(context.toolInput) : '',
-        CLAUSITRON_HOOK_RESULT: context.toolResult || '',
-        CLAUSITRON_SESSION_ID: context.sessionId || '',
-        CLAUSITRON_PROJECT_PATH: context.projectPath || '',
-        CLAUSITRON_TIMESTAMP: context.timestamp.toString(),
+        GOODVIBES_HOOK_EVENT: context.eventType,
+        GOODVIBES_HOOK_TOOL: context.toolName || '',
+        GOODVIBES_HOOK_INPUT: context.toolInput ? JSON.stringify(context.toolInput) : '',
+        GOODVIBES_HOOK_RESULT: context.toolResult || '',
+        GOODVIBES_SESSION_ID: context.sessionId || '',
+        GOODVIBES_PROJECT_PATH: context.projectPath || '',
+        GOODVIBES_TIMESTAMP: context.timestamp.toString(),
       };
 
       // Spawn the command
@@ -598,13 +598,13 @@ class HooksService extends EventEmitter {
 const http = require('http');
 
 const data = {
-  event: process.env.CLAUSITRON_HOOK_EVENT,
-  tool: process.env.CLAUSITRON_HOOK_TOOL,
-  input: process.env.CLAUSITRON_HOOK_INPUT,
-  result: process.env.CLAUSITRON_HOOK_RESULT,
-  sessionId: process.env.CLAUSITRON_SESSION_ID,
-  projectPath: process.env.CLAUSITRON_PROJECT_PATH,
-  timestamp: process.env.CLAUSITRON_TIMESTAMP,
+  event: process.env.GOODVIBES_HOOK_EVENT,
+  tool: process.env.GOODVIBES_HOOK_TOOL,
+  input: process.env.GOODVIBES_HOOK_INPUT,
+  result: process.env.GOODVIBES_HOOK_RESULT,
+  sessionId: process.env.GOODVIBES_SESSION_ID,
+  projectPath: process.env.GOODVIBES_PROJECT_PATH,
+  timestamp: process.env.GOODVIBES_TIMESTAMP,
 };
 
 // Log to local GoodVibes server (if running)
@@ -633,9 +633,9 @@ const http = require('http');
 
 const data = {
   event: 'SessionStart',
-  sessionId: process.env.CLAUSITRON_SESSION_ID,
-  projectPath: process.env.CLAUSITRON_PROJECT_PATH,
-  timestamp: process.env.CLAUSITRON_TIMESTAMP,
+  sessionId: process.env.GOODVIBES_SESSION_ID,
+  projectPath: process.env.GOODVIBES_PROJECT_PATH,
+  timestamp: process.env.GOODVIBES_TIMESTAMP,
 };
 
 const req = http.request({
@@ -661,9 +661,9 @@ const http = require('http');
 
 const data = {
   event: 'SessionEnd',
-  sessionId: process.env.CLAUSITRON_SESSION_ID,
-  projectPath: process.env.CLAUSITRON_PROJECT_PATH,
-  timestamp: process.env.CLAUSITRON_TIMESTAMP,
+  sessionId: process.env.GOODVIBES_SESSION_ID,
+  projectPath: process.env.GOODVIBES_PROJECT_PATH,
+  timestamp: process.env.GOODVIBES_TIMESTAMP,
 };
 
 const req = http.request({

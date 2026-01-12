@@ -218,6 +218,8 @@ export interface AppSettings {
   githubShowInGitPanel: boolean;
   githubAutoLoadPRs: boolean;
   githubAutoLoadCI: boolean;
+  // Session backup settings
+  sessionBackupEnabled: boolean;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -256,6 +258,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   githubShowInGitPanel: true,
   githubAutoLoadPRs: true,
   githubAutoLoadCI: true,
+  // Session backup settings
+  sessionBackupEnabled: true,
 };
 
 // Settings version - increment this when adding new settings that need migration
@@ -270,7 +274,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
 //   1. Saving migrated values first, then version
 //   2. Always saving version even if some values fail (to prevent infinite retry loops)
 //   Versions 6-7 have been consolidated into v5 since they all reset the same settings.
-export const SETTINGS_VERSION = 5;
+// Version 6: Added session backup settings
+export const SETTINGS_VERSION = 6;
 
 // Settings that were added/changed in each version and need to be reset to defaults
 export const SETTINGS_MIGRATIONS: Record<number, (keyof AppSettings)[]> = {
@@ -302,6 +307,10 @@ export const SETTINGS_MIGRATIONS: Record<number, (keyof AppSettings)[]> = {
   5: [
     'githubEnabled',
     'githubShowInGitPanel',
+  ],
+  // Version 6: Added session backup settings
+  6: [
+    'sessionBackupEnabled',
   ],
 };
 

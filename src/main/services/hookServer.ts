@@ -568,13 +568,13 @@ class HookServerService extends EventEmitter {
           for (const activeAgent of activeAgents) {
             const agent = getIndexedAgent(activeAgent.agentId);
             if (agent) {
-              injectContext += `\n\n<!-- CLAUSITRON:AGENT:${agent.slug} -->\n`;
+              injectContext += `\n\n<!-- GOODVIBES:AGENT:${agent.slug} -->\n`;
               injectContext += `## Agent: ${agent.name}\n\n`;
               if (agent.description) {
                 injectContext += `${agent.description}\n\n`;
               }
               injectContext += agent.content;
-              injectContext += `\n<!-- /CLAUSITRON:AGENT:${agent.slug} -->\n`;
+              injectContext += `\n<!-- /GOODVIBES:AGENT:${agent.slug} -->\n`;
               recordAgentUsage(agent.id);
             }
           }
@@ -584,13 +584,13 @@ class HookServerService extends EventEmitter {
           for (const queuedSkill of pendingSkills) {
             const skill = getIndexedSkill(queuedSkill.skillId);
             if (skill) {
-              injectContext += `\n\n<!-- CLAUSITRON:SKILL:${skill.slug} -->\n`;
+              injectContext += `\n\n<!-- GOODVIBES:SKILL:${skill.slug} -->\n`;
               injectContext += `## Skill: ${skill.name}\n\n`;
               if (skill.description) {
                 injectContext += `${skill.description}\n\n`;
               }
               injectContext += skill.content;
-              injectContext += `\n<!-- /CLAUSITRON:SKILL:${skill.slug} -->\n`;
+              injectContext += `\n<!-- /GOODVIBES:SKILL:${skill.slug} -->\n`;
               markSkillInjected(queuedSkill.id);
               recordSkillUsage(skill.id);
             }

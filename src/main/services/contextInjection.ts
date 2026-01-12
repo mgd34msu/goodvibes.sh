@@ -62,10 +62,10 @@ export interface InjectionResult {
  * CLAUDE.md section markers
  */
 const SECTION_MARKERS = {
-  AGENT_START: '<!-- CLAUSITRON:AGENTS:START -->',
-  AGENT_END: '<!-- CLAUSITRON:AGENTS:END -->',
-  SKILL_START: '<!-- CLAUSITRON:SKILLS:START -->',
-  SKILL_END: '<!-- CLAUSITRON:SKILLS:END -->',
+  AGENT_START: '<!-- GOODVIBES:AGENTS:START -->',
+  AGENT_END: '<!-- GOODVIBES:AGENTS:END -->',
+  SKILL_START: '<!-- GOODVIBES:SKILLS:START -->',
+  SKILL_END: '<!-- GOODVIBES:SKILLS:END -->',
 };
 
 // ============================================================================

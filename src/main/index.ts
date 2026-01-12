@@ -8,7 +8,7 @@ import { fileURLToPath } from 'url';
 
 import { createWindow, getMainWindow } from './window.js';
 import { createMenu } from './menu.js';
-import { initDatabase, closeDatabase, clearActivityLog } from './database/index.js';
+import { initDatabase, closeDatabase, clearActivityLog, getSetting } from './database/index.js';
 import { initSessionManager, getSessionManager } from './services/sessionManager.js';
 import { initTerminalManager, closeAllTerminals, getTerminalCount } from './services/terminalManager.js';
 import { registerAllIpcHandlers } from './ipc/index.js';
@@ -25,6 +25,7 @@ import {
   areClaudeHooksConfigured,
 } from './services/hookScripts.js';
 import { createHookEventsTables } from './database/hookEvents.js';
+import { backupSessions } from './services/sessionBackup.js';
 import {
   SESSION_SCAN_INIT_DELAY_MS,
   GRACEFUL_SHUTDOWN_TIMEOUT_MS,
@@ -161,6 +162,19 @@ async function initializeApp(): Promise<void> {
     // Initialize database
     await initDatabase(app.getPath('userData'));
     logger.info('Database initialized');
+
+    // Backup Claude sessions (if enabled in settings)
+    const sessionBackupEnabled = getSetting<boolean>('sessionBackupEnabled') ?? true;
+    if (sessionBackupEnabled) {
+      const backupResult = await backupSessions();
+      if (backupResult.backed > 0) {
+        logger.info(`Session backup complete: ${backupResult.backed} new sessions backed up (${backupResult.total} total)`);
+      } else {
+        logger.info(`Session backup complete: all ${backupResult.total} sessions already backed up`);
+      }
+    } else {
+      logger.info('Session backup disabled in settings');
+    }
 
     // Create hook events tables
     createHookEventsTables();

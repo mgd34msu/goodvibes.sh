@@ -511,6 +511,19 @@ export default function SettingsView() {
           </SettingRow>
         </SettingsSection>
 
+        {/* Data & Backup */}
+        <SettingsSection title="Data & Backup">
+          <SettingRow
+            label="Auto-Backup Sessions"
+            description="Automatically backup Claude sessions on startup to preserve history"
+          >
+            <ToggleSwitch
+              checked={settings.sessionBackupEnabled}
+              onChange={(value) => handleChange('sessionBackupEnabled', value)}
+            />
+          </SettingRow>
+        </SettingsSection>
+
         {/* Maintenance */}
         <SettingsSection title="Maintenance">
           <RecalculateCostsButton />

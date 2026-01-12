@@ -55,6 +55,10 @@ interface ProjectAnalytics {
   projectName: string;
   totalSessions: number;
   totalTokens: number;
+  inputTokens: number;
+  outputTokens: number;
+  cacheReadTokens: number;
+  cacheWriteTokens: number;
   totalCostUsd: number;
   avgSessionDuration: number;
   avgTokensPerSession: number;
@@ -452,18 +456,11 @@ function ProjectCard({
             <div>Last opened: {formatDate(project.lastOpened)}</div>
             {analytics && (
               <>
-                <div>{analytics.totalSessions} sessions</div>
-                <div>{formatCurrency(analytics.totalCostUsd)} spent</div>
-                {analytics.successRate > 0 && (
-                  <div className={clsx(
-                    'px-2 py-0.5 rounded',
-                    analytics.successRate >= 0.8 ? 'bg-green-500/20 text-green-400' :
-                    analytics.successRate >= 0.5 ? 'bg-yellow-500/20 text-yellow-400' :
-                    'bg-red-500/20 text-red-400'
-                  )}>
-                    {(analytics.successRate * 100).toFixed(0)}% success
-                  </div>
-                )}
+                <div>{(analytics.totalSessions ?? 0).toLocaleString()} sessions</div>
+                <div>{formatCurrency(analytics.totalCostUsd ?? 0)} spent</div>
+                <div title={`Input: ${(analytics.inputTokens ?? 0).toLocaleString()} | Output: ${(analytics.outputTokens ?? 0).toLocaleString()} | Cache Read: ${(analytics.cacheReadTokens ?? 0).toLocaleString()} | Cache Write: ${(analytics.cacheWriteTokens ?? 0).toLocaleString()}`}>
+                  {(analytics.totalTokens ?? 0).toLocaleString()} tokens
+                </div>
               </>
             )}
           </div>

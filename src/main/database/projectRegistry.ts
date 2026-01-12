@@ -116,6 +116,10 @@ export interface ProjectAnalytics {
   projectName: string;
   totalSessions: number;
   totalTokens: number;
+  inputTokens: number;
+  outputTokens: number;
+  cacheReadTokens: number;
+  cacheWriteTokens: number;
   totalCostUsd: number;
   avgSessionDuration: number;
   avgTokensPerSession: number;
@@ -820,28 +824,45 @@ function mapRowToCrossProjectSession(row: any): CrossProjectSession {
 // ============================================================================
 
 /**
- * Get analytics for a single project
+ * Convert a file path to the encoded project_name format used in sessions table.
+ * e.g., "C:\Users\buzzkill\Documents\clausitron" -> "C--Users-buzzkill-Documents-clausitron"
+ */
+function encodeProjectPath(path: string): string {
+  return path.replace(/:/g, '-').replace(/[\\/]/g, '-');
+}
+
+/**
+ * Get analytics for a single project.
+ * Queries the main sessions table using the encoded project path.
  */
 export function getProjectAnalytics(projectId: number): ProjectAnalytics | null {
   const db = getDatabase();
   const project = getRegisteredProject(projectId);
   if (!project) return null;
 
+  // Convert project path to the encoded format used in sessions.project_name
+  const encodedPath = encodeProjectPath(project.path);
+
+  // Query the main sessions table for this project's stats
   const stats = db.prepare(`
     SELECT
       COUNT(*) as total_sessions,
-      COALESCE(SUM(tokens_used), 0) as total_tokens,
-      COALESCE(SUM(cost_usd), 0) as total_cost,
+      COALESCE(SUM(token_count), 0) as total_tokens,
+      COALESCE(SUM(input_tokens), 0) as input_tokens,
+      COALESCE(SUM(output_tokens), 0) as output_tokens,
+      COALESCE(SUM(cache_read_tokens), 0) as cache_read_tokens,
+      COALESCE(SUM(cache_write_tokens), 0) as cache_write_tokens,
+      COALESCE(SUM(cost), 0) as total_cost,
       COALESCE(AVG(
-        CASE WHEN ended_at IS NOT NULL
-        THEN (julianday(ended_at) - julianday(started_at)) * 86400000
+        CASE WHEN end_time IS NOT NULL AND start_time IS NOT NULL
+        THEN (julianday(end_time) - julianday(start_time)) * 86400000
         ELSE NULL END
       ), 0) as avg_duration,
-      MAX(started_at) as last_activity,
+      MAX(end_time) as last_activity,
       SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed_count
-    FROM cross_project_sessions
-    WHERE project_id = ?
-  `).get(projectId) as any;
+    FROM sessions
+    WHERE project_name = ?
+  `).get(encodedPath) as any;
 
   const totalSessions = stats.total_sessions || 0;
 
@@ -851,6 +872,10 @@ export function getProjectAnalytics(projectId: number): ProjectAnalytics | null 
     projectName: project.name,
     totalSessions,
     totalTokens: stats.total_tokens || 0,
+    inputTokens: stats.input_tokens || 0,
+    outputTokens: stats.output_tokens || 0,
+    cacheReadTokens: stats.cache_read_tokens || 0,
+    cacheWriteTokens: stats.cache_write_tokens || 0,
     totalCostUsd: stats.total_cost || 0,
     avgSessionDuration: stats.avg_duration || 0,
     avgTokensPerSession: totalSessions > 0 ? (stats.total_tokens || 0) / totalSessions : 0,

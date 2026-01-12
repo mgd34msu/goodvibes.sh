@@ -54,7 +54,7 @@ test.describe('Window Management', () => {
 
   test('should have correct window title', async () => {
     const title = await mainWindow.title();
-    expect(title).toContain('Clausitron');
+    expect(title).toContain('GoodVibes');
   });
 
   test('should render the main application shell with root element', async () => {
