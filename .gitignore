@@ -54,6 +54,7 @@ coverage/
 # Claude files
 .claude/
 .external-docs/
+.goodvibes/
 CLAUDE.md
 nul
 
