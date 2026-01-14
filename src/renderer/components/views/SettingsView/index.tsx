@@ -5,6 +5,7 @@
 import { useSettings } from './hooks';
 import { AppearanceSettings } from './AppearanceSettings';
 import { StartupSettings, ClaudeSettings, GitSettings, BudgetSettings, BackupSettings } from './GeneralSettings';
+import { TerminalSettings } from './TerminalSettings';
 import { GitHubSettings } from './GitHubSettings';
 import { SessionPreviewVisibilitySettings, SessionPreviewExpandSettings } from './SessionPreviewSettings';
 import { KeyboardSettings } from './KeyboardSettings';
@@ -37,6 +38,9 @@ export default function SettingsView() {
 
         {/* Claude CLI Options */}
         <ClaudeSettings settings={settings} onChange={handleChange} />
+
+        {/* Terminal Settings */}
+        <TerminalSettings settings={settings} onChange={handleChange} />
 
         {/* Git Integration */}
         <GitSettings settings={settings} onChange={handleChange} />

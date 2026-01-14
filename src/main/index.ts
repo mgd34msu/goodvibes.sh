@@ -399,19 +399,20 @@ async function initializeApp(): Promise<void> {
         logger.info('Hook scripts already installed');
       }
 
-      // Configure Claude's settings.json to use our hooks
-      // This is critical - without this, Claude doesn't know to run our hook scripts
-      const hooksConfigured = await areClaudeHooksConfigured();
-      if (!hooksConfigured) {
-        const configured = await configureClaudeHooks();
-        if (configured) {
-          logger.info('Claude hooks configured in settings.json');
-        } else {
-          logger.warn('Failed to configure Claude hooks in settings.json');
-        }
-      } else {
-        logger.info('Claude hooks already configured in settings.json');
-      }
+      // DISABLED: Plugin system now handles hooks via plugin.json -> hooks.json
+      // The old approach of writing directly to settings.json conflicts with plugin-based hooks
+      // const hooksConfigured = await areClaudeHooksConfigured();
+      // if (!hooksConfigured) {
+      //   const configured = await configureClaudeHooks();
+      //   if (configured) {
+      //     logger.info('Claude hooks configured in settings.json');
+      //   } else {
+      //     logger.warn('Failed to configure Claude hooks in settings.json');
+      //   }
+      // } else {
+      //   logger.info('Claude hooks already configured in settings.json');
+      // }
+      logger.info('Hooks now managed by plugin system (plugin.json -> hooks.json)');
     } catch (error) {
       // Log but don't fail - hook server is optional for core functionality
       logger.warn('Failed to start hook server', error);

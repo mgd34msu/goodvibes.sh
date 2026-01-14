@@ -15,4 +15,7 @@ export const settingsApi = {
     ipcRenderer.invoke('get-app-version'),
   getAppPath: (name: string) =>
     ipcRenderer.invoke('get-app-path', name),
+  /** Returns the OS platform: 'win32', 'darwin', 'linux', etc. */
+  getPlatform: (): NodeJS.Platform =>
+    process.platform,
 };

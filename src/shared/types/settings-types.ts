@@ -23,6 +23,9 @@ export interface AppSettings {
   dailyBudget: number | null;
   monthlyBudget: number | null;
   budgetNotifications: boolean;
+  // Terminal settings
+  preferredShell: string | null;
+  customShells: string[];
   // Preview settings - Visibility (show/hide block types entirely)
   showThinkingBlocks: boolean;
   showToolUseBlocks: boolean;
@@ -63,6 +66,9 @@ export const DEFAULT_SETTINGS: AppSettings = {
   dailyBudget: null,
   monthlyBudget: null,
   budgetNotifications: false,
+  // Terminal settings
+  preferredShell: null,
+  customShells: [],
   // Preview settings - Visibility (show/hide block types entirely)
   showThinkingBlocks: true,
   showToolUseBlocks: true,
@@ -99,7 +105,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
 //   2. Always saving version even if some values fail (to prevent infinite retry loops)
 //   Versions 6-7 have been consolidated into v5 since they all reset the same settings.
 // Version 6: Added session backup settings
-export const SETTINGS_VERSION = 6;
+// Version 7: Added terminal shell settings (preferredShell, customShells)
+export const SETTINGS_VERSION = 7;
 
 // Settings that were added/changed in each version and need to be reset to defaults
 export const SETTINGS_MIGRATIONS: Record<number, (keyof AppSettings)[]> = {
@@ -135,6 +142,11 @@ export const SETTINGS_MIGRATIONS: Record<number, (keyof AppSettings)[]> = {
   // Version 6: Added session backup settings
   6: [
     'sessionBackupEnabled',
+  ],
+  // Version 7: Added terminal shell settings
+  7: [
+    'preferredShell',
+    'customShells',
   ],
 };
 

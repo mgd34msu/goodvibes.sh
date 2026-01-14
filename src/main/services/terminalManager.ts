@@ -164,12 +164,13 @@ export async function startPlainTerminal(options: TerminalStartOptions): Promise
     const workingDir = options.cwd || process.cwd();
     const terminalId = ++terminalIdCounter;
 
-    // Determine shell based on platform
-    const shell = process.platform === 'win32'
+    // Determine shell based on user preference or platform defaults
+    const customShell = getSetting<string>('preferredShell');
+    const shell = customShell || (process.platform === 'win32'
       ? process.env.COMSPEC || 'cmd.exe'
-      : process.env.SHELL || '/bin/bash';
+      : process.env.SHELL || '/bin/bash');
 
-    logger.info(`Starting plain terminal with shell: ${shell} in ${workingDir}`);
+    logger.info(`Starting plain terminal with shell: ${shell} (custom: ${!!customShell}) in ${workingDir}`);
 
     // Spawn shell with node-pty
     const ptyProc = pty.spawn(shell, [], {
