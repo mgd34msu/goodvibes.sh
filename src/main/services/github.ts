@@ -22,4 +22,8 @@ export {
   setOAuthCredentials,
   getOAuthConfig,
   clearOAuthCredentials,
+  clearStoredCredentials,
 } from './github/index.js';
+
+// Re-export types for backward compatibility
+export type { AuthenticateOptions, OAuthCredentialSource, OAuthConfigStatus } from './github/index.js';

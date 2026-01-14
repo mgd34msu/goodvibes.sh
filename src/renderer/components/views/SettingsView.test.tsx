@@ -3,8 +3,8 @@
 // ============================================================================
 
 import React from 'react';
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, waitFor, act, cleanup } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useSettingsStore } from '../../stores/settingsStore';
 import SettingsView from './SettingsView/index';
@@ -226,15 +226,15 @@ describe('SettingsView', () => {
   });
 
   describe('Path Settings', () => {
-    it('renders Claude Path input', () => {
-      renderSettingsView();
+    it('renders Claude Path input', async () => {
+      await renderSettingsView();
 
       const claudePathInput = screen.getByPlaceholderText(/leave empty for default/i);
       expect(claudePathInput).toBeInTheDocument();
     });
 
-    it('renders Browse buttons for path selection', () => {
-      renderSettingsView();
+    it('renders Browse buttons for path selection', async () => {
+      await renderSettingsView();
 
       const browseButtons = screen.getAllByText('Browse');
       expect(browseButtons.length).toBeGreaterThan(0);
@@ -243,7 +243,7 @@ describe('SettingsView', () => {
     it('opens folder picker when Browse is clicked', async () => {
       vi.mocked(window.goodvibes.selectFolder).mockResolvedValue('/selected/path');
 
-      renderSettingsView();
+      await renderSettingsView();
 
       const browseButtons = screen.getAllByText('Browse');
       const firstBrowseButton = browseButtons[0];
@@ -260,15 +260,15 @@ describe('SettingsView', () => {
   });
 
   describe('Budget Settings', () => {
-    it('renders daily budget input', () => {
-      renderSettingsView();
+    it('renders daily budget input', async () => {
+      await renderSettingsView();
 
       const budgetInputs = screen.getAllByRole('spinbutton');
       expect(budgetInputs.length).toBeGreaterThan(0);
     });
 
     it('updates budget value on input', async () => {
-      renderSettingsView();
+      await renderSettingsView();
 
       const budgetInputs = screen.getAllByRole('spinbutton');
       const dailyBudget = budgetInputs[0];
@@ -287,8 +287,8 @@ describe('SettingsView', () => {
   });
 
   describe('Keyboard Shortcuts Display', () => {
-    it('displays keyboard shortcuts', () => {
-      renderSettingsView();
+    it('displays keyboard shortcuts', async () => {
+      await renderSettingsView();
 
       expect(screen.getByText('New Terminal')).toBeInTheDocument();
       expect(screen.getByText('Ctrl+N')).toBeInTheDocument();
@@ -298,15 +298,15 @@ describe('SettingsView', () => {
   });
 
   describe('Reset Settings', () => {
-    it('renders Reset Settings button', () => {
-      renderSettingsView();
+    it('renders Reset Settings button', async () => {
+      await renderSettingsView();
 
       const resetButton = screen.getByText('Reset Settings');
       expect(resetButton).toBeInTheDocument();
     });
 
     it('shows confirmation dialog on reset click', async () => {
-      renderSettingsView();
+      await renderSettingsView();
 
       const resetButtons = screen.getAllByText('Reset Settings');
       expect(resetButtons.length).toBeGreaterThan(0);
@@ -324,7 +324,7 @@ describe('SettingsView', () => {
     });
 
     it('cancels reset when Cancel is clicked', async () => {
-      renderSettingsView();
+      await renderSettingsView();
 
       const resetButtons = screen.getAllByText('Reset Settings');
       expect(resetButtons.length).toBeGreaterThan(0);
@@ -343,22 +343,20 @@ describe('SettingsView', () => {
   });
 
   describe('GitHub Integration', () => {
-    it('shows GitHub connection status', () => {
-      renderSettingsView();
+    it('shows GitHub connection status', async () => {
+      await renderSettingsView();
 
       // Look for the GitHub Integration section header
       expect(screen.getByText('GitHub Integration')).toBeInTheDocument();
     });
 
     it('shows Connect GitHub button when not authenticated', async () => {
-      renderSettingsView();
+      await renderSettingsView();
 
-      await waitFor(() => {
-        // When not authenticated, should show Connect GitHub button or "not configured" message
-        const connectButton = screen.queryByText(/connect github/i);
-        const notConfigured = screen.queryByText(/not configured/i);
-        expect(connectButton || notConfigured).toBeInTheDocument();
-      });
+      // When not authenticated, should show Connect GitHub button or "not configured" message
+      const connectButton = screen.queryByText(/connect github/i);
+      const notConfigured = screen.queryByText(/not configured/i);
+      expect(connectButton || notConfigured).toBeInTheDocument();
     });
 
     it('shows user info when authenticated', async () => {
@@ -381,15 +379,13 @@ describe('SettingsView', () => {
         clientId: 'test-client-id',
       });
 
-      renderSettingsView();
+      await renderSettingsView();
 
       // Verify the GitHub Integration section header is rendered
       expect(screen.getByText('GitHub Integration')).toBeInTheDocument();
 
       // The auth state API should have been called
-      await waitFor(() => {
-        expect(vi.mocked(window.goodvibes.githubGetAuthState)).toHaveBeenCalled();
-      });
+      expect(vi.mocked(window.goodvibes.githubGetAuthState)).toHaveBeenCalled();
     });
 
     it('shows message when OAuth is not configured', async () => {
@@ -399,15 +395,13 @@ describe('SettingsView', () => {
         clientId: null,
       });
 
-      renderSettingsView();
+      await renderSettingsView();
 
       // Verify the GitHub Integration section header is rendered
       expect(screen.getByText('GitHub Integration')).toBeInTheDocument();
 
       // The OAuth config API should have been called
-      await waitFor(() => {
-        expect(vi.mocked(window.goodvibes.githubGetOAuthConfig)).toHaveBeenCalled();
-      });
+      expect(vi.mocked(window.goodvibes.githubGetOAuthConfig)).toHaveBeenCalled();
     });
 
     it('initiates GitHub login on Connect click', async () => {
@@ -428,12 +422,10 @@ describe('SettingsView', () => {
         },
       });
 
-      renderSettingsView();
+      await renderSettingsView();
 
-      // Wait for OAuth config to load and button to appear
-      await waitFor(() => {
-        expect(vi.mocked(window.goodvibes.githubGetOAuthConfig)).toHaveBeenCalled();
-      });
+      // The OAuth config API should have been called during render
+      expect(vi.mocked(window.goodvibes.githubGetOAuthConfig)).toHaveBeenCalled();
 
       // Try to find and click the connect button
       const connectButton = screen.queryByText(/connect github/i);
@@ -454,20 +446,20 @@ describe('SettingsView', () => {
   });
 
   describe('Session Preview Settings', () => {
-    it('renders Show Thinking Blocks toggle', () => {
-      renderSettingsView();
+    it('renders Show Thinking Blocks toggle', async () => {
+      await renderSettingsView();
 
       expect(screen.getByText('Show Thinking Blocks')).toBeInTheDocument();
     });
 
-    it('renders Show Tool Calls toggle', () => {
-      renderSettingsView();
+    it('renders Show Tool Calls toggle', async () => {
+      await renderSettingsView();
 
       expect(screen.getByText('Show Tool Calls')).toBeInTheDocument();
     });
 
-    it('renders Expand settings', () => {
-      renderSettingsView();
+    it('renders Expand settings', async () => {
+      await renderSettingsView();
 
       expect(screen.getByText('Expand User Messages')).toBeInTheDocument();
       expect(screen.getByText('Expand Assistant Responses')).toBeInTheDocument();
@@ -475,14 +467,14 @@ describe('SettingsView', () => {
   });
 
   describe('Git Panel Settings', () => {
-    it('renders Git Panel Position selector', () => {
-      renderSettingsView();
+    it('renders Git Panel Position selector', async () => {
+      await renderSettingsView();
 
       expect(screen.getByText('Git Panel Position')).toBeInTheDocument();
     });
 
-    it('renders Auto-refresh Git toggle', () => {
-      renderSettingsView();
+    it('renders Auto-refresh Git toggle', async () => {
+      await renderSettingsView();
 
       expect(screen.getByText('Auto-refresh Git')).toBeInTheDocument();
     });
@@ -491,6 +483,20 @@ describe('SettingsView', () => {
 
 describe('SettingsView Store Integration', () => {
   beforeEach(async () => {
+    // Mock GitHub auth state
+    vi.mocked(window.goodvibes.githubGetAuthState).mockResolvedValue({
+      isAuthenticated: false,
+      user: null,
+      accessToken: null,
+      tokenExpiresAt: null,
+    });
+
+    vi.mocked(window.goodvibes.githubGetOAuthConfig).mockResolvedValue({
+      isConfigured: false,
+      source: 'none',
+      clientId: null,
+    });
+
     await act(async () => {
       useSettingsStore.setState({
         settings: { ...DEFAULT_SETTINGS },
@@ -500,7 +506,7 @@ describe('SettingsView Store Integration', () => {
   });
 
   it('persists settings changes', async () => {
-    renderSettingsView();
+    await renderSettingsView();
 
     const themeSelect = screen.getByDisplayValue('Dark');
     await act(async () => {
@@ -513,7 +519,7 @@ describe('SettingsView Store Integration', () => {
     });
 
     // Re-render and verify persistence
-    const { unmount } = renderSettingsView();
+    const { unmount } = await renderSettingsView();
     await act(async () => {
       unmount();
     });
@@ -535,7 +541,7 @@ describe('SettingsView Store Integration', () => {
       });
     });
 
-    renderSettingsView();
+    await renderSettingsView();
 
     // Find the Reset Settings button in the Danger Zone section
     const resetButtons = screen.getAllByText('Reset Settings');

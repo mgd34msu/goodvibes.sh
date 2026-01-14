@@ -7,8 +7,6 @@
 // to isolate the service behavior from database and filesystem operations.
 // ============================================================================
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-
 import { describe, it, expect, beforeEach, afterEach, vi, type Mock } from 'vitest';
 import { EventEmitter } from 'events';
 import type { ChildProcess } from 'child_process';
@@ -115,7 +113,7 @@ const mockMCPServer: MCPServer = {
 };
 
 vi.mock('../database/primitives.js', () => ({
-  createMCPServer: vi.fn((config: any) => ({
+  createMCPServer: vi.fn((config: Partial<MCPServer>) => ({
     id: 1,
     ...config,
     status: 'disconnected',

@@ -232,17 +232,18 @@ vi.mock('../database/primitives.js', () => {
 
 // Mock hook server - both paths
 vi.mock('../hookServer.js', () => {
-  if (!(globalThis as any).__hookServerListeners) {
-    (globalThis as any).__hookServerListeners = [];
+  const tg = globalThis as unknown as TestGlobalThis;
+  if (!tg.__hookServerListeners) {
+    tg.__hookServerListeners = [];
   }
   return {
     getHookServer: vi.fn(() => ({
-      on: vi.fn((event: string, handler: (...args: any[]) => void) => {
-        (globalThis as any).__hookServerListeners.push({ event, handler });
+      on: vi.fn((event: string, handler: (...args: unknown[]) => void) => {
+        tg.__hookServerListeners.push({ event, handler });
       }),
       off: vi.fn((event: string) => {
-        const listeners = (globalThis as any).__hookServerListeners;
-        const idx = listeners.findIndex((l: any) => l.event === event);
+        const listeners = tg.__hookServerListeners;
+        const idx = listeners.findIndex((l: HookServerListener) => l.event === event);
         if (idx !== -1) listeners.splice(idx, 1);
       }),
     })),
@@ -250,17 +251,18 @@ vi.mock('../hookServer.js', () => {
 });
 
 vi.mock('./hookServer.js', () => {
-  if (!(globalThis as any).__hookServerListeners) {
-    (globalThis as any).__hookServerListeners = [];
+  const tg = globalThis as unknown as TestGlobalThis;
+  if (!tg.__hookServerListeners) {
+    tg.__hookServerListeners = [];
   }
   return {
     getHookServer: vi.fn(() => ({
-      on: vi.fn((event: string, handler: (...args: any[]) => void) => {
-        (globalThis as any).__hookServerListeners.push({ event, handler });
+      on: vi.fn((event: string, handler: (...args: unknown[]) => void) => {
+        tg.__hookServerListeners.push({ event, handler });
       }),
       off: vi.fn((event: string) => {
-        const listeners = (globalThis as any).__hookServerListeners;
-        const idx = listeners.findIndex((l: any) => l.event === event);
+        const listeners = tg.__hookServerListeners;
+        const idx = listeners.findIndex((l: HookServerListener) => l.event === event);
         if (idx !== -1) listeners.splice(idx, 1);
       }),
     })),
@@ -313,7 +315,7 @@ function createTestAgent(overrides: Partial<AgentSpawnOptions> = {}): AgentSpawn
   };
 }
 
-function getHookHandler(eventName: string): ((...args: any[]) => void) | undefined {
+function getHookHandler(eventName: string): ((...args: unknown[]) => void) | undefined {
   return mockHookServerListeners.find(l => l.event === eventName)?.handler;
 }
 
@@ -327,7 +329,7 @@ describe('AgentRegistry Service', () => {
     vi.useFakeTimers();
     mockAgentRecords.clear();
     mockHookServerListeners.length = 0;
-    (globalThis as any).__uuidCounter = 0;
+    testGlobal.__uuidCounter = 0;
   });
 
   afterEach(() => {
