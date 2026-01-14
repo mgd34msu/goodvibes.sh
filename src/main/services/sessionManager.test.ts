@@ -6,10 +6,9 @@
 // Uses mocked dependencies to test session management behavior.
 // ============================================================================
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
-
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import type { Session, SessionMessage } from '../../shared/types/session-types.js';
+import type { Analytics } from '../../shared/types/analytics-types.js';
 
 // Mock all external dependencies before importing the module under test
 vi.mock('fs/promises', async (importOriginal) => {
@@ -88,6 +87,18 @@ import { initSessionManager, getSessionManager } from './sessionManager.js';
 // Type for the status callback function
 type StatusCallback = (status: string, message?: string, progress?: { current: number; total: number }) => void;
 
+/**
+ * Helper to get session manager with assertion that it exists.
+ * Throws if session manager is null, making the type non-nullable.
+ */
+function getRequiredSessionManager(): ReturnType<typeof getSessionManager> & object {
+  const manager = getSessionManager();
+  if (!manager) {
+    throw new Error('Session manager should be initialized');
+  }
+  return manager;
+}
+
 describe('SessionManager Service', () => {
   let mockStatusCallback: StatusCallback;
 
@@ -125,27 +136,27 @@ describe('SessionManager Service', () => {
     });
 
     it('should return all sessions from database', () => {
-      const mockSessions = [
+      const mockSessions: Partial<Session>[] = [
         { id: 'session-1', projectName: 'project1' },
         { id: 'session-2', projectName: 'project2' },
       ];
 
-      vi.mocked(db.getAllSessions).mockReturnValue(mockSessions as any);
+      vi.mocked(db.getAllSessions).mockReturnValue(mockSessions as Session[]);
 
-      const sessionManager = getSessionManager();
-      const sessions = sessionManager!.getAllSessions();
+      const sessionManager = getRequiredSessionManager();
+      const sessions = sessionManager.getAllSessions();
 
       expect(sessions).toEqual(mockSessions);
       expect(db.getAllSessions).toHaveBeenCalled();
     });
 
     it('should return single session by ID', () => {
-      const mockSession = { id: 'session-1', projectName: 'project1' };
+      const mockSession: Partial<Session> = { id: 'session-1', projectName: 'project1' };
 
-      vi.mocked(db.getSession).mockReturnValue(mockSession as any);
+      vi.mocked(db.getSession).mockReturnValue(mockSession as Session);
 
-      const sessionManager = getSessionManager();
-      const session = sessionManager!.getSession('session-1');
+      const sessionManager = getRequiredSessionManager();
+      const session = sessionManager.getSession('session-1');
 
       expect(session).toEqual(mockSession);
       expect(db.getSession).toHaveBeenCalledWith('session-1');
@@ -154,8 +165,8 @@ describe('SessionManager Service', () => {
     it('should return null for non-existent session', () => {
       vi.mocked(db.getSession).mockReturnValue(null);
 
-      const sessionManager = getSessionManager();
-      const session = sessionManager!.getSession('non-existent');
+      const sessionManager = getRequiredSessionManager();
+      const session = sessionManager.getSession('non-existent');
 
       expect(session).toBeNull();
     });
@@ -163,8 +174,8 @@ describe('SessionManager Service', () => {
     it('should return empty array when no sessions exist', () => {
       vi.mocked(db.getAllSessions).mockReturnValue([]);
 
-      const sessionManager = getSessionManager();
-      const sessions = sessionManager!.getAllSessions();
+      const sessionManager = getRequiredSessionManager();
+      const sessions = sessionManager.getAllSessions();
 
       expect(sessions).toEqual([]);
     });
@@ -178,33 +189,35 @@ describe('SessionManager Service', () => {
     it('should return false when session does not exist', () => {
       vi.mocked(db.getSession).mockReturnValue(null);
 
-      const sessionManager = getSessionManager();
-      const isLive = sessionManager!.isSessionLive('non-existent');
+      const sessionManager = getRequiredSessionManager();
+      const isLive = sessionManager.isSessionLive('non-existent');
 
       expect(isLive).toBe(false);
     });
 
     it('should return false when session has no file path', () => {
-      vi.mocked(db.getSession).mockReturnValue({
+      const mockSession: Partial<Session> = {
         id: 'session-1',
         filePath: null,
-      } as any);
+      };
+      vi.mocked(db.getSession).mockReturnValue(mockSession as Session);
 
-      const sessionManager = getSessionManager();
-      const isLive = sessionManager!.isSessionLive('session-1');
+      const sessionManager = getRequiredSessionManager();
+      const isLive = sessionManager.isSessionLive('session-1');
 
       expect(isLive).toBe(false);
     });
 
     it('should return false when session has no mtime', () => {
-      vi.mocked(db.getSession).mockReturnValue({
+      const mockSession: Partial<Session> = {
         id: 'session-1',
         filePath: '/path/to/session.jsonl',
         fileMtime: null,
-      } as any);
+      };
+      vi.mocked(db.getSession).mockReturnValue(mockSession as Session);
 
-      const sessionManager = getSessionManager();
-      const isLive = sessionManager!.isSessionLive('session-1');
+      const sessionManager = getRequiredSessionManager();
+      const isLive = sessionManager.isSessionLive('session-1');
 
       expect(isLive).toBe(false);
     });
@@ -216,7 +229,7 @@ describe('SessionManager Service', () => {
     });
 
     it('should return analytics from database', () => {
-      const mockAnalytics = {
+      const mockAnalytics: Analytics = {
         totalSessions: 10,
         totalTokens: 50000,
         totalCost: 1.5,
@@ -231,10 +244,10 @@ describe('SessionManager Service', () => {
         dailyCost: 0.25,
       };
 
-      vi.mocked(db.getAnalytics).mockReturnValue(mockAnalytics as any);
+      vi.mocked(db.getAnalytics).mockReturnValue(mockAnalytics);
 
-      const sessionManager = getSessionManager();
-      const analytics = sessionManager!.getAnalytics();
+      const sessionManager = getRequiredSessionManager();
+      const analytics = sessionManager.getAnalytics();
 
       expect(analytics).toEqual(mockAnalytics);
       expect(db.getAnalytics).toHaveBeenCalled();
@@ -251,14 +264,15 @@ describe('SessionManager Service', () => {
       const recentTime = new Date(now - 60000).toISOString(); // 1 minute ago
       const oldTime = new Date(now - 600000).toISOString(); // 10 minutes ago
 
-      vi.mocked(db.getAllSessions).mockReturnValue([
+      const mockSessions: Partial<Session>[] = [
         { id: 'session-1', endTime: recentTime },
         { id: 'session-2', endTime: oldTime },
         { id: 'session-3', endTime: null },
-      ] as any);
+      ];
+      vi.mocked(db.getAllSessions).mockReturnValue(mockSessions as Session[]);
 
-      const sessionManager = getSessionManager();
-      const liveSessions = sessionManager!.getLiveSessions();
+      const sessionManager = getRequiredSessionManager();
+      const liveSessions = sessionManager.getLiveSessions();
 
       // Only sessions modified within threshold should be returned
       // The threshold is 5 minutes, so only session-1 should be live
@@ -266,13 +280,14 @@ describe('SessionManager Service', () => {
     });
 
     it('should filter out sessions without endTime', () => {
-      vi.mocked(db.getAllSessions).mockReturnValue([
+      const mockSessions: Partial<Session>[] = [
         { id: 'session-1', endTime: null },
         { id: 'session-2', endTime: null },
-      ] as any);
+      ];
+      vi.mocked(db.getAllSessions).mockReturnValue(mockSessions as Session[]);
 
-      const sessionManager = getSessionManager();
-      const liveSessions = sessionManager!.getLiveSessions();
+      const sessionManager = getRequiredSessionManager();
+      const liveSessions = sessionManager.getLiveSessions();
 
       expect(liveSessions).toHaveLength(0);
     });
@@ -284,15 +299,15 @@ describe('SessionManager Service', () => {
     });
 
     it('should return messages from database when available', async () => {
-      const mockMessages = [
+      const mockMessages: Partial<SessionMessage>[] = [
         { id: 1, role: 'user', content: 'Hello' },
         { id: 2, role: 'assistant', content: 'Hi there!' },
       ];
 
-      vi.mocked(db.getSessionMessages).mockReturnValue(mockMessages as any);
+      vi.mocked(db.getSessionMessages).mockReturnValue(mockMessages as SessionMessage[]);
 
-      const sessionManager = getSessionManager();
-      const messages = await sessionManager!.getSessionMessages('session-1');
+      const sessionManager = getRequiredSessionManager();
+      const messages = await sessionManager.getSessionMessages('session-1');
 
       expect(messages).toEqual(mockMessages);
       expect(db.getSessionMessages).toHaveBeenCalledWith('session-1');
@@ -302,8 +317,8 @@ describe('SessionManager Service', () => {
       vi.mocked(db.getSessionMessages).mockReturnValue([]);
       vi.mocked(db.getSession).mockReturnValue(null);
 
-      const sessionManager = getSessionManager();
-      const messages = await sessionManager!.getSessionMessages('session-1');
+      const sessionManager = getRequiredSessionManager();
+      const messages = await sessionManager.getSessionMessages('session-1');
 
       expect(messages).toEqual([]);
     });
@@ -315,16 +330,16 @@ describe('SessionManager Service', () => {
     });
 
     it('should not throw when called', () => {
-      const sessionManager = getSessionManager();
+      const sessionManager = getRequiredSessionManager();
 
-      expect(() => sessionManager!.stopWatching()).not.toThrow();
+      expect(() => sessionManager.stopWatching()).not.toThrow();
     });
 
     it('should be idempotent', () => {
-      const sessionManager = getSessionManager();
+      const sessionManager = getRequiredSessionManager();
 
-      sessionManager!.stopWatching();
-      expect(() => sessionManager!.stopWatching()).not.toThrow();
+      sessionManager.stopWatching();
+      expect(() => sessionManager.stopWatching()).not.toThrow();
     });
   });
 });

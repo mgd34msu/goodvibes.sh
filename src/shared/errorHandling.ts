@@ -7,6 +7,9 @@
 // ============================================================================
 
 import { formatTimestamp } from './dateUtils.js';
+import { createLogger } from './logger.js';
+
+const logger = createLogger('ErrorHandling');
 
 // ============================================================================
 // ERROR TYPES
@@ -329,16 +332,16 @@ export const consoleLogger: ErrorLogger = {
 
     switch (level) {
       case LogLevel.DEBUG:
-        console.debug(logMessage, context);
+        logger.debug(logMessage, context);
         break;
       case LogLevel.INFO:
-        console.info(logMessage, context);
+        logger.info(logMessage, context);
         break;
       case LogLevel.WARN:
-        console.warn(logMessage, context);
+        logger.warn(logMessage, context);
         break;
       case LogLevel.ERROR:
-        console.error(logMessage, context);
+        logger.error(logMessage, context);
         break;
     }
   },

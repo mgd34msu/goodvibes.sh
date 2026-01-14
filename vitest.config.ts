@@ -8,6 +8,10 @@ import path from 'path';
 
 export default defineConfig({
   plugins: [react()],
+  // Ensure React uses development build with act() available
+  define: {
+    'process.env.NODE_ENV': JSON.stringify('test'),
+  },
   test: {
     globals: true,
     environment: 'jsdom',

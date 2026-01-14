@@ -51,6 +51,8 @@ class FileWatcherService extends EventEmitter {
   private debounceTimers: Map<string, NodeJS.Timeout> = new Map();
   private fileCache: Map<string, { size: number; mtime: number }> = new Map();
   private watchIdCounter = 0;
+  // Track watchId -> listener function associations for proper cleanup
+  private callbackListeners: Map<string, (event: FileChangeEvent) => void> = new Map();
 
   constructor() {
     super();
@@ -132,6 +134,13 @@ class FileWatcherService extends EventEmitter {
         clearTimeout(timer);
         this.debounceTimers.delete(key);
       }
+    }
+
+    // Remove the callback listener if one was registered for this watchId
+    const listener = this.callbackListeners.get(watchId);
+    if (listener) {
+      this.removeListener('change', listener);
+      this.callbackListeners.delete(watchId);
     }
 
     this.watchers.delete(watchId);
@@ -308,11 +317,14 @@ class FileWatcherService extends EventEmitter {
     });
 
     if (callback) {
-      this.on('change', (event: FileChangeEvent) => {
+      // Store listener reference for cleanup in unwatch()
+      const listener = (event: FileChangeEvent) => {
         if (event.watchId === watchId) {
           callback(event);
         }
-      });
+      };
+      this.callbackListeners.set(watchId, listener);
+      this.on('change', listener);
     }
 
     return watchId;
@@ -336,12 +348,19 @@ class FileWatcherService extends EventEmitter {
       watchIds.push(id);
     }
 
-    if (callback) {
-      this.on('change', (event: FileChangeEvent) => {
+    if (callback && watchIds.length > 0) {
+      // Store listener reference for cleanup in unwatch()
+      // For multiple watchIds, we register the same listener for each
+      const listener = (event: FileChangeEvent) => {
         if (watchIds.includes(event.watchId)) {
           callback(event);
         }
-      });
+      };
+      // Associate this listener with all watchIds so any unwatch() call removes it
+      for (const watchId of watchIds) {
+        this.callbackListeners.set(watchId, listener);
+      }
+      this.on('change', listener);
     }
 
     return watchIds;
@@ -373,11 +392,14 @@ class FileWatcherService extends EventEmitter {
     });
 
     if (callback) {
-      this.on('change', (event: FileChangeEvent) => {
+      // Store listener reference for cleanup in unwatch()
+      const listener = (event: FileChangeEvent) => {
         if (event.watchId === watchId) {
           callback(event);
         }
-      });
+      };
+      this.callbackListeners.set(watchId, listener);
+      this.on('change', listener);
     }
 
     return watchId;
@@ -400,11 +422,14 @@ class FileWatcherService extends EventEmitter {
     });
 
     if (callback) {
-      this.on('change', (event: FileChangeEvent) => {
+      // Store listener reference for cleanup in unwatch()
+      const listener = (event: FileChangeEvent) => {
         if (event.watchId === watchId) {
           callback(event);
         }
-      });
+      };
+      this.callbackListeners.set(watchId, listener);
+      this.on('change', listener);
     }
 
     return watchId;
@@ -496,6 +521,9 @@ class FileWatcherService extends EventEmitter {
       clearTimeout(timer);
     }
     this.debounceTimers.clear();
+
+    // Clear callback listener tracking (already removed by unwatchAll, but ensure cleanup)
+    this.callbackListeners.clear();
 
     this.fileCache.clear();
     this.removeAllListeners();

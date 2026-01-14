@@ -149,7 +149,10 @@ function logToFile(message) {
     const timestamp = new Date().toISOString();
     fs.appendFileSync(LOG_FILE, \`[\${timestamp}] [\${HOOK_EVENT_NAME}] \${message}\\n\`);
   } catch (e) {
-    // Ignore log errors
+    // Log file write errors are intentionally suppressed to prevent infinite recursion
+    // and to ensure hook execution continues even if logging fails (e.g., disk full, permissions)
+    // The error is written to stderr as a last resort for debugging
+    console.error('[GoodVibes] Log write failed:', e.message);
   }
 }
 
@@ -265,10 +268,11 @@ process.stdin.on('end', async () => {
     process.exit(blocked ? 2 : 0);
 
   } catch (err) {
-    // On error, fail open (allow the action)
-    // This ensures GoodVibes issues don't break Claude
-    logToFile('ERROR: ' + err.message);
-    console.error('[GoodVibes] Hook error:', err.message);
+    // On error, fail open (allow the action) to ensure GoodVibes issues don't block Claude
+    // This is intentional: we prioritize Claude's functionality over hook enforcement
+    // The error is logged both to file and stderr for debugging
+    logToFile('ERROR (failing open to allow action): ' + err.message);
+    console.error('[GoodVibes] Hook error (failing open):', err.message);
     console.log(JSON.stringify(getDefaultAllowResponse()));
     process.exit(0);
   }
@@ -306,20 +310,26 @@ function postToGoodVibes(path, data) {
         try {
           resolve(JSON.parse(body));
         } catch (e) {
-          // If we can't parse the response, treat as allow
+          // JSON parse failure: server returned invalid response, fail open to allow the action
+          // This could happen if server returns HTML error page, empty response, etc.
+          logToFile('WARNING: Failed to parse server response as JSON (failing open): ' + e.message);
           resolve({ decision: 'allow' });
         }
       });
     });
 
     req.on('error', (err) => {
-      // If GoodVibes is not running, allow the action
+      // Connection error: GoodVibes server may not be running or is unreachable
+      // Fail open to allow the action so Claude continues to work
+      logToFile('WARNING: HTTP request error (failing open): ' + err.message);
       resolve({ decision: 'allow' });
     });
 
     req.on('timeout', () => {
       req.destroy();
-      // On timeout, allow the action
+      // Request timed out: GoodVibes server may be slow or unresponsive
+      // Fail open to prevent blocking Claude indefinitely
+      logToFile('WARNING: HTTP request timed out after ' + TIMEOUT_MS + 'ms (failing open)');
       resolve({ decision: 'allow' });
     });
 

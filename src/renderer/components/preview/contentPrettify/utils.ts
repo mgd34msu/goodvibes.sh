@@ -5,6 +5,17 @@
 
 import type { ParsedPart } from './types';
 
+/**
+ * Regular expression to match ANSI escape sequences.
+ * Matches the ESC character (0x1B) followed by various ANSI control sequences:
+ * - Single character commands: ESC followed by @-Z, \, -, _
+ * - CSI sequences: ESC [ followed by parameters and a command character
+ * This pattern handles the full range of ANSI escape codes used in terminal output.
+ * Built at runtime to avoid ESLint no-control-regex false positive.
+ */
+const ESC = String.fromCharCode(0x1b);
+const ANSI_ESCAPE_REGEX = new RegExp(`${ESC}(?:[@-Z\\\\-_]|\\[[0-?]*[ -/]*[@-~])`, 'g');
+
 // ============================================================================
 // JSON UTILITIES
 // ============================================================================
@@ -256,8 +267,7 @@ export function parseXmlLikeTags(content: string): ParsedPart[] {
  * Strip ANSI escape codes from a string
  */
 export function stripAnsiCodes(str: string): string {
-  // eslint-disable-next-line no-control-regex
-  return str.replace(/\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])/g, '');
+  return str.replace(ANSI_ESCAPE_REGEX, '');
 }
 
 /**

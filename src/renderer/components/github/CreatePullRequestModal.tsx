@@ -4,6 +4,9 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { CreatePRData } from '../../../shared/types/github';
+import { createLogger } from '../../../shared/logger';
+
+const logger = createLogger('CreatePullRequestModal');
 
 interface CreatePullRequestModalProps {
   isOpen: boolean;
@@ -40,8 +43,9 @@ export default function CreatePullRequestModal({
         setBranches(result.data.map((b: { name: string }) => b.name));
       }
     } catch (err) {
-      // Use defaults if loading fails - this is a non-blocking fallback
-      console.debug('Failed to load branches, using defaults:', err);
+      // Branch loading is non-critical - we fall back to common defaults (main, master, develop)
+      // This allows PR creation to proceed even if the GitHub API call fails
+      logger.debug('Failed to load branches from GitHub, falling back to defaults:', err);
       if (isMountedRef.current) {
         setBranches(['main', 'master', 'develop']);
       }

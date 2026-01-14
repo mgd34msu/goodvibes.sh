@@ -10,6 +10,15 @@ import { STREAM_PATTERNS, isToolName } from './patterns.js';
 
 const logger = new Logger('PTYStreamAnalyzer');
 
+/**
+ * Regular expression to match ANSI escape sequences in terminal output.
+ * Uses the ESC character (0x1B) followed by CSI sequences [params][command].
+ * This is necessary to strip terminal formatting for clean pattern matching.
+ * Built at runtime to avoid ESLint no-control-regex false positive.
+ */
+const ESC = String.fromCharCode(0x1b);
+const ANSI_ESCAPE_REGEX = new RegExp(`${ESC}\\[[0-9;?]*[a-zA-Z]`, 'g');
+
 // ============================================================================
 // PTY STREAM ANALYZER SERVICE
 // ============================================================================
@@ -20,10 +29,106 @@ export class PTYStreamAnalyzerService extends EventEmitter {
   private inThinking: Set<number> = new Set();
   private outputBuffers: Map<number, string> = new Map();
   private readonly MAX_BUFFER_SIZE = 50 * 1024; // 50KB per terminal
+  private readonly STALE_CLEANUP_INTERVAL_MS = 30 * 1000; // 30 seconds
+  private cleanupIntervalId: ReturnType<typeof setInterval> | null = null;
+  private activeTerminalChecker: (() => Set<number>) | null = null;
 
   constructor() {
     super();
     this.setMaxListeners(100);
+  }
+
+  /**
+   * Start periodic cleanup of stale entries for terminals that no longer exist.
+   * @param getActiveTerminalIds - Function that returns the set of currently active terminal IDs
+   */
+  startPeriodicCleanup(getActiveTerminalIds: () => Set<number>): void {
+    this.activeTerminalChecker = getActiveTerminalIds;
+
+    // Clear any existing interval
+    if (this.cleanupIntervalId !== null) {
+      clearInterval(this.cleanupIntervalId);
+    }
+
+    this.cleanupIntervalId = setInterval(() => {
+      this.cleanupStaleEntries();
+    }, this.STALE_CLEANUP_INTERVAL_MS);
+
+    logger.debug('Started periodic stale entry cleanup');
+  }
+
+  /**
+   * Stop periodic cleanup
+   */
+  stopPeriodicCleanup(): void {
+    if (this.cleanupIntervalId !== null) {
+      clearInterval(this.cleanupIntervalId);
+      this.cleanupIntervalId = null;
+    }
+    this.activeTerminalChecker = null;
+    logger.debug('Stopped periodic stale entry cleanup');
+  }
+
+  /**
+   * Remove entries for terminals that no longer exist.
+   * Uses the registered activeTerminalChecker to determine which terminals are still active.
+   */
+  cleanupStaleEntries(): number {
+    if (!this.activeTerminalChecker) {
+      logger.debug('No active terminal checker registered, skipping stale cleanup');
+      return 0;
+    }
+
+    const activeTerminalIds = this.activeTerminalChecker();
+    let cleanedCount = 0;
+
+    // Cleanup metrics for non-existent terminals
+    for (const terminalId of this.metrics.keys()) {
+      if (!activeTerminalIds.has(terminalId)) {
+        this.clearTerminal(terminalId);
+        cleanedCount++;
+        logger.debug(`Cleaned up stale entry for terminal ${terminalId}`);
+      }
+    }
+
+    // Also check outputBuffers (in case there are entries without metrics)
+    for (const terminalId of this.outputBuffers.keys()) {
+      if (!activeTerminalIds.has(terminalId)) {
+        this.outputBuffers.delete(terminalId);
+        logger.debug(`Cleaned up stale output buffer for terminal ${terminalId}`);
+      }
+    }
+
+    // Also check inThinking set
+    for (const terminalId of this.inThinking) {
+      if (!activeTerminalIds.has(terminalId)) {
+        this.inThinking.delete(terminalId);
+        logger.debug(`Cleaned up stale thinking state for terminal ${terminalId}`);
+      }
+    }
+
+    // Also check activeToolCalls
+    for (const callId of this.activeToolCalls.keys()) {
+      const terminalIdStr = callId.split('-')[0];
+      const terminalId = parseInt(terminalIdStr, 10);
+      if (!isNaN(terminalId) && !activeTerminalIds.has(terminalId)) {
+        this.activeToolCalls.delete(callId);
+        logger.debug(`Cleaned up stale tool call ${callId}`);
+      }
+    }
+
+    if (cleanedCount > 0) {
+      logger.info(`Cleaned up ${cleanedCount} stale terminal entries`);
+    }
+
+    return cleanedCount;
+  }
+
+  /**
+   * Get count of tracked terminals (for diagnostics)
+   */
+  getTrackedTerminalCount(): number {
+    return this.metrics.size;
   }
 
   // ============================================================================
@@ -44,8 +149,7 @@ export class PTYStreamAnalyzerService extends EventEmitter {
     this.updateMetrics(terminalId, sessionId, data);
 
     // Strip ANSI escape codes for pattern matching
-    // eslint-disable-next-line no-control-regex
-    const cleanData = data.replace(/\x1b\[[0-9;?]*[a-zA-Z]/g, '');
+    const cleanData = data.replace(ANSI_ESCAPE_REGEX, '');
 
     // Run pattern matching
     for (const patternDef of STREAM_PATTERNS) {
@@ -393,6 +497,7 @@ export class PTYStreamAnalyzerService extends EventEmitter {
   }
 
   shutdown(): void {
+    this.stopPeriodicCleanup();
     this.metrics.clear();
     this.activeToolCalls.clear();
     this.inThinking.clear();

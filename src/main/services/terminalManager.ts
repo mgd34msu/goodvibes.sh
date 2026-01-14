@@ -31,7 +31,19 @@ let terminalIdCounter = 0;
 // ============================================================================
 
 export function initTerminalManager(): void {
+  // Start periodic cleanup of stale entries in the stream analyzer
+  const analyzer = getPTYStreamAnalyzer();
+  analyzer.startPeriodicCleanup(() => getActiveTerminalIds());
+
   logger.info('Terminal manager initialized');
+}
+
+/**
+ * Get the set of currently active terminal IDs.
+ * Used by PTYStreamAnalyzer for periodic stale entry cleanup.
+ */
+export function getActiveTerminalIds(): Set<number> {
+  return new Set(terminals.keys());
 }
 
 // ============================================================================
@@ -109,6 +121,10 @@ export async function startTerminal(options: TerminalStartOptions): Promise<Term
     // Handle PTY exit
     ptyProc.onExit(({ exitCode }) => {
       sendToRenderer('terminal-exit', { id: terminalId, exitCode });
+
+      // Clean up stream analyzer state for this terminal to prevent memory leaks
+      const analyzer = getPTYStreamAnalyzer();
+      analyzer.clearTerminal(terminalId);
 
       // Notify main process about terminal exit for agent cleanup
       // This is sent via the internal event, not to renderer
@@ -208,6 +224,12 @@ export async function startPlainTerminal(options: TerminalStartOptions): Promise
     // Handle PTY exit
     ptyProc.onExit(({ exitCode }) => {
       sendToRenderer('terminal-exit', { id: terminalId, exitCode });
+
+      // Clean up stream analyzer state for this terminal to prevent memory leaks
+      // (Plain terminals may not use analyzer, but cleanup is safe and prevents stale entries)
+      const analyzer = getPTYStreamAnalyzer();
+      analyzer.clearTerminal(terminalId);
+
       terminals.delete(terminalId);
 
       // Log activity for terminal exit

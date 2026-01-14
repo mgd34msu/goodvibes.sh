@@ -2,7 +2,7 @@
 // MAIN PROCESS ENTRY POINT
 // ============================================================================
 
-import { app, BrowserWindow } from 'electron';
+import { app, BrowserWindow, ipcMain } from 'electron';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -21,8 +21,6 @@ import { startHookServer, stopHookServer, getHookServer } from './services/hookS
 import {
   installAllHookScripts,
   areHookScriptsInstalled,
-  configureClaudeHooks,
-  areClaudeHooksConfigured,
 } from './services/hookScripts.js';
 import { createHookEventsTables } from './database/hookEvents.js';
 import { backupSessions } from './services/sessionBackup.js';
@@ -39,6 +37,46 @@ const logger = new Logger('Main');
 
 // Track shutdown state
 let isShuttingDown = false;
+
+// ============================================================================
+// LISTENER CLEANUP TRACKING
+// ============================================================================
+// Store references to registered listeners for proper cleanup during shutdown
+// This prevents memory leaks from accumulated listeners on hot reload
+
+interface MainProcessListeners {
+  streamAnalyzer: {
+    agentSpawn: ((data: { terminalId: number; agentName: string; description?: string; timestamp: number; isRealAgent?: boolean }) => void) | null;
+    agentComplete: ((data: { terminalId: number; agentId: string; agentName?: string; reason?: string; timestamp: number }) => void) | null;
+    agentActivity: ((data: { terminalId: number; agentName: string; activity: string; timestamp: number }) => void) | null;
+  };
+  hookServer: {
+    sessionStart: ((data: { sessionId?: string; projectPath?: string }) => void) | null;
+    agentStart: ((data: { agentName?: string; sessionId?: string }) => void) | null;
+    agentStop: ((data: { agentName?: string; sessionId?: string }) => void) | null;
+    sessionEnd: ((data: { sessionId?: string }) => void) | null;
+  };
+  ipcMain: {
+    terminalExited: ((event: Electron.IpcMainEvent, data: { terminalId: number }) => void) | null;
+  };
+}
+
+const registeredListeners: MainProcessListeners = {
+  streamAnalyzer: {
+    agentSpawn: null,
+    agentComplete: null,
+    agentActivity: null,
+  },
+  hookServer: {
+    sessionStart: null,
+    agentStart: null,
+    agentStop: null,
+    sessionEnd: null,
+  },
+  ipcMain: {
+    terminalExited: null,
+  },
+};
 
 // ============================================================================
 // CUSTOM PROTOCOL REGISTRATION
@@ -208,7 +246,8 @@ async function initializeApp(): Promise<void> {
 
       logger.debug('Setting up agent:spawn event listener on streamAnalyzer');
 
-      streamAnalyzer.on('agent:spawn', (data: { terminalId: number; agentName: string; description?: string; timestamp: number; isRealAgent?: boolean }) => {
+      // Define and store listener for agent:spawn
+      registeredListeners.streamAnalyzer.agentSpawn = (data: { terminalId: number; agentName: string; description?: string; timestamp: number; isRealAgent?: boolean }) => {
         logger.debug('agent:spawn event received', data);
 
         const { terminalId, agentName, description, timestamp, isRealAgent } = data;
@@ -276,11 +315,11 @@ async function initializeApp(): Promise<void> {
           });
           logger.debug('Sent agent:detected event to renderer');
         }
-      });
+      };
+      streamAnalyzer.on('agent:spawn', registeredListeners.streamAnalyzer.agentSpawn);
 
-      // Clean up agents when terminal exits
-      const { ipcMain } = await import('electron');
-      ipcMain.on('terminal-exited', (_, { terminalId }: { terminalId: number }) => {
+      // Define and store listener for terminal-exited IPC event
+      registeredListeners.ipcMain.terminalExited = (_, { terminalId }: { terminalId: number }) => {
         const agentIds = terminalToAgents.get(terminalId);
         if (agentIds) {
           for (const agentId of agentIds) {
@@ -293,9 +332,11 @@ async function initializeApp(): Promise<void> {
           }
           terminalToAgents.delete(terminalId);
         }
-      });
+      };
+      ipcMain.on('terminal-exited', registeredListeners.ipcMain.terminalExited);
 
-      streamAnalyzer.on('agent:complete', (data: { terminalId: number; agentId: string; agentName?: string; reason?: string; timestamp: number }) => {
+      // Define and store listener for agent:complete
+      registeredListeners.streamAnalyzer.agentComplete = (data: { terminalId: number; agentId: string; agentName?: string; reason?: string; timestamp: number }) => {
         const { agentId, agentName, reason, terminalId } = data;
 
         // Find agent by partial ID match or name match within the terminal's agents
@@ -323,9 +364,11 @@ async function initializeApp(): Promise<void> {
             }
           }
         }
-      });
+      };
+      streamAnalyzer.on('agent:complete', registeredListeners.streamAnalyzer.agentComplete);
 
-      streamAnalyzer.on('agent:activity', (data: { terminalId: number; agentName: string; activity: string; timestamp: number }) => {
+      // Define and store listener for agent:activity
+      registeredListeners.streamAnalyzer.agentActivity = (data: { terminalId: number; agentName: string; activity: string; timestamp: number }) => {
         const { terminalId } = data;
         // Update activity for all agents in this terminal
         const agentIds = terminalToAgents.get(terminalId);
@@ -337,7 +380,8 @@ async function initializeApp(): Promise<void> {
             }
           }
         }
-      });
+      };
+      streamAnalyzer.on('agent:activity', registeredListeners.streamAnalyzer.agentActivity);
     }
 
     logger.info('PTY stream analyzer wired to agent registry');
@@ -350,21 +394,26 @@ async function initializeApp(): Promise<void> {
     // ============================================================================
     const hookServer = getHookServer();
 
-    hookServer.on('session:start', (data: { sessionId?: string; projectPath?: string }) => {
+    // Define and store hook server listeners for cleanup
+    registeredListeners.hookServer.sessionStart = (data: { sessionId?: string; projectPath?: string }) => {
       logger.debug('[MAIN] session:start event received', data);
-    });
+    };
+    hookServer.on('session:start', registeredListeners.hookServer.sessionStart);
 
-    hookServer.on('agent:start', (data: { agentName?: string; sessionId?: string }) => {
+    registeredListeners.hookServer.agentStart = (data: { agentName?: string; sessionId?: string }) => {
       logger.debug('[MAIN] agent:start event received', data);
-    });
+    };
+    hookServer.on('agent:start', registeredListeners.hookServer.agentStart);
 
-    hookServer.on('agent:stop', (data: { agentName?: string; sessionId?: string }) => {
+    registeredListeners.hookServer.agentStop = (data: { agentName?: string; sessionId?: string }) => {
       logger.debug('[MAIN] agent:stop event received', data);
-    });
+    };
+    hookServer.on('agent:stop', registeredListeners.hookServer.agentStop);
 
-    hookServer.on('session:end', (data: { sessionId?: string }) => {
+    registeredListeners.hookServer.sessionEnd = (data: { sessionId?: string }) => {
       logger.debug('[MAIN] session:end event received', data);
-    });
+    };
+    hookServer.on('session:end', registeredListeners.hookServer.sessionEnd);
 
     logger.info('Hook server events connected for debug logging');
 
@@ -492,6 +541,54 @@ async function performGracefulShutdown(): Promise<void> {
       sessionManager.stopWatching();
       logger.info('Session manager stopped');
     }
+
+    // ========================================================================
+    // REMOVE REGISTERED LISTENERS
+    // ========================================================================
+    // Remove listeners BEFORE shutting down services to prevent race conditions
+    // and ensure clean deregistration
+
+    // Remove PTY stream analyzer listeners
+    const streamAnalyzer = getPTYStreamAnalyzer();
+    if (registeredListeners.streamAnalyzer.agentSpawn) {
+      streamAnalyzer.off('agent:spawn', registeredListeners.streamAnalyzer.agentSpawn);
+      registeredListeners.streamAnalyzer.agentSpawn = null;
+    }
+    if (registeredListeners.streamAnalyzer.agentComplete) {
+      streamAnalyzer.off('agent:complete', registeredListeners.streamAnalyzer.agentComplete);
+      registeredListeners.streamAnalyzer.agentComplete = null;
+    }
+    if (registeredListeners.streamAnalyzer.agentActivity) {
+      streamAnalyzer.off('agent:activity', registeredListeners.streamAnalyzer.agentActivity);
+      registeredListeners.streamAnalyzer.agentActivity = null;
+    }
+
+    // Remove hook server listeners
+    const hookServer = getHookServer();
+    if (registeredListeners.hookServer.sessionStart) {
+      hookServer.off('session:start', registeredListeners.hookServer.sessionStart);
+      registeredListeners.hookServer.sessionStart = null;
+    }
+    if (registeredListeners.hookServer.agentStart) {
+      hookServer.off('agent:start', registeredListeners.hookServer.agentStart);
+      registeredListeners.hookServer.agentStart = null;
+    }
+    if (registeredListeners.hookServer.agentStop) {
+      hookServer.off('agent:stop', registeredListeners.hookServer.agentStop);
+      registeredListeners.hookServer.agentStop = null;
+    }
+    if (registeredListeners.hookServer.sessionEnd) {
+      hookServer.off('session:end', registeredListeners.hookServer.sessionEnd);
+      registeredListeners.hookServer.sessionEnd = null;
+    }
+
+    // Remove IPC listeners
+    if (registeredListeners.ipcMain.terminalExited) {
+      ipcMain.removeListener('terminal-exited', registeredListeners.ipcMain.terminalExited);
+      registeredListeners.ipcMain.terminalExited = null;
+    }
+
+    logger.info('All main process listeners removed');
 
     // Shutdown PTY stream analyzer
     shutdownPTYStreamAnalyzer();

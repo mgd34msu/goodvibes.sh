@@ -29,18 +29,21 @@ export function MonitorPanel({ projectsRoot }: MonitorPanelProps) {
     queryKey: ['live-sessions'],
     queryFn: () => window.goodvibes.getLiveSessions(),
     refetchInterval: 5000,
+    refetchIntervalInBackground: false,
   });
 
   const { data: activity = [] } = useQuery<ActivityLogEntry[]>({
     queryKey: ['activity'],
     queryFn: () => window.goodvibes.getRecentActivity(15),
     refetchInterval: 10000,
+    refetchIntervalInBackground: false,
   });
 
   const { data: analytics } = useQuery({
     queryKey: ['analytics'],
     queryFn: () => window.goodvibes.getAnalytics(),
     refetchInterval: 30000,
+    refetchIntervalInBackground: false,
   });
 
   // Get today's message count from analytics

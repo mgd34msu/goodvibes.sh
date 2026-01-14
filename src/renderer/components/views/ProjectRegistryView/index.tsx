@@ -3,6 +3,9 @@
 // ============================================================================
 
 import { useState, useCallback } from 'react';
+import { createLogger } from '../../../../shared/logger.js';
+
+const logger = createLogger('ProjectRegistryView');
 import { clsx } from 'clsx';
 import { useConfirm } from '../../overlays/ConfirmModal';
 import { useProjectRegistry, useProjectFilters } from './hooks';
@@ -89,7 +92,7 @@ export default function ProjectRegistryView() {
     window.goodvibes?.startClaude?.({
       cwd: project.path,
       name: project.name,
-    }).catch(console.error);
+    }).catch((err: unknown) => logger.error('Failed to start Claude session', err));
   }, []);
 
   function formatDate(dateString: string): string {

@@ -131,6 +131,10 @@ const mockGoodVibesAPI = {
   // App Info
   getAppVersion: vi.fn().mockResolvedValue('1.0.0'),
   getAppPath: vi.fn().mockResolvedValue('/tmp'),
+  getPlatform: vi.fn().mockReturnValue('win32'),
+
+  // Maintenance
+  recalculateSessionCosts: vi.fn().mockResolvedValue({ updated: 0 }),
 
   // Activity
   getRecentActivity: vi.fn().mockResolvedValue([]),

@@ -30,6 +30,7 @@ export function useLiveSessions() {
     queryKey: ['live-sessions'],
     queryFn: () => window.goodvibes.getLiveSessions(),
     refetchInterval: 5000, // Refresh every 5 seconds
+    refetchIntervalInBackground: false, // Stop polling when app is backgrounded to prevent memory leaks
   });
 
   const liveSessionIds = useMemo(

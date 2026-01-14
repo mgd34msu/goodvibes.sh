@@ -2,7 +2,10 @@
 // PREVIOUS SESSIONS MODAL - Select from recent sessions for a project
 // ============================================================================
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { createLogger } from '../../../../shared/logger.js';
+
+const logger = createLogger('PreviousSessionsModal');
 import { X, MessageSquare, Clock, DollarSign, Loader2, Eye, Terminal } from 'lucide-react';
 import { useAppStore } from '../../../stores/appStore';
 import { useTerminalStore } from '../../../stores/terminalStore';
@@ -35,16 +38,19 @@ export function PreviousSessionsModal({
   const [selectedSession, setSelectedSession] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
-  useEffect(() => {
-    loadSessions();
-  }, [project.path]);
-
-  const loadSessions = async () => {
+  // Shared session loading function with abort signal support
+  const loadSessions = useCallback(async (signal: AbortSignal) => {
     setIsLoading(true);
     setError(null);
+
     try {
       const result = await window.goodvibes?.getProjectSessions?.(project.path, 5);
+
+      // Check if aborted before updating state
+      if (signal.aborted) return;
+
       if (result && Array.isArray(result)) {
         // Map SessionSummary to our component's format
         const mapped: SessionSummary[] = result.map((s: {
@@ -72,12 +78,46 @@ export function PreviousSessionsModal({
         setSessions([]);
       }
     } catch (err) {
-      setError('Failed to load sessions');
-      console.error('Failed to load sessions:', err);
+      // Only update error state if not aborted
+      if (!signal.aborted) {
+        setError('Failed to load sessions');
+        logger.error('Failed to load sessions:', err);
+      }
     } finally {
-      setIsLoading(false);
+      // Only update loading state if not aborted
+      if (!signal.aborted) {
+        setIsLoading(false);
+      }
     }
-  };
+  }, [project.path]);
+
+  // Load sessions on mount and when project changes
+  useEffect(() => {
+    // Abort any previous request
+    abortControllerRef.current?.abort();
+
+    // Create new abort controller for this request
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
+    loadSessions(controller.signal);
+
+    return () => {
+      controller.abort();
+    };
+  }, [loadSessions]);
+
+  // Manual retry function for the retry button
+  const handleRetry = useCallback(() => {
+    // Abort any previous request
+    abortControllerRef.current?.abort();
+
+    // Create new abort controller for retry
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
+    loadSessions(controller.signal);
+  }, [loadSessions]);
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -153,7 +193,7 @@ export function PreviousSessionsModal({
             <div className="text-center py-12">
               <p className="text-red-400">{error}</p>
               <button
-                onClick={loadSessions}
+                onClick={handleRetry}
                 className="mt-3 btn btn-sm btn-secondary"
               >
                 Retry

@@ -6,7 +6,6 @@
 //
 // ============================================================================
 
-import { Logger } from '../logger.js';
 import type { ProjectEvent } from './types.js';
 import {
   getEventEmitter,
@@ -15,8 +14,6 @@ import {
   setEventQueue,
   getAllProjectIds,
 } from './state.js';
-
-const logger = new Logger('ProjectCoordinator:Events');
 
 // ============================================================================
 // INTERNAL EVENT EMISSION

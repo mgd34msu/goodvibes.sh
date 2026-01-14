@@ -6,10 +6,8 @@
 // Uses mocked node-pty to test terminal creation and management.
 // ============================================================================
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
-
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi, type MockedFunction } from 'vitest';
+import type { IPty, IDisposable } from 'node-pty';
 
 // Mock modules before importing the module under test
 vi.mock('node-pty', () => ({
@@ -47,6 +45,15 @@ vi.mock('electron', () => ({
   },
 }));
 
+vi.mock('./ptyStreamAnalyzer.js', () => ({
+  getPTYStreamAnalyzer: vi.fn(() => ({
+    analyze: vi.fn(),
+    clearTerminal: vi.fn(),
+    startPeriodicCleanup: vi.fn(),
+    stopPeriodicCleanup: vi.fn(),
+  })),
+}));
+
 // Import after mocks are set up
 import * as pty from 'node-pty';
 import { sendToRenderer } from '../window.js';
@@ -67,29 +74,48 @@ import {
 // TEST FIXTURES
 // ============================================================================
 
-function createMockPty() {
-  const listeners: { [event: string]: ((...args: any[]) => void)[] } = {};
+// Type for event listener callbacks in mock PTY
+type DataListener = (data: string) => void;
+type ExitListener = (exitCode: { exitCode: number; signal?: number }) => void;
+
+interface MockPtyListeners {
+  data: DataListener[];
+  exit: ExitListener[];
+}
+
+// Extended mock type that includes test helper methods and required mocked methods
+interface MockPty extends Partial<IPty> {
+  write: MockedFunction<(data: string) => void>;
+  resize: MockedFunction<(columns: number, rows: number) => void>;
+  kill: MockedFunction<(signal?: string) => void>;
+  _trigger: (event: keyof MockPtyListeners, ...args: unknown[]) => void;
+}
+
+function createMockPty(): MockPty {
+  const listeners: MockPtyListeners = { data: [], exit: [] };
 
   return {
     pid: 12345,
     cols: 80,
     rows: 24,
-    onData: vi.fn((callback) => {
-      listeners['data'] = listeners['data'] || [];
-      listeners['data'].push(callback);
+    onData: vi.fn((callback: DataListener): IDisposable => {
+      listeners.data.push(callback);
       return { dispose: vi.fn() };
     }),
-    onExit: vi.fn((callback) => {
-      listeners['exit'] = listeners['exit'] || [];
-      listeners['exit'].push(callback);
+    onExit: vi.fn((callback: ExitListener): IDisposable => {
+      listeners.exit.push(callback);
       return { dispose: vi.fn() };
     }),
     write: vi.fn(),
     resize: vi.fn(),
     kill: vi.fn(),
     // Helper to trigger events in tests
-    _trigger: (event: string, ...args: any[]) => {
-      listeners[event]?.forEach(cb => cb(...args));
+    _trigger: (event: keyof MockPtyListeners, ...args: unknown[]) => {
+      if (event === 'data') {
+        listeners.data.forEach(cb => cb(args[0] as string));
+      } else if (event === 'exit') {
+        listeners.exit.forEach(cb => cb(args[0] as { exitCode: number; signal?: number }));
+      }
     },
   };
 }
@@ -99,12 +125,12 @@ function createMockPty() {
 // ============================================================================
 
 describe('TerminalManager Service', () => {
-  let mockPty: ReturnType<typeof createMockPty>;
+  let mockPty: MockPty;
 
   beforeEach(() => {
     vi.clearAllMocks();
     mockPty = createMockPty();
-    vi.mocked(pty.spawn).mockReturnValue(mockPty as any);
+    vi.mocked(pty.spawn).mockReturnValue(mockPty as IPty);
     vi.mocked(db.getSetting).mockReturnValue(true); // skipPermissions enabled
 
     // Initialize the terminal manager
@@ -263,8 +289,10 @@ describe('TerminalManager Service', () => {
   describe('writeToTerminal', () => {
     it('should write data to terminal', async () => {
       const result = await startTerminal({ cwd: '/test/path' });
+      expect(result.id).toBeDefined();
+      const terminalId = result.id as number;
 
-      writeToTerminal(result.id!, 'test input');
+      writeToTerminal(terminalId, 'test input');
 
       expect(mockPty.write).toHaveBeenCalledWith('test input');
     });
@@ -275,19 +303,23 @@ describe('TerminalManager Service', () => {
 
     it('should handle write errors gracefully', async () => {
       const result = await startTerminal({ cwd: '/test/path' });
+      expect(result.id).toBeDefined();
+      const terminalId = result.id as number;
       mockPty.write.mockImplementation(() => {
         throw new Error('Write failed');
       });
 
-      expect(() => writeToTerminal(result.id!, 'test')).not.toThrow();
+      expect(() => writeToTerminal(terminalId, 'test')).not.toThrow();
     });
   });
 
   describe('resizeTerminal', () => {
     it('should resize terminal', async () => {
       const result = await startTerminal({ cwd: '/test/path' });
+      expect(result.id).toBeDefined();
+      const terminalId = result.id as number;
 
-      resizeTerminal(result.id!, 120, 40);
+      resizeTerminal(terminalId, 120, 40);
 
       expect(mockPty.resize).toHaveBeenCalledWith(120, 40);
     });
@@ -298,19 +330,23 @@ describe('TerminalManager Service', () => {
 
     it('should handle resize errors gracefully', async () => {
       const result = await startTerminal({ cwd: '/test/path' });
+      expect(result.id).toBeDefined();
+      const terminalId = result.id as number;
       mockPty.resize.mockImplementation(() => {
         throw new Error('Resize failed');
       });
 
-      expect(() => resizeTerminal(result.id!, 120, 40)).not.toThrow();
+      expect(() => resizeTerminal(terminalId, 120, 40)).not.toThrow();
     });
   });
 
   describe('killTerminal', () => {
     it('should kill terminal and return true', async () => {
       const result = await startTerminal({ cwd: '/test/path' });
+      expect(result.id).toBeDefined();
+      const terminalId = result.id as number;
 
-      const killed = killTerminal(result.id!);
+      const killed = killTerminal(terminalId);
 
       expect(killed).toBe(true);
       expect(mockPty.kill).toHaveBeenCalled();
@@ -324,21 +360,25 @@ describe('TerminalManager Service', () => {
 
     it('should remove terminal from list after killing', async () => {
       const result = await startTerminal({ cwd: '/test/path' });
+      expect(result.id).toBeDefined();
+      const terminalId = result.id as number;
       const initialCount = getTerminalCount();
 
-      killTerminal(result.id!);
+      killTerminal(terminalId);
 
       expect(getTerminalCount()).toBe(initialCount - 1);
     });
 
     it('should handle kill errors gracefully', async () => {
       const result = await startTerminal({ cwd: '/test/path' });
+      expect(result.id).toBeDefined();
+      const terminalId = result.id as number;
       mockPty.kill.mockImplementation(() => {
         throw new Error('Kill failed');
       });
 
       // Should return false when kill fails
-      expect(killTerminal(result.id!)).toBe(false);
+      expect(killTerminal(terminalId)).toBe(false);
     });
   });
 
@@ -387,8 +427,8 @@ describe('TerminalManager Service', () => {
       const mockPty2 = createMockPty();
 
       vi.mocked(pty.spawn)
-        .mockReturnValueOnce(mockPty1 as any)
-        .mockReturnValueOnce(mockPty2 as any);
+        .mockReturnValueOnce(mockPty1 as IPty)
+        .mockReturnValueOnce(mockPty2 as IPty);
 
       await startTerminal({ cwd: '/path1' });
       await startTerminal({ cwd: '/path2' });

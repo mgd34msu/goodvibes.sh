@@ -6,6 +6,9 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { clsx } from 'clsx';
 import type { GitHubPullRequest, GitHubCheckRun, GitHubCheckConclusion } from '../../../shared/types/github';
 import CIStatusBadge from './CIStatusBadge';
+import { createLogger } from '../../../shared/logger';
+
+const logger = createLogger('PullRequestList');
 
 interface PullRequestListProps {
   owner: string;
@@ -38,9 +41,10 @@ export default function PullRequestList({
           statuses[pr.number] = result.data;
         }
       } catch (err) {
-        // CI status is non-critical - log but don't show user-facing error
-        // This prevents toast spam when checking multiple PRs
-        console.debug(`Failed to load CI status for PR #${pr.number}:`, err);
+        // CI status is non-critical, so we log at debug level and continue
+        // This prevents toast spam when checking multiple PRs while still
+        // capturing the error for debugging purposes
+        logger.debug(`Failed to load CI status for PR #${pr.number} - CI checks may be unavailable:`, err);
       }
     }
 

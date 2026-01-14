@@ -28,8 +28,7 @@ const logger = createLogger('LazyComponent');
 
 export interface LazyComponentProps {
   /** The lazy component to render */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  component: LazyExoticComponent<ComponentType<any>>;
+  component: LazyExoticComponent<ComponentType<Record<string, unknown>>>;
   /** Props to pass to the component */
   componentProps?: Record<string, unknown>;
   /** Custom loading fallback */

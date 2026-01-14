@@ -66,8 +66,10 @@ export const useSettingsStore = create<SettingsState>((set) => ({
         // Use individual try-catch to ensure we attempt all keys even if some fail
         for (const key of keysToReset) {
           try {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const defaultValue = (DEFAULT_SETTINGS as any)[key];
+            // Safe to access since keysToReset only contains keys from SETTINGS_MIGRATIONS
+            // which are guaranteed to be valid AppSettings keys
+            const settingsKey = key as keyof AppSettings;
+            const defaultValue = DEFAULT_SETTINGS[settingsKey];
             await window.goodvibes.setSetting(key, defaultValue);
           } catch (err) {
             logger.error(`Failed to migrate setting ${key}:`, err);

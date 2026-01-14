@@ -49,6 +49,9 @@ export default function App() {
   }, [theme]);
 
   // Load settings on mount
+  // Note: loadSettings updates Zustand store directly, not component state.
+  // Zustand store updates are safe even after component unmount since they
+  // don't trigger React state updates on unmounted components.
   useEffect(() => {
     useSettingsStore.getState().loadSettings();
   }, []);

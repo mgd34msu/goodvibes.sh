@@ -22,6 +22,7 @@ export function SessionPreviewView({ sessionId, sessionName }: SessionPreviewVie
     queryKey: ['session-raw-entries', sessionId],
     queryFn: () => window.goodvibes.getSessionRawEntries(sessionId),
     refetchInterval: 2000,
+    refetchIntervalInBackground: false,
   });
 
   // Query for live status
@@ -29,6 +30,7 @@ export function SessionPreviewView({ sessionId, sessionName }: SessionPreviewVie
     queryKey: ['session-live', sessionId],
     queryFn: () => window.goodvibes.isSessionLive(sessionId),
     refetchInterval: 5000,
+    refetchIntervalInBackground: false,
   });
 
   // Parse entries into structured messages
