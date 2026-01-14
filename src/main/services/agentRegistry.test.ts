@@ -6,9 +6,43 @@
 // Uses mocked dependencies to test agent lifecycle management.
 // ============================================================================
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import type { AgentRecord, AgentStatus } from '../database/primitives.js';
+
+// ============================================================================
+// TEST TYPES - Type definitions for test state
+// ============================================================================
+
+/** Mock agent record stored in test state */
+interface MockAgentRecord {
+  id: string;
+  name: string;
+  pid: number | null;
+  cwd: string;
+  parentId: string | null;
+  templateId: string | null;
+  status: AgentStatus;
+  sessionPath: string | null;
+  initialPrompt: string | null;
+  spawnedAt: string;
+  lastActivity: string;
+  completedAt: string | null;
+  exitCode: number | null;
+  errorMessage: string | null;
+}
+
+/** Hook server listener reference */
+interface HookServerListener {
+  event: string;
+  handler: (...args: unknown[]) => void;
+}
+
+/** Global test state type */
+interface TestGlobalThis {
+  __testAgentRecords: Map<string, MockAgentRecord>;
+  __uuidCounter: number;
+  __hookServerListeners: HookServerListener[];
+}
 
 // ============================================================================
 // TEST STATE - Shared between mocks and tests
@@ -16,14 +50,14 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 // ============================================================================
 
 // Use globalThis to make state accessible to hoisted mocks
-(globalThis as any).__testAgentRecords = new Map<string, any>();
-(globalThis as any).__uuidCounter = 0;
-(globalThis as any).__hookServerListeners = [];
+const testGlobal = globalThis as unknown as TestGlobalThis;
+testGlobal.__testAgentRecords = new Map<string, MockAgentRecord>();
+testGlobal.__uuidCounter = 0;
+testGlobal.__hookServerListeners = [];
 
 // Local references for test access
-const mockAgentRecords = (globalThis as any).__testAgentRecords;
-const mockHookServerListeners: Array<{ event: string; handler: (...args: any[]) => void }> =
-  (globalThis as any).__hookServerListeners;
+const mockAgentRecords = testGlobal.__testAgentRecords;
+const mockHookServerListeners: HookServerListener[] = testGlobal.__hookServerListeners;
 
 // ============================================================================
 // MOCKS - Must be defined before imports (these get hoisted)
@@ -31,7 +65,7 @@ const mockHookServerListeners: Array<{ event: string; handler: (...args: any[]) 
 
 // Mock the uuid module
 vi.mock('uuid', () => ({
-  v4: vi.fn(() => `test-uuid-${++(globalThis as any).__uuidCounter}`),
+  v4: vi.fn(() => `test-uuid-${++((globalThis as unknown as TestGlobalThis).__uuidCounter)}`),
 }));
 
 // Mock the logger - both paths for submodules and main file
@@ -56,14 +90,15 @@ vi.mock('./logger.js', () => ({
 // Mock database primitives - both paths
 vi.mock('../../database/primitives.js', () => {
   // Initialize if not exists (mocks are hoisted, so this might run first)
-  if (!(globalThis as any).__testAgentRecords) {
-    (globalThis as any).__testAgentRecords = new Map();
+  const tg = globalThis as unknown as TestGlobalThis;
+  if (!tg.__testAgentRecords) {
+    tg.__testAgentRecords = new Map();
   }
-  const records = (globalThis as any).__testAgentRecords;
+  const records = tg.__testAgentRecords;
 
   return {
-    registerAgent: vi.fn((agent: any) => {
-      const record = {
+    registerAgent: vi.fn((agent: MockAgentRecord) => {
+      const record: MockAgentRecord = {
         ...agent,
         spawnedAt: new Date().toISOString(),
         lastActivity: new Date().toISOString(),
@@ -76,17 +111,17 @@ vi.mock('../../database/primitives.js', () => {
     }),
     getAgent: vi.fn((id: string) => records.get(id) || null),
     getAgentsByParent: vi.fn((parentId: string | null) => {
-      return Array.from(records.values()).filter((a: any) =>
+      return Array.from(records.values()).filter((a: MockAgentRecord) =>
         parentId === null ? a.parentId === null : a.parentId === parentId
       );
     }),
     getActiveAgents: vi.fn(() => {
-      return Array.from(records.values()).filter((a: any) =>
+      return Array.from(records.values()).filter((a: MockAgentRecord) =>
         ['spawning', 'ready', 'active', 'idle'].includes(a.status)
       );
     }),
     getAllAgents: vi.fn(() => Array.from(records.values())),
-    updateAgentStatus: vi.fn((id: string, status: string, errorMessage?: string) => {
+    updateAgentStatus: vi.fn((id: string, status: AgentStatus, errorMessage?: string) => {
       const agent = records.get(id);
       if (agent) {
         agent.status = status;
@@ -119,21 +154,22 @@ vi.mock('../../database/primitives.js', () => {
       return count;
     }),
     findAgentBySession: vi.fn((sessionId: string) => {
-      return Array.from(records.values()).find((a: any) => a.sessionPath === sessionId) || null;
+      return Array.from(records.values()).find((a: MockAgentRecord) => a.sessionPath === sessionId) || null;
     }),
   };
 });
 
 vi.mock('../database/primitives.js', () => {
   // Initialize if not exists (mocks are hoisted, so this might run first)
-  if (!(globalThis as any).__testAgentRecords) {
-    (globalThis as any).__testAgentRecords = new Map();
+  const tg = globalThis as unknown as TestGlobalThis;
+  if (!tg.__testAgentRecords) {
+    tg.__testAgentRecords = new Map();
   }
-  const records = (globalThis as any).__testAgentRecords;
+  const records = tg.__testAgentRecords;
 
   return {
-    registerAgent: vi.fn((agent: any) => {
-      const record = {
+    registerAgent: vi.fn((agent: MockAgentRecord) => {
+      const record: MockAgentRecord = {
         ...agent,
         spawnedAt: new Date().toISOString(),
         lastActivity: new Date().toISOString(),
@@ -146,17 +182,17 @@ vi.mock('../database/primitives.js', () => {
     }),
     getAgent: vi.fn((id: string) => records.get(id) || null),
     getAgentsByParent: vi.fn((parentId: string | null) => {
-      return Array.from(records.values()).filter((a: any) =>
+      return Array.from(records.values()).filter((a: MockAgentRecord) =>
         parentId === null ? a.parentId === null : a.parentId === parentId
       );
     }),
     getActiveAgents: vi.fn(() => {
-      return Array.from(records.values()).filter((a: any) =>
+      return Array.from(records.values()).filter((a: MockAgentRecord) =>
         ['spawning', 'ready', 'active', 'idle'].includes(a.status)
       );
     }),
     getAllAgents: vi.fn(() => Array.from(records.values())),
-    updateAgentStatus: vi.fn((id: string, status: string, errorMessage?: string) => {
+    updateAgentStatus: vi.fn((id: string, status: AgentStatus, errorMessage?: string) => {
       const agent = records.get(id);
       if (agent) {
         agent.status = status;
@@ -189,7 +225,7 @@ vi.mock('../database/primitives.js', () => {
       return count;
     }),
     findAgentBySession: vi.fn((sessionId: string) => {
-      return Array.from(records.values()).find((a: any) => a.sessionPath === sessionId) || null;
+      return Array.from(records.values()).find((a: MockAgentRecord) => a.sessionPath === sessionId) || null;
     }),
   };
 });

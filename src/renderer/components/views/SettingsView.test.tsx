@@ -3,8 +3,8 @@
 // ============================================================================
 
 import React from 'react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { render, screen, fireEvent, waitFor, act, cleanup } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useSettingsStore } from '../../stores/settingsStore';
 import SettingsView from './SettingsView/index';
@@ -29,9 +29,18 @@ function createTestWrapper() {
   };
 }
 
-// Helper function that wraps render with QueryClientProvider
-function renderSettingsView() {
-  return render(<SettingsView />, { wrapper: createTestWrapper() });
+// Helper function that wraps render with QueryClientProvider and waits for async effects
+// This prevents act() warnings from GitHubConnectionStatus async state updates
+async function renderSettingsView() {
+  let result: ReturnType<typeof render>;
+
+  await act(async () => {
+    result = render(<SettingsView />, { wrapper: createTestWrapper() });
+    // Wait for GitHubConnectionStatus useEffect async operations to complete
+    await new Promise(resolve => setTimeout(resolve, 0));
+  });
+
+  return result!;
 }
 
 describe('SettingsView', () => {
@@ -62,62 +71,62 @@ describe('SettingsView', () => {
   });
 
   describe('Rendering', () => {
-    it('renders settings header', () => {
-      renderSettingsView();
+    it('renders settings header', async () => {
+      await renderSettingsView();
       expect(screen.getByText('Settings')).toBeInTheDocument();
     });
 
-    it('renders Appearance section', () => {
-      renderSettingsView();
+    it('renders Appearance section', async () => {
+      await renderSettingsView();
       expect(screen.getByText('Appearance')).toBeInTheDocument();
     });
 
-    it('renders Startup Behavior section', () => {
-      renderSettingsView();
+    it('renders Startup Behavior section', async () => {
+      await renderSettingsView();
       expect(screen.getByText('Startup Behavior')).toBeInTheDocument();
     });
 
-    it('renders Claude CLI Options section', () => {
-      renderSettingsView();
+    it('renders Claude CLI Options section', async () => {
+      await renderSettingsView();
       expect(screen.getByText('Claude CLI Options')).toBeInTheDocument();
     });
 
-    it('renders Git Integration section', () => {
-      renderSettingsView();
+    it('renders Git Integration section', async () => {
+      await renderSettingsView();
       expect(screen.getByText('Git Integration')).toBeInTheDocument();
     });
 
-    it('renders GitHub Integration section', () => {
-      renderSettingsView();
+    it('renders GitHub Integration section', async () => {
+      await renderSettingsView();
       expect(screen.getByText('GitHub Integration')).toBeInTheDocument();
     });
 
-    it('renders Budget Alerts section', () => {
-      renderSettingsView();
+    it('renders Budget Alerts section', async () => {
+      await renderSettingsView();
       expect(screen.getByText('Budget Alerts')).toBeInTheDocument();
     });
 
-    it('renders Keyboard Shortcuts section', () => {
-      renderSettingsView();
+    it('renders Keyboard Shortcuts section', async () => {
+      await renderSettingsView();
       expect(screen.getByText('Keyboard Shortcuts')).toBeInTheDocument();
     });
 
-    it('renders Danger Zone section', () => {
-      renderSettingsView();
+    it('renders Danger Zone section', async () => {
+      await renderSettingsView();
       expect(screen.getByText('Danger Zone')).toBeInTheDocument();
     });
   });
 
   describe('Theme Settings', () => {
-    it('renders theme selector with current value', () => {
-      renderSettingsView();
+    it('renders theme selector with current value', async () => {
+      await renderSettingsView();
 
       const themeSelect = screen.getByDisplayValue('Dark');
       expect(themeSelect).toBeInTheDocument();
     });
 
     it('changes theme when selector is changed', async () => {
-      renderSettingsView();
+      await renderSettingsView();
 
       const themeSelect = screen.getByDisplayValue('Dark');
       await act(async () => {
@@ -132,8 +141,8 @@ describe('SettingsView', () => {
   });
 
   describe('Font Size Settings', () => {
-    it('renders font size controls', () => {
-      renderSettingsView();
+    it('renders font size controls', async () => {
+      await renderSettingsView();
 
       // Component uses +/- buttons instead of slider
       const decreaseButton = screen.getByLabelText('Decrease font size');
@@ -142,8 +151,8 @@ describe('SettingsView', () => {
       expect(increaseButton).toBeInTheDocument();
     });
 
-    it('shows current font size value', () => {
-      renderSettingsView();
+    it('shows current font size value', async () => {
+      await renderSettingsView();
 
       // Default font size from DEFAULT_SETTINGS (14px)
       // The component renders fontSize + "px" together in one span
@@ -151,7 +160,7 @@ describe('SettingsView', () => {
     });
 
     it('updates font size when controls clicked', async () => {
-      renderSettingsView();
+      await renderSettingsView();
 
       const increaseButton = screen.getByLabelText('Increase font size');
       await act(async () => {
@@ -166,15 +175,15 @@ describe('SettingsView', () => {
   });
 
   describe('Toggle Settings', () => {
-    it('renders toggle switches', () => {
-      renderSettingsView();
+    it('renders toggle switches', async () => {
+      await renderSettingsView();
 
       const toggles = screen.getAllByRole('switch');
       expect(toggles.length).toBeGreaterThan(0);
     });
 
     it('toggles switch on click', async () => {
-      renderSettingsView();
+      await renderSettingsView();
 
       // Find a toggle (e.g., Restore Tabs)
       const toggles = screen.getAllByRole('switch');
@@ -195,7 +204,7 @@ describe('SettingsView', () => {
     });
 
     it('toggles Skip Permission Prompts', async () => {
-      renderSettingsView();
+      await renderSettingsView();
 
       // Find the skipPermissions toggle by finding its label
       const skipPermissionsLabel = screen.getByText('Skip Permission Prompts');
