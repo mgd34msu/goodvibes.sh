@@ -144,10 +144,10 @@ export function isEmpty<T>(arr: T[] | null | undefined): boolean {
 // Terminal themes
 export const TERMINAL_THEMES = {
   dark: {
-    background: '#1a1a2e',
+    background: '#020617',
     foreground: '#e4e4e7',
     cursor: '#a855f7',
-    cursorAccent: '#1a1a2e',
+    cursorAccent: '#020617',
     selectionBackground: '#6366f150',
     black: '#27272a',
     red: '#ef4444',

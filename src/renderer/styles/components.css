@@ -1999,7 +1999,7 @@
       box-shadow 0.35s var(--ease-out),
       border-color 0.35s var(--ease-out),
       background 0.35s var(--ease-out);
-    overflow: hidden;
+    /* overflow: hidden removed to allow dropdowns to escape card boundaries */
   }
 
   .card-hover::before {
