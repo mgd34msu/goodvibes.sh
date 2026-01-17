@@ -2,13 +2,13 @@
 // TERMINAL INSTANCE - XTerm.js terminal component
 // ============================================================================
 
-import React, { useCallback, useEffect, useRef } from 'react';
-import { Terminal as XTermTerminal } from '@xterm/xterm';
+import React, { useCallback, useEffect, useRef, useMemo } from 'react';
+import { Terminal as XTermTerminal, type ITheme } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { WebLinksAddon } from '@xterm/addon-web-links';
 import { SearchAddon } from '@xterm/addon-search';
-import { TERMINAL_THEMES } from '../../../shared/constants';
-import { useSettingsStore } from '../../stores/settingsStore';
+import { useTheme } from '../../contexts/ThemeContext';
+import type { TerminalColors } from '../../../shared/types/theme-types';
 import '@xterm/xterm/css/xterm.css';
 
 // ============================================================================
@@ -18,6 +18,41 @@ import '@xterm/xterm/css/xterm.css';
 import type { TerminalInstanceProps } from './types';
 
 // ============================================================================
+// HELPERS
+// ============================================================================
+
+/**
+ * Converts TerminalColors from theme to xterm.js ITheme format.
+ * The cursor is set to transparent to hide it (app uses custom cursor rendering).
+ */
+function terminalColorsToXtermTheme(colors: TerminalColors): ITheme {
+  return {
+    background: colors.background,
+    foreground: colors.foreground,
+    cursor: 'transparent',
+    cursorAccent: 'transparent',
+    selectionBackground: colors.selectionBackground,
+    selectionForeground: colors.foreground,
+    black: colors.black,
+    red: colors.red,
+    green: colors.green,
+    yellow: colors.yellow,
+    blue: colors.blue,
+    magenta: colors.magenta,
+    cyan: colors.cyan,
+    white: colors.white,
+    brightBlack: colors.brightBlack,
+    brightRed: colors.brightRed,
+    brightGreen: colors.brightGreen,
+    brightYellow: colors.brightYellow,
+    brightBlue: colors.brightBlue,
+    brightMagenta: colors.brightMagenta,
+    brightCyan: colors.brightCyan,
+    brightWhite: colors.brightWhite,
+  };
+}
+
+// ============================================================================
 // COMPONENT
 // ============================================================================
 
@@ -25,7 +60,13 @@ export function TerminalInstance({ id, zoomLevel, isActive }: TerminalInstancePr
   const containerRef = useRef<HTMLDivElement>(null);
   const terminalRef = useRef<XTermTerminal | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
-  const theme = useSettingsStore((s) => s.settings.theme);
+  const { theme } = useTheme();
+
+  // Memoize the xterm theme to prevent unnecessary recalculations
+  const xtermTheme = useMemo(
+    () => terminalColorsToXtermTheme(theme.colors.terminal),
+    [theme]
+  );
 
   // Copy selected text from terminal
   const copySelection = useCallback(() => {
@@ -84,11 +125,7 @@ export function TerminalInstance({ id, zoomLevel, isActive }: TerminalInstancePr
       cursorStyle: 'bar',
       cursorWidth: 1,
       cursorInactiveStyle: 'none',
-      theme: {
-        ...TERMINAL_THEMES[theme],
-        cursor: 'transparent',
-        cursorAccent: 'transparent',
-      },
+      theme: xtermTheme,
       allowProposedApi: true,
       scrollOnUserInput: true,
     });
@@ -127,7 +164,10 @@ export function TerminalInstance({ id, zoomLevel, isActive }: TerminalInstancePr
       terminalRef.current = null;
       fitAddonRef.current = null;
     };
-  }, [id, theme]);
+    // Note: xtermTheme is intentionally excluded from dependencies.
+    // Theme changes are handled by the separate "Handle theme change" useEffect below.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
 
   // Handle keyboard shortcuts for copy/paste in terminal
   useEffect(() => {
@@ -247,13 +287,9 @@ export function TerminalInstance({ id, zoomLevel, isActive }: TerminalInstancePr
   // Handle theme change
   useEffect(() => {
     if (terminalRef.current) {
-      terminalRef.current.options.theme = {
-        ...TERMINAL_THEMES[theme],
-        cursor: 'transparent',
-        cursorAccent: 'transparent',
-      };
+      terminalRef.current.options.theme = xtermTheme;
     }
-  }, [theme]);
+  }, [xtermTheme]);
 
   // Focus terminal when it becomes active (with 500ms delay)
   useEffect(() => {

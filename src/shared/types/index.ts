@@ -101,3 +101,25 @@ export {
   ipcBoolOk,
   ipcBoolErr,
 } from './ipc-types.js';
+
+// Theme types
+export type {
+  ColorScale,
+  GlowColors,
+  GradientStops,
+  SemanticColorSet,
+  BackgroundColors,
+  TextColors,
+  BorderColors,
+  TerminalColors,
+  ThemeColors,
+  Theme,
+  ThemeId,
+  ThemeMetadata,
+} from './theme-types.js';
+
+export {
+  THEME_IDS,
+  DEFAULT_THEME_ID,
+  isThemeId,
+} from './theme-types.js';

@@ -2,12 +2,15 @@
 // SETTINGS TYPES - Application settings and configuration types
 // ============================================================================
 
+import type { ThemeId } from './theme-types.js';
+
 // ============================================================================
 // Settings Types
 // ============================================================================
 
 export interface AppSettings {
   theme: 'dark' | 'light';
+  colorTheme: ThemeId;
   fontSize: number;
   claudePath: string | null;
   defaultCwd: string | null;
@@ -52,6 +55,7 @@ export interface AppSettings {
 
 export const DEFAULT_SETTINGS: AppSettings = {
   theme: 'dark',
+  colorTheme: 'goodvibes-classic',
   fontSize: 14,
   claudePath: null,
   defaultCwd: null,
@@ -109,7 +113,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
 // Version 6: Added session backup settings
 // Version 7: Added terminal shell settings (preferredShell, customShells)
 // Version 8: Added preferredTextEditor setting
-export const SETTINGS_VERSION = 8;
+// Version 9: Added colorTheme setting for dynamic theming
+export const SETTINGS_VERSION = 9;
 
 // Settings that were added/changed in each version and need to be reset to defaults
 export const SETTINGS_MIGRATIONS: Record<number, (keyof AppSettings)[]> = {
@@ -155,6 +160,8 @@ export const SETTINGS_MIGRATIONS: Record<number, (keyof AppSettings)[]> = {
   8: [
     'preferredTextEditor',
   ],
+  // Version 9: Added colorTheme setting
+  9: ['colorTheme'],
 };
 
 // Settings that were removed and should be cleaned up during migration
