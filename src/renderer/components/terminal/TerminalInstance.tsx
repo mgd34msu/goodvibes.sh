@@ -2,7 +2,7 @@
 // TERMINAL INSTANCE - XTerm.js terminal component
 // ============================================================================
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import { Terminal as XTermTerminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { WebLinksAddon } from '@xterm/addon-web-links';
@@ -26,11 +26,6 @@ export function TerminalInstance({ id, zoomLevel, isActive }: TerminalInstancePr
   const terminalRef = useRef<XTermTerminal | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
   const theme = useSettingsStore((s) => s.settings.theme);
-
-  // Track scroll state for auto-scroll behavior
-  const [showScrollButton, setShowScrollButton] = useState(false); // Show button when 10%+ scrolled up
-  const autoScrollEnabledRef = useRef(true); // Auto-scroll enabled until user scrolls up
-  const lastScrollTopRef = useRef(0); // Track scroll direction
 
   // Copy selected text from terminal
   const copySelection = useCallback(() => {
@@ -119,37 +114,6 @@ export function TerminalInstance({ id, zoomLevel, isActive }: TerminalInstancePr
       window.goodvibes.terminalResize(id, cols, rows);
     });
 
-    // Detect when user scrolls manually
-    const viewportElement = containerRef.current?.querySelector('.xterm-viewport');
-    const handleScroll = () => {
-      const viewport = terminal.element?.querySelector('.xterm-viewport');
-      if (!viewport) return;
-
-      const currentScrollTop = viewport.scrollTop;
-      const maxScroll = viewport.scrollHeight - viewport.clientHeight;
-      const scrollPercentFromBottom = maxScroll > 0 ? (maxScroll - currentScrollTop) / maxScroll : 0;
-
-      // Detect scroll direction - if scrolling up, disable auto-scroll
-      if (currentScrollTop < lastScrollTopRef.current) {
-        autoScrollEnabledRef.current = false;
-      }
-      lastScrollTopRef.current = currentScrollTop;
-
-      // Check if at bottom (with small tolerance)
-      const isAtBottom = maxScroll - currentScrollTop < 5;
-      if (isAtBottom) {
-        // Re-enable auto-scroll when user scrolls to bottom
-        autoScrollEnabledRef.current = true;
-      }
-
-      // Show button when scrolled up at least 10%
-      setShowScrollButton(scrollPercentFromBottom >= 0.1);
-    };
-
-    if (viewportElement) {
-      viewportElement.addEventListener('scroll', handleScroll);
-    }
-
     terminalRef.current = terminal;
     fitAddonRef.current = fitAddon;
 
@@ -159,9 +123,6 @@ export function TerminalInstance({ id, zoomLevel, isActive }: TerminalInstancePr
     window.goodvibes.terminalResize(id, cols, rows);
 
     return () => {
-      if (viewportElement) {
-        viewportElement.removeEventListener('scroll', handleScroll);
-      }
       terminal.dispose();
       terminalRef.current = null;
       fitAddonRef.current = null;
@@ -221,12 +182,7 @@ export function TerminalInstance({ id, zoomLevel, isActive }: TerminalInstancePr
   useEffect(() => {
     const handleData = (data: { id: number; data: string }) => {
       if (data.id === id && terminalRef.current) {
-        const terminal = terminalRef.current;
-        terminal.write(data.data);
-        // Auto-scroll to bottom if enabled (user hasn't scrolled up)
-        if (autoScrollEnabledRef.current) {
-          terminal.scrollToBottom();
-        }
+        terminalRef.current.write(data.data);
       }
     };
 
@@ -310,31 +266,9 @@ export function TerminalInstance({ id, zoomLevel, isActive }: TerminalInstancePr
     return undefined;
   }, [isActive]);
 
-  // Scroll to bottom handler for the button
-  const handleScrollToBottom = useCallback(() => {
-    if (terminalRef.current) {
-      terminalRef.current.scrollToBottom();
-      autoScrollEnabledRef.current = true; // Re-enable auto-scroll
-      setShowScrollButton(false);
-    }
-  }, []);
-
   return (
-    <div className="relative h-full w-full" onContextMenu={handleContextMenu}>
-      <div ref={containerRef} className="absolute inset-2" />
-      {/* Scroll to bottom button - shown when scrolled up at least 10% */}
-      {showScrollButton && (
-        <button
-          onClick={handleScrollToBottom}
-          className="absolute bottom-4 right-4 p-2 bg-surface-700 hover:bg-surface-600 text-surface-200 rounded-full shadow-lg transition-all duration-200 opacity-80 hover:opacity-100 z-10"
-          title="Scroll to bottom"
-          aria-label="Scroll to bottom"
-        >
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-          </svg>
-        </button>
-      )}
+    <div className="relative h-full w-full p-4" onContextMenu={handleContextMenu}>
+      <div ref={containerRef} className="h-full w-full" />
     </div>
   );
 }
