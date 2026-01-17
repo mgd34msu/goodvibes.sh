@@ -15,6 +15,7 @@ import { KeyboardShortcutsPanel } from './components/overlays/KeyboardShortcutsP
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { SkipLink } from './components/common/SkipLink';
 import { LiveRegionProvider } from './components/common/LiveRegion';
+import { ThemeProvider } from './contexts/ThemeContext';
 import { useAppStore } from './stores/appStore';
 import { useSettingsStore } from './stores/settingsStore';
 import { useScanStatus } from './hooks/useScanStatus';
@@ -67,32 +68,34 @@ export default function App() {
         useAppStore.getState().setLoading(false);
       }}
     >
-      <LiveRegionProvider>
-        {/* Skip link for keyboard navigation */}
-        <SkipLink targetId="main-content" />
+      <ThemeProvider>
+        <LiveRegionProvider>
+          {/* Skip link for keyboard navigation */}
+          <SkipLink targetId="main-content" />
 
-        <div className="flex flex-col h-screen overflow-hidden bg-surface-950 isolate">
-          {/* Title Bar - z-[9999] for dropdowns above content */}
-          <TitleBar />
+          <div className="flex flex-col h-screen overflow-hidden bg-surface-950 isolate">
+            {/* Title Bar - z-[9999] for dropdowns above content */}
+            <TitleBar />
 
-          {/* Main Content with error boundary - z-0 base layer */}
-          <ErrorBoundary>
-            <main id="main-content" tabIndex={-1} className="flex-1 overflow-hidden outline-none relative z-0">
-              <MainContent />
-            </main>
-          </ErrorBoundary>
+            {/* Main Content with error boundary - z-0 base layer */}
+            <ErrorBoundary>
+              <main id="main-content" tabIndex={-1} className="flex-1 overflow-hidden outline-none relative z-0">
+                <MainContent />
+              </main>
+            </ErrorBoundary>
 
-          {/* Global Overlays */}
-          <CommandPalette />
-          <QuickSwitcher />
-          <AboutModal />
-          <KeyboardShortcutsPanel />
-          <ToastContainer />
+            {/* Global Overlays */}
+            <CommandPalette />
+            <QuickSwitcher />
+            <AboutModal />
+            <KeyboardShortcutsPanel />
+            <ToastContainer />
 
-          {/* Loading Overlay */}
-          {isLoading && <LoadingOverlay message={loadingMessage} />}
-        </div>
-      </LiveRegionProvider>
+            {/* Loading Overlay */}
+            {isLoading && <LoadingOverlay message={loadingMessage} />}
+          </div>
+        </LiveRegionProvider>
+      </ThemeProvider>
     </ErrorBoundary>
   );
 }
