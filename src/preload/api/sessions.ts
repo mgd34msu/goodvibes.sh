@@ -36,4 +36,14 @@ export const sessionsApi = {
   // Session summaries (for project-based session lookup)
   getProjectSessions: (projectPath: string, limit?: number) =>
     ipcRenderer.invoke('session:getForProject', projectPath, limit ?? 5),
+  getMostRecentSession: () =>
+    ipcRenderer.invoke('session:getMostRecent') as Promise<{
+      sessionId: string;
+      cwd: string;
+      messageCount: number;
+      costUsd: number;
+      startedAt: string;
+      lastActive: string;
+      firstPrompt?: string;
+    } | null>,
 };

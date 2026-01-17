@@ -161,5 +161,54 @@ export function registerSessionHandlers(): void {
     return sessionSummaries.searchSessions(query, projectPath, limit ?? 20);
   }));
 
+  // Get most recent session for quick restart
+  ipcMain.handle('session:getMostRecent', withContext('session:getMostRecent', async () => {
+    // Try session_summaries table first
+    try {
+      const summaries = sessionSummaries.getRecentSessions(1);
+      if (summaries.length > 0) {
+        const s = summaries[0];
+        return {
+          sessionId: s.sessionId,
+          cwd: s.projectPath,
+          messageCount: s.toolCalls ?? 0,
+          costUsd: s.costUsd ?? 0,
+          startedAt: s.startedAt,
+          lastActive: s.endedAt ?? s.startedAt,
+          firstPrompt: s.title ?? s.lastPrompt ?? undefined,
+        };
+      }
+    } catch (error) {
+      logger.debug('session_summaries table not available for getMostRecent', { error });
+    }
+
+    // Fallback to main sessions table
+    const database = getDatabase();
+    const row = database.prepare(`
+      SELECT * FROM sessions
+      WHERE (archived = 0 OR archived IS NULL)
+        AND id NOT LIKE 'agent-%'
+        AND message_count > 0
+      ORDER BY start_time DESC
+      LIMIT 1
+    `).get() as SessionRow | undefined;
+
+    if (!row) return null;
+
+    // Get the project path from project_name (reverse the normalization)
+    // This is a best-effort conversion - the original path format may vary
+    const projectPath = row.project_name ?? '';
+
+    return {
+      sessionId: row.id,
+      cwd: projectPath,
+      messageCount: row.message_count ?? 0,
+      costUsd: row.cost ?? 0,
+      startedAt: row.start_time ?? new Date().toISOString(),
+      lastActive: row.end_time ?? row.start_time ?? new Date().toISOString(),
+      firstPrompt: row.summary ?? undefined,
+    };
+  }));
+
   logger.info('Session handlers registered');
 }

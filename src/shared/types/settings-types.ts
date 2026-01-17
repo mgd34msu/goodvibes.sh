@@ -26,6 +26,7 @@ export interface AppSettings {
   // Terminal settings
   preferredShell: string | null;
   customShells: string[];
+  preferredTextEditor: string | null;
   // Preview settings - Visibility (show/hide block types entirely)
   showThinkingBlocks: boolean;
   showToolUseBlocks: boolean;
@@ -69,6 +70,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   // Terminal settings
   preferredShell: null,
   customShells: [],
+  preferredTextEditor: null,
   // Preview settings - Visibility (show/hide block types entirely)
   showThinkingBlocks: true,
   showToolUseBlocks: true,
@@ -106,7 +108,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
 //   Versions 6-7 have been consolidated into v5 since they all reset the same settings.
 // Version 6: Added session backup settings
 // Version 7: Added terminal shell settings (preferredShell, customShells)
-export const SETTINGS_VERSION = 7;
+// Version 8: Added preferredTextEditor setting
+export const SETTINGS_VERSION = 8;
 
 // Settings that were added/changed in each version and need to be reset to defaults
 export const SETTINGS_MIGRATIONS: Record<number, (keyof AppSettings)[]> = {
@@ -147,6 +150,10 @@ export const SETTINGS_MIGRATIONS: Record<number, (keyof AppSettings)[]> = {
   7: [
     'preferredShell',
     'customShells',
+  ],
+  // Version 8: Added text editor setting
+  8: [
+    'preferredTextEditor',
   ],
 };
 

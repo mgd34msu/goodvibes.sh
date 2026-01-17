@@ -17,4 +17,8 @@ export const terminalApi = {
     ipcRenderer.invoke('kill-terminal', id),
   getTerminals: () =>
     ipcRenderer.invoke('get-terminals'),
+  getAvailableEditors: () =>
+    ipcRenderer.invoke('get-available-editors') as Promise<Array<{ name: string; command: string; available: boolean }>>,
+  getDefaultEditor: () =>
+    ipcRenderer.invoke('get-default-editor') as Promise<string | null>,
 };
