@@ -217,19 +217,41 @@ export function TerminalInstance({ id, zoomLevel, isActive }: TerminalInstancePr
       if (data.id === id && terminalRef.current) {
         const terminal = terminalRef.current;
         terminal.write(data.data);
-        // Always scroll to bottom after write
-        terminal.scrollToBottom();
+        // Only auto-scroll if user hasn't manually scrolled up
+        // This prevents cursor jumping during status line updates
+        if (!isUserScrolledUp) {
+          terminal.scrollToBottom();
+        }
       }
     };
 
     const cleanup = window.goodvibes.onTerminalData(handleData);
     return cleanup;
-  }, [id]);
+  }, [id, isUserScrolledUp]);
 
-  // Handle resize
+  // Handle resize with debounce to prevent cursor jumping during rapid resizes
   useEffect(() => {
+    let resizeTimeout: ReturnType<typeof setTimeout> | null = null;
+    let rafId: number | null = null;
+
     const handleResize = () => {
-      fitAddonRef.current?.fit();
+      // Cancel any pending resize
+      if (resizeTimeout) {
+        clearTimeout(resizeTimeout);
+      }
+      if (rafId) {
+        cancelAnimationFrame(rafId);
+      }
+
+      // Debounce resize to prevent cursor position corruption
+      resizeTimeout = setTimeout(() => {
+        // Use requestAnimationFrame to ensure DOM is stable
+        rafId = requestAnimationFrame(() => {
+          if (fitAddonRef.current && terminalRef.current) {
+            fitAddonRef.current.fit();
+          }
+        });
+      }, 100); // 100ms debounce
     };
 
     const resizeObserver = new ResizeObserver(handleResize);
@@ -237,15 +259,28 @@ export function TerminalInstance({ id, zoomLevel, isActive }: TerminalInstancePr
       resizeObserver.observe(containerRef.current);
     }
 
-    return () => resizeObserver.disconnect();
+    return () => {
+      if (resizeTimeout) {
+        clearTimeout(resizeTimeout);
+      }
+      if (rafId) {
+        cancelAnimationFrame(rafId);
+      }
+      resizeObserver.disconnect();
+    };
   }, []);
 
-  // Handle zoom
+  // Handle zoom with debounce to prevent cursor jumping
   useEffect(() => {
     if (terminalRef.current) {
       terminalRef.current.options.fontSize = Math.round(14 * (zoomLevel / 100));
-      fitAddonRef.current?.fit();
+      // Debounce fit to prevent cursor position corruption during zoom
+      const timeout = setTimeout(() => {
+        fitAddonRef.current?.fit();
+      }, 50);
+      return () => clearTimeout(timeout);
     }
+    return undefined;
   }, [zoomLevel]);
 
   // Handle theme change
