@@ -71,7 +71,7 @@ export default function TerminalView() {
             )}
 
             {/* Main Terminal Area */}
-            <div className="flex-1 relative bg-surface-950">
+            <div className="flex-1 min-w-0 relative bg-surface-950 overflow-hidden">
               {terminals.map((terminal) => (
                 <div
                   key={terminal.id}
