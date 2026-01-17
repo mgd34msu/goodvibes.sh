@@ -30,6 +30,7 @@ export default function TerminalView() {
   const terminalsMap = useTerminalStore((s) => s.terminals);
   const terminals = useMemo(() => Array.from(terminalsMap.values()), [terminalsMap]);
   const activeTerminalId = useTerminalStore((s) => s.activeTerminalId);
+  const setActiveTerminal = useTerminalStore((s) => s.setActiveTerminal);
   const zoomLevel = useTerminalStore((s) => s.zoomLevel);
   const createPlainTerminal = useTerminalStore((s) => s.createPlainTerminal);
   const createTerminal = useTerminalStore((s) => s.createTerminal);
@@ -58,6 +59,24 @@ export default function TerminalView() {
       // Ignore errors
     });
   }, []);
+
+  // Handle focus management on mount/unmount
+  // On mount: if terminals exist but none is active, activate the first one
+  // On unmount: clear active terminal so returning triggers a proper focus transition
+  useEffect(() => {
+    // On mount: activate first terminal if none is active
+    if (terminals.length > 0 && activeTerminalId === null) {
+      const firstTerminal = terminals[0];
+      if (firstTerminal) {
+        setActiveTerminal(firstTerminal.id);
+      }
+    }
+
+    // On unmount: clear active terminal
+    return () => {
+      setActiveTerminal(null);
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const hasTerminals = terminals.length > 0;
   const activeTerminal = activeTerminalId ? terminalsMap.get(activeTerminalId) : undefined;
@@ -95,7 +114,7 @@ export default function TerminalView() {
       />
 
       {/* Terminal Content */}
-      <div className="flex-1 flex overflow-x-clip overflow-y-auto">
+      <div className="flex-1 flex overflow-y-auto">
         {hasTerminals ? (
           <>
             {/* Git Panel - Left Position */}
@@ -104,7 +123,7 @@ export default function TerminalView() {
             )}
 
             {/* Main Terminal Area */}
-            <div className="flex-1 min-w-0 relative bg-surface-950 flex-wrap">
+            <div className="flex-1 min-w-0 relative bg-surface-950 overflow-x-clip overflow-y-auto">
               {terminals.map((terminal) => (
                 <div
                   key={terminal.id}

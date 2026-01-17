@@ -68,6 +68,29 @@ export function TerminalInstance({ id, zoomLevel, isActive }: TerminalInstancePr
     [theme]
   );
 
+  // Reusable function to reinitialize terminal state (called on mount and when becoming active)
+  const reinitTerminal = useCallback(() => {
+    const terminal = terminalRef.current;
+    const fitAddon = fitAddonRef.current;
+
+    if (!terminal || !fitAddon) return;
+
+    // 1. Fit terminal to container
+    fitAddon.fit();
+
+    // 2. Force full terminal refresh/redraw
+    terminal.refresh(0, terminal.rows - 1);
+
+    // 3. Send resize to PTY
+    window.goodvibes.terminalResize(id, terminal.cols, terminal.rows);
+
+    // 4. Focus the terminal
+    terminal.focus();
+
+    // 5. Scroll to bottom
+    terminal.scrollToBottom();
+  }, [id]);
+
   // Copy selected text from terminal
   const copySelection = useCallback(() => {
     const terminal = terminalRef.current;
@@ -154,10 +177,11 @@ export function TerminalInstance({ id, zoomLevel, isActive }: TerminalInstancePr
     terminalRef.current = terminal;
     fitAddonRef.current = fitAddon;
 
-    // Initial resize
-    const cols = terminal.cols;
-    const rows = terminal.rows;
-    window.goodvibes.terminalResize(id, cols, rows);
+    // Run full reinit (fit, refresh, resize, focus, scroll)
+    // Use setTimeout to ensure DOM is ready
+    setTimeout(() => {
+      reinitTerminal();
+    }, 0);
 
     return () => {
       terminal.dispose();
@@ -291,15 +315,43 @@ export function TerminalInstance({ id, zoomLevel, isActive }: TerminalInstancePr
     }
   }, [xtermTheme]);
 
-  // Focus terminal when it becomes active (with 500ms delay)
+  // Reinit terminal when it becomes active (with 500ms delay to let DOM settle)
   useEffect(() => {
     if (isActive && terminalRef.current) {
       const timeout = setTimeout(() => {
-        terminalRef.current?.focus();
+        reinitTerminal();
       }, 500);
       return () => clearTimeout(timeout);
     }
     return undefined;
+  }, [isActive, reinitTerminal]);
+
+  // Re-focus terminal when window regains focus (handles returning from other apps)
+  useEffect(() => {
+    if (!isActive) return;
+
+    const handleWindowFocus = () => {
+      // Small delay to let the DOM settle after focus change
+      setTimeout(() => {
+        if (isActive && terminalRef.current) {
+          terminalRef.current.focus();
+        }
+      }, 50);
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        handleWindowFocus();
+      }
+    };
+
+    window.addEventListener('focus', handleWindowFocus);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener('focus', handleWindowFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [isActive]);
 
   return (
