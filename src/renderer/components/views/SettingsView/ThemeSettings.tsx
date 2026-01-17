@@ -99,6 +99,35 @@ function ThemeCard({
 }
 
 /**
+ * Collapsed preview showing current theme with mini color swatches
+ */
+function CollapsedThemePreview({ theme }: { theme: Theme }) {
+  const colors = theme.colors.terminal;
+  return (
+    <div className="flex items-center justify-between px-5 py-4">
+      <div className="flex items-center gap-3">
+        <div className="flex gap-0.5">
+          {[colors.red, colors.green, colors.blue, colors.yellow, colors.magenta, colors.cyan].map(
+            (color, i) => (
+              <div
+                key={i}
+                className="w-3 h-3 rounded-sm"
+                style={{ backgroundColor: color }}
+              />
+            )
+          )}
+        </div>
+        <div>
+          <span className="text-sm font-medium text-surface-100">{theme.name}</span>
+          <span className="text-xs text-surface-500 ml-2">({theme.variant})</span>
+        </div>
+      </div>
+      <span className="text-xs text-surface-500">Click to expand</span>
+    </div>
+  );
+}
+
+/**
  * ThemeSettings - Main theme selection component
  *
  * Displays a grid of available themes with:
@@ -110,6 +139,7 @@ function ThemeCard({
 export function ThemeSettings({ settings, onChange }: ThemeSettingsProps) {
   const { dark: darkThemes, light: lightThemes } = getThemesByVariant();
   const currentThemeId = settings.colorTheme;
+  const currentTheme = getAllThemes().find((t) => t.id === currentThemeId);
 
   const handleThemeSelect = (themeId: ThemeId, theme: Theme) => {
     // Update the setting
@@ -119,7 +149,18 @@ export function ThemeSettings({ settings, onChange }: ThemeSettingsProps) {
   };
 
   return (
-    <SettingsSection title="Color Theme">
+    <SettingsSection
+      title="Color Theme"
+      collapsible
+      defaultExpanded={false}
+      collapsedPreview={
+        currentTheme ? (
+          <CollapsedThemePreview theme={currentTheme} />
+        ) : (
+          <div className="px-5 py-4 text-sm text-surface-500">No theme selected</div>
+        )
+      }
+    >
       <div className="p-4 space-y-6">
         {/* Theme count summary */}
         <div className="text-xs text-surface-400">
@@ -172,14 +213,11 @@ export function ThemeSettings({ settings, onChange }: ThemeSettingsProps) {
           <h3 className="text-xs font-semibold text-surface-400 uppercase tracking-wider">
             Current Theme Preview
           </h3>
-          {(() => {
-            const currentTheme = getAllThemes().find((t) => t.id === currentThemeId);
-            return currentTheme ? (
-              <ThemePreview theme={currentTheme} />
-            ) : (
-              <p className="text-xs text-surface-500">No theme selected</p>
-            );
-          })()}
+          {currentTheme ? (
+            <ThemePreview theme={currentTheme} />
+          ) : (
+            <p className="text-xs text-surface-500">No theme selected</p>
+          )}
         </div>
       </div>
     </SettingsSection>

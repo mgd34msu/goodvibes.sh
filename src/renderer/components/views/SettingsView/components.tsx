@@ -2,6 +2,7 @@
 // SETTINGS VIEW - SHARED COMPONENTS
 // ============================================================================
 
+import { useState, useRef, useEffect } from 'react';
 import { clsx } from 'clsx';
 
 // ============================================================================
@@ -11,18 +12,85 @@ import { clsx } from 'clsx';
 interface SettingsSectionProps {
   title: string;
   children: React.ReactNode;
+  /** When true, section is collapsible with expand/collapse toggle */
+  collapsible?: boolean;
+  /** Initial expanded state when collapsible (default: false) */
+  defaultExpanded?: boolean;
+  /** Optional compact preview shown when collapsed */
+  collapsedPreview?: React.ReactNode;
 }
 
-export function SettingsSection({ title, children }: SettingsSectionProps) {
+export function SettingsSection({
+  title,
+  children,
+  collapsible = false,
+  defaultExpanded = false,
+  collapsedPreview,
+}: SettingsSectionProps) {
+  const [isExpanded, setIsExpanded] = useState(defaultExpanded);
+  const sectionRef = useRef<HTMLDivElement>(null);
+
+  // Close on click outside when expanded
+  useEffect(() => {
+    if (!collapsible || !isExpanded) return;
+
+    const handleClickOutside = (event: MouseEvent) => {
+      if (sectionRef.current && !sectionRef.current.contains(event.target as Node)) {
+        setIsExpanded(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [collapsible, isExpanded]);
+
+  const handleToggle = () => {
+    if (collapsible) {
+      setIsExpanded(!isExpanded);
+    }
+  };
+
   return (
-    <div className="space-y-3">
-      <div className="flex items-center gap-2">
+    <div ref={sectionRef} className="space-y-3">
+      <button
+        type="button"
+        onClick={handleToggle}
+        disabled={!collapsible}
+        className={clsx(
+          'flex items-center gap-2 w-full text-left',
+          collapsible && 'cursor-pointer hover:opacity-80 transition-opacity'
+        )}
+      >
+        {collapsible && (
+          <svg
+            className={clsx(
+              'w-4 h-4 text-surface-400 transition-transform duration-200',
+              isExpanded && 'rotate-90'
+            )}
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+          </svg>
+        )}
         <h2 className="text-xs font-semibold text-surface-400 uppercase tracking-wider">{title}</h2>
         <div className="flex-1 h-px bg-gradient-to-r from-surface-700 to-transparent" />
-      </div>
-      <div className="card-elevated rounded-xl divide-y divide-surface-700/50 overflow-hidden">
-        {children}
-      </div>
+      </button>
+      {collapsible && !isExpanded ? (
+        <button
+          type="button"
+          onClick={handleToggle}
+          className="w-full text-left card-elevated rounded-xl overflow-hidden cursor-pointer hover:bg-surface-800/50 transition-colors"
+        >
+          {collapsedPreview}
+        </button>
+      ) : (
+        <div className="card-elevated rounded-xl divide-y divide-surface-700/50 overflow-hidden">
+          {children}
+        </div>
+      )}
     </div>
   );
 }
