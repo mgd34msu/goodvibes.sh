@@ -9,6 +9,12 @@ import { useAppStore } from '../../stores/appStore';
 import { useSettingsStore } from '../../stores/settingsStore';
 import type { TerminalHeaderProps } from './types';
 
+interface RecentSession {
+  sessionId: string;
+  cwd: string;
+  firstPrompt?: string;
+}
+
 // ============================================================================
 // COMPONENT
 // ============================================================================
@@ -20,9 +26,12 @@ export function TerminalHeader({ showGitPanel, onToggleGitPanel, hasActiveSessio
   const setActiveTerminal = useTerminalStore((s) => s.setActiveTerminal);
   const closeTerminal = useTerminalStore((s) => s.closeTerminal);
   const createPlainTerminal = useTerminalStore((s) => s.createPlainTerminal);
+  const createTerminal = useTerminalStore((s) => s.createTerminal);
   const openFolderPicker = useAppStore((s) => s.openFolderPicker);
+  const openTextEditorPicker = useAppStore((s) => s.openTextEditorPicker);
   const projectsRoot = useSettingsStore((s) => s.settings.projectsRoot);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [recentSession, setRecentSession] = useState<RecentSession | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Close dropdown when clicking outside
@@ -34,6 +43,21 @@ export function TerminalHeader({ showGitPanel, onToggleGitPanel, hasActiveSessio
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Load most recent session for quick restart
+  useEffect(() => {
+    window.goodvibes.getMostRecentSession().then(session => {
+      if (session) {
+        setRecentSession({
+          sessionId: session.sessionId,
+          cwd: session.cwd,
+          firstPrompt: session.firstPrompt,
+        });
+      }
+    }).catch(() => {
+      // Ignore errors
+    });
   }, []);
 
   const handleNewClaudeSession = useCallback(() => {
@@ -55,6 +79,18 @@ export function TerminalHeader({ showGitPanel, onToggleGitPanel, hasActiveSessio
       await createPlainTerminal(cwd);
     }
   }, [createPlainTerminal, projectsRoot]);
+
+  const handleOpenTextEditor = useCallback(() => {
+    setIsDropdownOpen(false);
+    openTextEditorPicker();
+  }, [openTextEditorPicker]);
+
+  const handleQuickRestart = useCallback(async () => {
+    setIsDropdownOpen(false);
+    if (recentSession) {
+      await createTerminal(recentSession.cwd, undefined, recentSession.sessionId);
+    }
+  }, [createTerminal, recentSession]);
 
   return (
     <div className="panel-header flex items-center gap-4 px-4 py-3">
@@ -169,6 +205,46 @@ export function TerminalHeader({ showGitPanel, onToggleGitPanel, hasActiveSessio
               </button>
 
               <div className="divider-gradient my-1 mx-3" />
+
+              <button
+                onClick={handleQuickRestart}
+                disabled={!recentSession}
+                className={clsx(
+                  'dropdown-item-premium flex items-center gap-3 w-full px-4 py-3 text-left rounded-lg',
+                  !recentSession && 'opacity-50 cursor-not-allowed'
+                )}
+                role="menuitem"
+              >
+                <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-gradient-to-br from-accent-500/20 to-accent-600/10 flex items-center justify-center">
+                  <svg className="w-5 h-5 text-accent-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="font-medium text-surface-100">Quick Restart</div>
+                  <div className="text-xs text-surface-500 truncate">
+                    {recentSession?.firstPrompt ? recentSession.firstPrompt.slice(0, 30) + (recentSession.firstPrompt.length > 30 ? '...' : '') : 'No recent session'}
+                  </div>
+                </div>
+              </button>
+
+              <div className="divider-gradient my-1 mx-3" />
+
+              <button
+                onClick={handleOpenTextEditor}
+                className="dropdown-item-premium flex items-center gap-3 w-full px-4 py-3 text-left rounded-lg"
+                role="menuitem"
+              >
+                <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-gradient-to-br from-warning-500/20 to-warning-600/10 flex items-center justify-center">
+                  <svg className="w-5 h-5 text-warning-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
+                </div>
+                <div>
+                  <div className="font-medium text-surface-100">Text Editor</div>
+                  <div className="text-xs text-surface-500">Open nvim/vim/editor</div>
+                </div>
+              </button>
 
               <button
                 onClick={handleNewTerminal}

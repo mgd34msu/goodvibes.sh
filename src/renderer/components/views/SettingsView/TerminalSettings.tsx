@@ -142,6 +142,12 @@ function CustomShellModal({ isOpen, onConfirm, onCancel, isWindows }: CustomShel
 // TERMINAL SETTINGS COMPONENT
 // ============================================================================
 
+interface TextEditorInfo {
+  name: string;
+  command: string;
+  available: boolean;
+}
+
 interface TerminalSettingsProps {
   settings: AppSettings;
   onChange: <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => void;
@@ -150,11 +156,19 @@ interface TerminalSettingsProps {
 export function TerminalSettings({ settings, onChange }: TerminalSettingsProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [platform, setPlatform] = useState<NodeJS.Platform>('win32');
+  const [availableEditors, setAvailableEditors] = useState<TextEditorInfo[]>([]);
 
   useEffect(() => {
     // Get the platform from preload
     const detectedPlatform = window.goodvibes.getPlatform();
     setPlatform(detectedPlatform);
+
+    // Get available text editors
+    window.goodvibes.getAvailableEditors().then(editors => {
+      setAvailableEditors(editors);
+    }).catch(() => {
+      // Ignore errors
+    });
   }, []);
 
   const isWindows = platform === 'win32';
@@ -211,6 +225,19 @@ export function TerminalSettings({ settings, onChange }: TerminalSettingsProps) 
     ? 'Shell used for new terminal windows (uses COMSPEC if not set)'
     : 'Shell used for new terminal windows (uses SHELL if not set)';
 
+  // Handler for text editor selection change
+  const handleEditorChange = (value: string) => {
+    if (value === '') {
+      // "Auto-detect" selected
+      onChange('preferredTextEditor', null);
+    } else {
+      onChange('preferredTextEditor', value);
+    }
+  };
+
+  // Get the available editors for the dropdown
+  const editorOptions = availableEditors.filter(e => e.available);
+
   return (
     <>
       <SettingsSection title="Terminal">
@@ -230,6 +257,24 @@ export function TerminalSettings({ settings, onChange }: TerminalSettingsProps) 
               </option>
             ))}
             <option value={ADD_CUSTOM_VALUE}>+ Add custom...</option>
+          </select>
+        </SettingRow>
+
+        <SettingRow
+          label="Default Text Editor"
+          description="Text editor to use when opening a text editor from the menu"
+        >
+          <select
+            value={settings.preferredTextEditor || ''}
+            onChange={(e) => handleEditorChange(e.target.value)}
+            className="select w-64"
+          >
+            <option value="">Auto-detect (first available)</option>
+            {editorOptions.map((editor) => (
+              <option key={editor.command} value={editor.command}>
+                {editor.name} ({editor.command})
+              </option>
+            ))}
           </select>
         </SettingRow>
       </SettingsSection>

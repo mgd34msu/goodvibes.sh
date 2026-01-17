@@ -2,7 +2,7 @@
 // TERMINAL VIEW - Premium main orchestrator component
 // ============================================================================
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { clsx } from 'clsx';
 import { useTerminalStore } from '../../stores/terminalStore';
 import { useAppStore } from '../../stores/appStore';
@@ -13,7 +13,14 @@ import { TerminalInstance } from './TerminalInstance';
 import { TerminalFooter } from './TerminalFooter';
 import { EmptyState } from './EmptyState';
 import { FolderPickerModal } from './FolderPickerModal';
+import { TextEditorPickerModal } from './TextEditorPickerModal';
 import { GitPanel } from '../git';
+
+interface RecentSession {
+  sessionId: string;
+  cwd: string;
+  firstPrompt?: string;
+}
 
 // ============================================================================
 // COMPONENT
@@ -25,13 +32,32 @@ export default function TerminalView() {
   const activeTerminalId = useTerminalStore((s) => s.activeTerminalId);
   const zoomLevel = useTerminalStore((s) => s.zoomLevel);
   const createPlainTerminal = useTerminalStore((s) => s.createPlainTerminal);
+  const createTerminal = useTerminalStore((s) => s.createTerminal);
   const gitPanelPosition = useSettingsStore((s) => s.settings.gitPanelPosition);
   const projectsRoot = useSettingsStore((s) => s.settings.projectsRoot);
 
   const openFolderPicker = useAppStore((s) => s.openFolderPicker);
+  const openTextEditorPicker = useAppStore((s) => s.openTextEditorPicker);
+
+  const [recentSession, setRecentSession] = useState<RecentSession | null>(null);
 
   // Default to showing git panel when there's an active terminal session
   const [showGitPanel, setShowGitPanel] = useState(true);
+
+  // Load most recent session for quick restart
+  useEffect(() => {
+    window.goodvibes.getMostRecentSession().then(session => {
+      if (session) {
+        setRecentSession({
+          sessionId: session.sessionId,
+          cwd: session.cwd,
+          firstPrompt: session.firstPrompt,
+        });
+      }
+    }).catch(() => {
+      // Ignore errors
+    });
+  }, []);
 
   const hasTerminals = terminals.length > 0;
   const activeTerminal = activeTerminalId ? terminalsMap.get(activeTerminalId) : undefined;
@@ -51,6 +77,13 @@ export default function TerminalView() {
       await createPlainTerminal(cwd);
     }
   }, [createPlainTerminal, projectsRoot]);
+
+  // Handler for quick restart of most recent session
+  const handleQuickRestart = useCallback(async () => {
+    if (recentSession) {
+      await createTerminal(recentSession.cwd, undefined, recentSession.sessionId);
+    }
+  }, [createTerminal, recentSession]);
 
   return (
     <div className="flex flex-col h-full bg-surface-950">
@@ -107,6 +140,8 @@ export default function TerminalView() {
           <EmptyState
             onNewSession={openFolderPicker}
             onNewTerminal={handleOpenTerminal}
+            onOpenTextEditor={openTextEditorPicker}
+            onQuickRestart={handleQuickRestart}
           />
         )}
       </div>
@@ -116,6 +151,9 @@ export default function TerminalView() {
 
       {/* Folder Picker Modal */}
       <FolderPickerModal />
+
+      {/* Text Editor Picker Modal */}
+      <TextEditorPickerModal />
     </div>
   );
 }

@@ -3,6 +3,9 @@
 // ============================================================================
 
 import { ipcMain } from 'electron';
+import * as fs from 'fs';
+import * as path from 'path';
+import * as os from 'os';
 import { Logger } from '../../services/logger.js';
 import { withContext } from '../utils.js';
 import { getSessionManager } from '../../services/sessionManager.js';
@@ -12,6 +15,121 @@ import { getDatabase } from '../../database/connection.js';
 import { type SessionRow } from '../../database/mappers.js';
 
 const logger = new Logger('IPC:Sessions');
+
+// Helper to find the most recent session from the user's ~/.claude/projects/ directory
+interface ClaudeSessionFile {
+  sessionId: string;
+  projectPath: string;
+  filePath: string;
+  modifiedTime: Date;
+  firstPrompt?: string;
+}
+
+function findMostRecentClaudeSession(): ClaudeSessionFile | null {
+  const claudeDir = path.join(os.homedir(), '.claude', 'projects');
+
+  if (!fs.existsSync(claudeDir)) {
+    logger.debug('Claude projects directory not found', { claudeDir });
+    return null;
+  }
+
+  let mostRecent: ClaudeSessionFile | null = null;
+
+  try {
+    // Get all project directories
+    const projectDirs = fs.readdirSync(claudeDir, { withFileTypes: true })
+      .filter(d => d.isDirectory())
+      .map(d => path.join(claudeDir, d.name));
+
+    for (const projectDir of projectDirs) {
+      // Get all .jsonl files (session files) in the project directory
+      const sessionFiles = fs.readdirSync(projectDir, { withFileTypes: true })
+        .filter(f => f.isFile() && f.name.endsWith('.jsonl') && !f.name.startsWith('agent-'))
+        .map(f => {
+          const filePath = path.join(projectDir, f.name);
+          const stats = fs.statSync(filePath);
+          return {
+            name: f.name,
+            filePath,
+            modifiedTime: stats.mtime,
+          };
+        });
+
+      for (const file of sessionFiles) {
+        if (!mostRecent || file.modifiedTime > mostRecent.modifiedTime) {
+          // Extract session ID from filename (remove .jsonl extension)
+          const sessionId = file.name.replace('.jsonl', '');
+
+          // Extract project path from directory name
+          // Directory format: C--Users-buzzkill-Documents-project -> C:\Users\buzzkill\Documents\project
+          const projectDirName = path.basename(projectDir);
+          let projectPath = projectDirName;
+
+          // Try to reconstruct the original path
+          // Format is drive letter followed by dashes for separators
+          if (process.platform === 'win32') {
+            // Windows: C--Users-... -> C:\Users\...
+            const match = projectDirName.match(/^([A-Z])--(.*)/);
+            if (match) {
+              projectPath = match[1] + ':\\' + match[2].replace(/-/g, '\\');
+            }
+          } else {
+            // Unix: -home-user-... -> /home/user/...
+            if (projectDirName.startsWith('-')) {
+              projectPath = projectDirName.replace(/-/g, '/');
+            }
+          }
+
+          // Try to read the first user prompt from the session file
+          let firstPrompt: string | undefined;
+          try {
+            const content = fs.readFileSync(file.filePath, 'utf-8');
+            const lines = content.split('\n').filter(l => l.trim());
+            for (const line of lines) {
+              try {
+                const entry = JSON.parse(line);
+                if (entry.type === 'human' || entry.type === 'user') {
+                  // Extract the text content
+                  if (typeof entry.message === 'string') {
+                    firstPrompt = entry.message.slice(0, 100);
+                    break;
+                  } else if (entry.message?.content) {
+                    if (typeof entry.message.content === 'string') {
+                      firstPrompt = entry.message.content.slice(0, 100);
+                      break;
+                    } else if (Array.isArray(entry.message.content)) {
+                      const textBlock = entry.message.content.find((b: { type: string }) => b.type === 'text');
+                      if (textBlock?.text) {
+                        firstPrompt = textBlock.text.slice(0, 100);
+                        break;
+                      }
+                    }
+                  }
+                }
+              } catch {
+                // Skip invalid JSON lines
+              }
+            }
+          } catch {
+            // Ignore read errors
+          }
+
+          mostRecent = {
+            sessionId,
+            projectPath,
+            filePath: file.filePath,
+            modifiedTime: file.modifiedTime,
+            firstPrompt,
+          };
+        }
+      }
+    }
+  } catch (error) {
+    logger.error('Error scanning Claude sessions directory', { error });
+  }
+
+  return mostRecent;
+}
 
 // Helper to get sessions from the main sessions table for a project
 function getSessionsFromMainTable(projectPath: string, limit: number) {
@@ -162,52 +280,31 @@ export function registerSessionHandlers(): void {
   }));
 
   // Get most recent session for quick restart
+  // Scans the user's ~/.claude/projects/ directory for the most recently modified session file
   ipcMain.handle('session:getMostRecent', withContext('session:getMostRecent', async () => {
-    // Try session_summaries table first
-    try {
-      const summaries = sessionSummaries.getRecentSessions(1);
-      if (summaries.length > 0) {
-        const s = summaries[0];
-        return {
-          sessionId: s.sessionId,
-          cwd: s.projectPath,
-          messageCount: s.toolCalls ?? 0,
-          costUsd: s.costUsd ?? 0,
-          startedAt: s.startedAt,
-          lastActive: s.endedAt ?? s.startedAt,
-          firstPrompt: s.title ?? s.lastPrompt ?? undefined,
-        };
-      }
-    } catch (error) {
-      logger.debug('session_summaries table not available for getMostRecent', { error });
+    // Scan the user's Claude sessions directory directly
+    const mostRecent = findMostRecentClaudeSession();
+
+    if (mostRecent) {
+      logger.debug('Found most recent Claude session', {
+        sessionId: mostRecent.sessionId,
+        projectPath: mostRecent.projectPath,
+        modifiedTime: mostRecent.modifiedTime.toISOString(),
+      });
+
+      return {
+        sessionId: mostRecent.sessionId,
+        cwd: mostRecent.projectPath,
+        messageCount: 0, // Not available from file scan
+        costUsd: 0, // Not available from file scan
+        startedAt: mostRecent.modifiedTime.toISOString(),
+        lastActive: mostRecent.modifiedTime.toISOString(),
+        firstPrompt: mostRecent.firstPrompt,
+      };
     }
 
-    // Fallback to main sessions table
-    const database = getDatabase();
-    const row = database.prepare(`
-      SELECT * FROM sessions
-      WHERE (archived = 0 OR archived IS NULL)
-        AND id NOT LIKE 'agent-%'
-        AND message_count > 0
-      ORDER BY start_time DESC
-      LIMIT 1
-    `).get() as SessionRow | undefined;
-
-    if (!row) return null;
-
-    // Get the project path from project_name (reverse the normalization)
-    // This is a best-effort conversion - the original path format may vary
-    const projectPath = row.project_name ?? '';
-
-    return {
-      sessionId: row.id,
-      cwd: projectPath,
-      messageCount: row.message_count ?? 0,
-      costUsd: row.cost ?? 0,
-      startedAt: row.start_time ?? new Date().toISOString(),
-      lastActive: row.end_time ?? row.start_time ?? new Date().toISOString(),
-      firstPrompt: row.summary ?? undefined,
-    };
+    logger.debug('No recent Claude sessions found in ~/.claude/projects/');
+    return null;
   }));
 
   logger.info('Session handlers registered');

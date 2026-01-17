@@ -10,6 +10,8 @@ export const projectsApi = {
   // ============================================================================
   selectFolder: () =>
     ipcRenderer.invoke('select-folder'),
+  selectFile: () =>
+    ipcRenderer.invoke('select-file'),
   createFolder: () =>
     ipcRenderer.invoke('create-folder'),
   openInExplorer: (folderPath: string) =>

@@ -33,6 +33,11 @@ interface AppState {
   openFolderPicker: () => void;
   closeFolderPicker: () => void;
 
+  // Text editor picker
+  isTextEditorPickerOpen: boolean;
+  openTextEditorPicker: () => void;
+  closeTextEditorPicker: () => void;
+
   // Active modal
   activeModal: string | null;
   openModal: (modalId: string) => void;
@@ -67,6 +72,11 @@ export const useAppStore = create<AppState>((set) => ({
   isFolderPickerOpen: false,
   openFolderPicker: () => set({ isFolderPickerOpen: true }),
   closeFolderPicker: () => set({ isFolderPickerOpen: false }),
+
+  // Text editor picker
+  isTextEditorPickerOpen: false,
+  openTextEditorPicker: () => set({ isTextEditorPickerOpen: true }),
+  closeTextEditorPicker: () => set({ isTextEditorPickerOpen: false }),
 
   // Active modal
   activeModal: null,

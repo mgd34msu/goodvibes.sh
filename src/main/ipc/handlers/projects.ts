@@ -28,6 +28,13 @@ export function registerProjectsHandlers(): void {
     return result.canceled ? null : result.filePaths[0];
   }));
 
+  ipcMain.handle('select-file', withContext('select-file', async () => {
+    const result = await dialog.showOpenDialog({
+      properties: ['openFile'],
+    });
+    return result.canceled ? null : result.filePaths[0];
+  }));
+
   ipcMain.handle('create-folder', withContext('create-folder', async () => {
     const result = await dialog.showSaveDialog({
       title: 'Create New Project Folder',
