@@ -118,7 +118,7 @@ export function useGitState(cwd: string) {
 
     const startInterval = () => {
       if (interval) clearInterval(interval);
-      interval = setInterval(fetchGitInfo, 30000); // 30 seconds, not 3
+      interval = setInterval(fetchGitInfo, 60000); // 60 seconds
     };
 
     const stopInterval = () => {

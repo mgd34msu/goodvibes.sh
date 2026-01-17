@@ -90,7 +90,7 @@ export async function gitBranches(cwd: string): Promise<{ success: boolean; bran
     }
   }
 
-  logger.info(`gitBranches: returning ${branches.length} total branches`);
+  logger.debug(`gitBranches: returning ${branches.length} total branches`);
 
   return { success: true, branches };
 }
