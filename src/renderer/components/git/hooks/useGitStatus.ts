@@ -10,34 +10,35 @@ const logger = createLogger('useGitStatus');
 
 /**
  * Hook for managing Git staging and status operations
+ * Uses fetchLocalGitInfo for local-only operations (staging, unstaging, discard)
  */
 export function useGitStatus({
   cwd,
   state,
   setState,
-  fetchGitInfo,
+  fetchLocalGitInfo,
 }: GitHookBaseProps): UseGitStatusReturn {
   const handleStage = useCallback(async (files: string[]) => {
     setState(prev => ({ ...prev, operationInProgress: 'staging' }));
     try {
       await window.goodvibes.gitStage(cwd, files);
-      await fetchGitInfo();
+      await fetchLocalGitInfo();
     } catch (err) {
       logger.error('Failed to stage files:', err);
     }
     setState(prev => ({ ...prev, operationInProgress: null }));
-  }, [cwd, fetchGitInfo, setState]);
+  }, [cwd, fetchLocalGitInfo, setState]);
 
   const handleUnstage = useCallback(async (files: string[]) => {
     setState(prev => ({ ...prev, operationInProgress: 'unstaging' }));
     try {
       await window.goodvibes.gitUnstage(cwd, files);
-      await fetchGitInfo();
+      await fetchLocalGitInfo();
     } catch (err) {
       logger.error('Failed to unstage files:', err);
     }
     setState(prev => ({ ...prev, operationInProgress: null }));
-  }, [cwd, fetchGitInfo, setState]);
+  }, [cwd, fetchLocalGitInfo, setState]);
 
   const handleStageAll = useCallback(async () => {
     const allFiles = [...state.unstaged.map(f => f.file), ...state.untracked.map(f => f.file)];
@@ -62,12 +63,12 @@ export function useGitStatus({
       } else {
         await window.goodvibes.gitDiscardChanges(cwd, [file]);
       }
-      await fetchGitInfo();
+      await fetchLocalGitInfo();
     } catch (err) {
       logger.error('Failed to discard changes:', err);
     }
     setState(prev => ({ ...prev, operationInProgress: null }));
-  }, [cwd, fetchGitInfo, setState]);
+  }, [cwd, fetchLocalGitInfo, setState]);
 
   return {
     handleStage,

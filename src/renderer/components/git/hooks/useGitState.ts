@@ -3,7 +3,7 @@
 // Composes focused hooks for different Git operations
 // ============================================================================
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSettingsStore } from '../../../stores/settingsStore';
 import {
   GitPanelState,
@@ -28,9 +28,10 @@ export { formatRelativeTime };
 export function useGitState(cwd: string) {
   const gitAutoRefresh = useSettingsStore((s) => s.settings.gitAutoRefresh);
   const [state, setState] = useState<GitPanelState>(initialGitPanelState);
+  const lastRemoteFetchRef = useRef<number>(0);
 
-  // Fetch all git information
-  const fetchGitInfo = useCallback(async () => {
+  // Fetch LOCAL git information only (no remote calls)
+  const fetchLocalGitInfo = useCallback(async () => {
     if (!cwd) return;
 
     try {
@@ -46,12 +47,11 @@ export function useGitState(cwd: string) {
         return;
       }
 
-      // Fetch all git info in parallel
+      // Fetch only LOCAL git info in parallel (no gitAheadBehind - that's remote)
       const [
         detailedStatus,
         branchesResult,
         commitsResult,
-        aheadBehindResult,
         stashResult,
         mergeInProgress,
         cherryPickInProgress,
@@ -63,7 +63,6 @@ export function useGitState(cwd: string) {
         window.goodvibes.gitDetailedStatus(cwd),
         window.goodvibes.gitBranches(cwd),
         window.goodvibes.gitLogDetailed(cwd, 10),
-        window.goodvibes.gitAheadBehind(cwd),
         window.goodvibes.gitStashList(cwd),
         window.goodvibes.gitMergeInProgress(cwd),
         window.goodvibes.gitCherryPickInProgress(cwd),
@@ -79,10 +78,6 @@ export function useGitState(cwd: string) {
         isLoading: false,
         error: null,
         branch: detailedStatus.branch || 'unknown',
-        ahead: aheadBehindResult.ahead || 0,
-        behind: aheadBehindResult.behind || 0,
-        hasRemote: aheadBehindResult.hasRemote || false,
-        hasUpstream: aheadBehindResult.hasUpstream || false,
         staged: detailedStatus.staged || [],
         unstaged: detailedStatus.unstaged || [],
         untracked: detailedStatus.untracked || [],
@@ -105,12 +100,38 @@ export function useGitState(cwd: string) {
     }
   }, [cwd]);
 
+  // Fetch REMOTE git information (ahead/behind counts)
+  const fetchRemoteGitInfo = useCallback(async () => {
+    if (!cwd || !state.isRepo) return;
+
+    try {
+      const aheadBehindResult = await window.goodvibes.gitAheadBehind(cwd);
+      lastRemoteFetchRef.current = Date.now();
+
+      setState(prev => ({
+        ...prev,
+        ahead: aheadBehindResult.ahead || 0,
+        behind: aheadBehindResult.behind || 0,
+        hasRemote: aheadBehindResult.hasRemote || false,
+        hasUpstream: aheadBehindResult.hasUpstream || false,
+      }));
+    } catch (err) {
+      // Silent fail for remote info - not critical
+    }
+  }, [cwd, state.isRepo]);
+
+  // Fetch ALL git information (local + remote) - used for initial load
+  const fetchGitInfo = useCallback(async () => {
+    await fetchLocalGitInfo();
+    await fetchRemoteGitInfo();
+  }, [fetchLocalGitInfo, fetchRemoteGitInfo]);
+
   // Initial fetch
   useEffect(() => {
     fetchGitInfo();
   }, [fetchGitInfo]);
 
-  // Auto-refresh (every 30 seconds when panel is open and window is focused)
+  // Poll REMOTE info only (ahead/behind) every 5 minutes when window is focused
   useEffect(() => {
     if (!gitAutoRefresh || !state.isRepo) return;
 
@@ -118,7 +139,7 @@ export function useGitState(cwd: string) {
 
     const startInterval = () => {
       if (interval) clearInterval(interval);
-      interval = setInterval(fetchGitInfo, 60000); // 60 seconds
+      interval = setInterval(fetchRemoteGitInfo, 300000); // 5 minutes
     };
 
     const stopInterval = () => {
@@ -145,10 +166,12 @@ export function useGitState(cwd: string) {
       window.removeEventListener('focus', handleFocus);
       window.removeEventListener('blur', handleBlur);
     };
-  }, [fetchGitInfo, gitAutoRefresh, state.isRepo]);
+  }, [fetchRemoteGitInfo, gitAutoRefresh, state.isRepo]);
+
+  // Local info is refreshed via git operations - no polling needed
 
   // Base props for hooks
-  const hookProps = { cwd, state, setState, fetchGitInfo };
+  const hookProps = { cwd, state, setState, fetchGitInfo, fetchLocalGitInfo, fetchRemoteGitInfo };
 
   // Compose focused hooks
   const {
@@ -196,7 +219,7 @@ export function useGitState(cwd: string) {
     handleViewFileHistory,
     handleViewBlame,
     handleViewReflog,
-  } = useGitViews({ cwd, state, setState });
+  } = useGitViews(hookProps);
 
   return {
     state,
@@ -205,6 +228,8 @@ export function useGitState(cwd: string) {
     localBranches,
     totalChanges,
     fetchGitInfo,
+    fetchLocalGitInfo,
+    fetchRemoteGitInfo,
     toggleSection,
     formatRelativeTime,
     // Staging operations

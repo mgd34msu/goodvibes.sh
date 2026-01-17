@@ -14,7 +14,7 @@ const logger = createLogger('useGitViews');
 export function useGitViews({
   cwd,
   setState,
-}: Omit<GitHookBaseProps, 'fetchGitInfo'>): UseGitViewsReturn {
+}: Pick<GitHookBaseProps, 'cwd' | 'setState'>): UseGitViewsReturn {
   const handleViewDiff = useCallback(async (file: string, isStaged: boolean = false, commit?: string) => {
     setState(prev => ({
       ...prev,

@@ -17,6 +17,8 @@ export interface GitHookBaseProps {
   state: GitPanelState;
   setState: Dispatch<SetStateAction<GitPanelState>>;
   fetchGitInfo: () => Promise<void>;
+  fetchLocalGitInfo: () => Promise<void>;
+  fetchRemoteGitInfo: () => Promise<void>;
 }
 
 /**
