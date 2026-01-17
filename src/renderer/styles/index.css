@@ -414,11 +414,18 @@ header nav button svg {
 
 .xterm {
   height: 100%;
+  /* Force hardware acceleration to prevent flickering */
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  /* Isolate terminal repaints from affecting other elements */
+  contain: layout style paint;
 }
 
 .xterm-viewport {
   -ms-overflow-style: none;
   scrollbar-width: none;
+  /* Match terminal background to prevent flash during scroll/resize */
+  background-color: #020617 !important;
 }
 
 .xterm .xterm-screen {
