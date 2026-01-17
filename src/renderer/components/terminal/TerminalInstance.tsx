@@ -118,7 +118,7 @@ export function TerminalInstance({ id, zoomLevel, isActive }: TerminalInstancePr
       window.goodvibes.terminalResize(id, cols, rows);
     });
 
-    // Detect when user scrolls manually (debounced to avoid flicker during output)
+    // Detect when user scrolls manually
     const viewportElement = containerRef.current?.querySelector('.xterm-viewport');
     const handleScroll = () => {
       const viewport = terminal.element?.querySelector('.xterm-viewport');
@@ -127,20 +127,8 @@ export function TerminalInstance({ id, zoomLevel, isActive }: TerminalInstancePr
       // Check if scrolled to bottom (with small tolerance for rounding)
       const isAtBottom = viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight < 5;
 
-      // Debounce the scroll-up detection to avoid showing button during rapid output
-      if (scrollDebounceRef.current) {
-        clearTimeout(scrollDebounceRef.current);
-      }
-
-      if (!isAtBottom) {
-        // User scrolled up - show button after a delay (if they stay scrolled up)
-        scrollDebounceRef.current = setTimeout(() => {
-          setIsUserScrolledUp(true);
-        }, 150);
-      } else {
-        // At bottom - immediately hide the button
-        setIsUserScrolledUp(false);
-      }
+      // Set scroll state immediately - no debounce, so auto-scroll is disabled instantly on user scroll
+      setIsUserScrolledUp(!isAtBottom);
     };
 
     if (viewportElement) {
