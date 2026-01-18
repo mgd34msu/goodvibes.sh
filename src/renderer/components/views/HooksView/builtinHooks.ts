@@ -35,7 +35,7 @@ export const CATEGORY_LABELS: Record<BuiltinHook['category'], string> = {
 
 export const BUILT_IN_HOOKS: BuiltinHook[] = [
   // ============================================================================
-  // PreToolUse Hooks - Safety & Validation
+  // SAFETY HOOKS (5)
   // ============================================================================
   {
     id: 'block-dangerous-commands',
@@ -79,6 +79,143 @@ exit 0`,
     tags: ['security', 'bash', 'destructive', 'block'],
   },
   {
+    id: 'block-sensitive-file-access',
+    name: 'Block Sensitive File Access',
+    description: 'Prevents reading or writing sensitive files like .env, credentials, and SSH keys',
+    eventType: 'PreToolUse',
+    matcher: 'Read|Write|Edit',
+    command: `#!/bin/bash
+# Block access to sensitive files
+INPUT=$(cat)
+FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // .tool_input.path // empty')
+
+# Sensitive file patterns
+SENSITIVE_PATTERNS=(
+  ".env"
+  ".env.local"
+  ".env.production"
+  "credentials.json"
+  "secrets.json"
+  ".ssh/id_rsa"
+  ".ssh/id_ed25519"
+  ".aws/credentials"
+  ".npmrc"
+  ".pypirc"
+)
+
+for pattern in "\${SENSITIVE_PATTERNS[@]}"; do
+  if [[ "$FILE_PATH" == *"$pattern"* ]]; then
+    echo '{"decision":"deny","reason":"Access to sensitive file blocked: '"$pattern"'"}'
+    exit 0
+  fi
+done
+
+echo '{"decision":"allow"}'
+exit 0`,
+    hookType: 'command',
+    prompt: null,
+    timeout: 3000,
+    category: 'safety',
+    tags: ['security', 'sensitive', 'credentials', 'block'],
+  },
+  {
+    id: 'require-confirmation-for-writes',
+    name: 'Require Confirmation for New Files',
+    description: 'Asks for confirmation before creating new files outside the project directory',
+    eventType: 'PermissionRequest',
+    matcher: 'Write',
+    command: `#!/bin/bash
+# Confirm writes outside project directory
+INPUT=$(cat)
+FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // empty')
+CWD=$(echo "$INPUT" | jq -r '.cwd // "."')
+
+# Check if file is outside project directory
+if [[ ! "$FILE_PATH" == "$CWD"* ]] && [[ ! "$FILE_PATH" == "./"* ]]; then
+  echo '{"decision":"deny","message":"File is outside project directory. Use absolute paths carefully."}'
+  exit 0
+fi
+
+echo '{"decision":"allow"}'
+exit 0`,
+    hookType: 'command',
+    prompt: null,
+    timeout: 3000,
+    category: 'safety',
+    tags: ['confirmation', 'write', 'directory', 'scope'],
+  },
+  {
+    id: 'block-network-commands',
+    name: 'Block Network Commands',
+    description: 'Blocks curl, wget, and other network commands to prevent data exfiltration',
+    eventType: 'PreToolUse',
+    matcher: 'Bash',
+    command: `#!/bin/bash
+# Block network commands
+INPUT=$(cat)
+COMMAND=$(echo "$INPUT" | jq -r '.tool_input.command // empty')
+
+# Network command patterns
+NETWORK_PATTERNS=(
+  "curl "
+  "wget "
+  "nc "
+  "netcat "
+  "telnet "
+  "ssh "
+  "scp "
+  "rsync "
+  "ftp "
+)
+
+for pattern in "\${NETWORK_PATTERNS[@]}"; do
+  if [[ "$COMMAND" == *"$pattern"* ]]; then
+    echo '{"decision":"deny","reason":"Network commands are blocked for security"}'
+    exit 0
+  fi
+done
+
+echo '{"decision":"allow"}'
+exit 0`,
+    hookType: 'command',
+    prompt: null,
+    timeout: 3000,
+    category: 'safety',
+    tags: ['network', 'security', 'exfiltration', 'block'],
+  },
+  {
+    id: 'audit-log-all-commands',
+    name: 'Audit Log All Commands',
+    description: 'Logs all bash commands to an audit file for security review',
+    eventType: 'PostToolUse',
+    matcher: 'Bash',
+    command: `#!/bin/bash
+# Audit log all bash commands
+INPUT=$(cat)
+COMMAND=$(echo "$INPUT" | jq -r '.tool_input.command // empty')
+EXIT_CODE=$(echo "$INPUT" | jq -r '.tool_response.exit_code // 0')
+TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+CWD=$(echo "$INPUT" | jq -r '.cwd // "."')
+
+# Create audit log directory
+AUDIT_DIR="$CWD/.claude-audit"
+mkdir -p "$AUDIT_DIR"
+
+# Log the command
+echo "[$TIMESTAMP] exit=$EXIT_CODE cmd=$COMMAND" >> "$AUDIT_DIR/commands.log"
+
+exit 0`,
+    hookType: 'command',
+    prompt: null,
+    timeout: 3000,
+    category: 'safety',
+    tags: ['audit', 'logging', 'security', 'compliance'],
+  },
+
+  // ============================================================================
+  // AUTOMATION HOOKS (5)
+  // ============================================================================
+  {
     id: 'auto-approve-read-operations',
     name: 'Auto-Approve Read Operations',
     description: 'Automatically allows Read, Glob, and Grep tools without prompting',
@@ -95,9 +232,6 @@ exit 0`,
     tags: ['auto-approve', 'read-only', 'permissions'],
   },
 
-  // ============================================================================
-  // PostToolUse Hooks - Automation
-  // ============================================================================
   {
     id: 'run-linter-after-edit',
     name: 'Run Linter After Edit',
@@ -151,9 +285,66 @@ exit 0`,
     category: 'automation',
     tags: ['formatting', 'prettier', 'code-style', 'write'],
   },
+  {
+    id: 'validate-json-schema',
+    name: 'Validate JSON Files',
+    description: 'Validates JSON files syntax after writes',
+    eventType: 'PostToolUse',
+    matcher: 'Write',
+    command: `#!/bin/bash
+# Validate JSON files after write
+INPUT=$(cat)
+FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // empty')
+
+# Only check JSON files
+if [[ "$FILE_PATH" =~ \\.json$ ]]; then
+  # Try to parse the JSON to validate syntax
+  if ! jq . "$FILE_PATH" > /dev/null 2>&1; then
+    echo "[JSON Validation] Warning: Invalid JSON syntax in $FILE_PATH"
+    exit 1
+  fi
+  echo "[JSON Validation] $FILE_PATH is valid JSON"
+fi
+
+exit 0`,
+    hookType: 'command',
+    prompt: null,
+    timeout: 5000,
+    category: 'automation',
+    tags: ['json', 'validation', 'schema', 'write'],
+  },
+  {
+    id: 'run-typecheck-after-edit',
+    name: 'Run TypeScript Check After Edit',
+    description: 'Runs TypeScript compiler check after editing TS files',
+    eventType: 'PostToolUse',
+    matcher: 'Edit|Write',
+    command: `#!/bin/bash
+# Run TypeScript check after edits
+INPUT=$(cat)
+FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // empty')
+CWD=$(echo "$INPUT" | jq -r '.cwd // "."')
+
+# Only check TS/TSX files
+if [[ "$FILE_PATH" =~ \\.(ts|tsx)$ ]]; then
+  cd "$CWD" 2>/dev/null || exit 0
+
+  if command -v npx &> /dev/null && [ -f "node_modules/.bin/tsc" ]; then
+    echo "[TypeCheck] Checking $FILE_PATH..."
+    npx tsc --noEmit 2>&1 | head -20
+  fi
+fi
+
+exit 0`,
+    hookType: 'command',
+    prompt: null,
+    timeout: 60000,
+    category: 'automation',
+    tags: ['typescript', 'typecheck', 'code-quality', 'edit'],
+  },
 
   // ============================================================================
-  // Notification Hooks - Alerts
+  // NOTIFICATION HOOKS (5)
   // ============================================================================
   {
     id: 'desktop-notification-idle',
@@ -219,9 +410,94 @@ exit 0`,
     category: 'notifications',
     tags: ['sound', 'alert', 'permission', 'audio'],
   },
+  {
+    id: 'slack-notification',
+    name: 'Slack Notification on Complete',
+    description: 'Sends a Slack message when Claude finishes a task',
+    eventType: 'Notification',
+    matcher: 'idle_prompt',
+    command: `#!/bin/bash
+# Send Slack notification
+# Set SLACK_WEBHOOK_URL in your environment
+WEBHOOK_URL="\${SLACK_WEBHOOK_URL:-}"
+
+if [ -z "$WEBHOOK_URL" ]; then
+  echo "SLACK_WEBHOOK_URL not set, skipping notification"
+  exit 0
+fi
+
+INPUT=$(cat)
+MESSAGE=$(echo "$INPUT" | jq -r '.message // "Claude needs your attention"')
+
+curl -s -X POST "$WEBHOOK_URL" \\
+  -H "Content-Type: application/json" \\
+  -d "{\"text\": \"🤖 Claude Code: $MESSAGE\"}" \\
+  > /dev/null 2>&1
+
+exit 0`,
+    hookType: 'command',
+    prompt: null,
+    timeout: 10000,
+    category: 'notifications',
+    tags: ['slack', 'webhook', 'notification', 'messaging'],
+  },
+  {
+    id: 'email-notification-complete',
+    name: 'Email on Task Complete',
+    description: 'Sends an email notification when Claude finishes working',
+    eventType: 'SessionEnd',
+    matcher: null,
+    command: `#!/bin/bash
+# Send email notification on session end
+# Requires mail/sendmail to be configured
+INPUT=$(cat)
+REASON=$(echo "$INPUT" | jq -r '.reason // "unknown"')
+EMAIL="\${CLAUDE_NOTIFICATION_EMAIL:-}"
+
+if [ -z "$EMAIL" ]; then
+  echo "CLAUDE_NOTIFICATION_EMAIL not set, skipping"
+  exit 0
+fi
+
+if command -v mail &> /dev/null; then
+  echo "Claude Code session ended. Reason: $REASON" | mail -s "Claude Code Session Complete" "$EMAIL"
+fi
+
+exit 0`,
+    hookType: 'command',
+    prompt: null,
+    timeout: 10000,
+    category: 'notifications',
+    tags: ['email', 'notification', 'session', 'complete'],
+  },
+  {
+    id: 'log-to-file-notification',
+    name: 'Log Notifications to File',
+    description: 'Writes all Claude notifications to a log file for review',
+    eventType: 'Notification',
+    matcher: '*',
+    command: `#!/bin/bash
+# Log all notifications to file
+INPUT=$(cat)
+TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+TYPE=$(echo "$INPUT" | jq -r '.type // "unknown"')
+MESSAGE=$(echo "$INPUT" | jq -r '.message // ""')
+CWD=$(echo "$INPUT" | jq -r '.cwd // "."')
+
+LOG_FILE="$CWD/.claude-notifications.log"
+
+echo "[$TIMESTAMP] [$TYPE] $MESSAGE" >> "$LOG_FILE"
+
+exit 0`,
+    hookType: 'command',
+    prompt: null,
+    timeout: 3000,
+    category: 'notifications',
+    tags: ['logging', 'file', 'audit', 'notifications'],
+  },
 
   // ============================================================================
-  // UserPromptSubmit Hooks - Context Injection
+  // WORKFLOW HOOKS (5)
   // ============================================================================
   {
     id: 'inject-project-context',
@@ -347,37 +623,6 @@ exit 0`,
     tags: ['tests', 'validation', 'stop', 'quality'],
   },
 
-  // ============================================================================
-  // Additional Useful Hooks
-  // ============================================================================
-  {
-    id: 'validate-json-schema',
-    name: 'Validate JSON Files',
-    description: 'Validates JSON files against common schemas after writes',
-    eventType: 'PostToolUse',
-    matcher: 'Write',
-    command: `#!/bin/bash
-# Validate JSON files after write
-INPUT=$(cat)
-FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // empty')
-
-# Only check JSON files
-if [[ "$FILE_PATH" =~ \\.json$ ]]; then
-  # Try to parse the JSON to validate syntax
-  if ! jq . "$FILE_PATH" > /dev/null 2>&1; then
-    echo "[JSON Validation] Warning: Invalid JSON syntax in $FILE_PATH"
-    exit 1
-  fi
-  echo "[JSON Validation] $FILE_PATH is valid JSON"
-fi
-
-exit 0`,
-    hookType: 'command',
-    prompt: null,
-    timeout: 5000,
-    category: 'automation',
-    tags: ['json', 'validation', 'schema', 'write'],
-  },
   {
     id: 'git-status-after-edit',
     name: 'Git Status After Edit',
@@ -403,5 +648,38 @@ exit 0`,
     timeout: 5000,
     category: 'workflow',
     tags: ['git', 'status', 'tracking', 'edit'],
+  },
+  {
+    id: 'auto-commit-checkpoint',
+    name: 'Auto-Commit Checkpoints',
+    description: 'Creates automatic git commits after successful edits as recovery checkpoints',
+    eventType: 'PostToolUse',
+    matcher: 'Edit|Write',
+    command: `#!/bin/bash
+# Auto-commit checkpoints after edits
+INPUT=$(cat)
+CWD=$(echo "$INPUT" | jq -r '.cwd // "."')
+FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // empty')
+
+cd "$CWD" 2>/dev/null || exit 0
+
+# Only run if in a git repo
+if git rev-parse --is-inside-work-tree > /dev/null 2>&1; then
+  # Stage the modified file
+  git add "$FILE_PATH" 2>/dev/null
+
+  # Create checkpoint commit
+  TIMESTAMP=$(date +"%H:%M:%S")
+  git commit -m "checkpoint: $FILE_PATH [$TIMESTAMP]" --no-verify 2>/dev/null
+
+  echo "[Checkpoint] Saved: $FILE_PATH"
+fi
+
+exit 0`,
+    hookType: 'command',
+    prompt: null,
+    timeout: 10000,
+    category: 'workflow',
+    tags: ['git', 'checkpoint', 'backup', 'recovery'],
   },
 ];

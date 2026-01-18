@@ -150,10 +150,10 @@ export default function HooksView() {
         </div>
 
         {/* Event type filter tabs */}
-        <div className="flex gap-2 mt-4 overflow-x-auto pb-1">
+        <div className="flex gap-1.5 mt-4 overflow-x-auto pb-1">
           <button
             onClick={() => setFilter('all')}
-            className={`px-3 py-1.5 text-sm rounded-md transition-colors whitespace-nowrap ${
+            className={`px-1 py-1.5 text-sm rounded-md transition-colors whitespace-nowrap ${
               filter === 'all'
                 ? 'bg-accent-purple text-white'
                 : 'text-surface-400 hover:text-surface-200 hover:bg-surface-800'
@@ -165,7 +165,7 @@ export default function HooksView() {
             <button
               key={type.value}
               onClick={() => setFilter(type.value)}
-              className={`px-3 py-1.5 text-sm rounded-md transition-colors flex items-center gap-2 whitespace-nowrap ${
+              className={`px-1 py-1.5 text-sm rounded-md transition-colors flex items-center gap-1 whitespace-nowrap ${
                 filter === type.value
                   ? 'bg-accent-purple text-white'
                   : 'text-surface-400 hover:text-surface-200 hover:bg-surface-800'
