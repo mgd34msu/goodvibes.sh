@@ -6,6 +6,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { createLogger } from '../../../../shared/logger';
 import { formatTimestamp } from '../../../../shared/dateUtils';
 import type { Hook, HookEventType } from './types';
+import type { BuiltinHook } from './builtinHooks';
 
 const logger = createLogger('HooksView');
 
@@ -156,5 +157,51 @@ export function useHookFilters(hooks: Hook[]) {
     filter,
     setFilter,
     filteredHooks,
+  };
+}
+
+// Filter hooks with built-in support
+export function useHookFiltersWithBuiltIn(
+  hooks: Hook[],
+  builtInHooks: BuiltinHook[]
+) {
+  const [filter, setFilter] = useState<HookEventType | 'all'>('all');
+  const [categoryFilter, setCategoryFilter] = useState<BuiltinHook['category'] | 'all'>('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showBuiltIn, setShowBuiltIn] = useState(true);
+
+  // Filter custom hooks by event type and search
+  const filteredHooks = hooks.filter((h) => {
+    const matchesEventType = filter === 'all' || h.eventType === filter;
+    const matchesSearch =
+      !searchQuery ||
+      h.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      h.command.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesEventType && matchesSearch;
+  });
+
+  // Filter built-in hooks by event type, category, and search
+  const filteredBuiltIn = builtInHooks.filter((h) => {
+    const matchesEventType = filter === 'all' || h.eventType === filter;
+    const matchesCategory = categoryFilter === 'all' || h.category === categoryFilter;
+    const matchesSearch =
+      !searchQuery ||
+      h.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      h.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      h.tags.some((tag) => tag.toLowerCase().includes(searchQuery.toLowerCase()));
+    return matchesEventType && matchesCategory && matchesSearch;
+  });
+
+  return {
+    filter,
+    setFilter,
+    categoryFilter,
+    setCategoryFilter,
+    searchQuery,
+    setSearchQuery,
+    showBuiltIn,
+    setShowBuiltIn,
+    filteredHooks,
+    filteredBuiltIn,
   };
 }

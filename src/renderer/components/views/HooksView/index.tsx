@@ -3,12 +3,14 @@
 // ============================================================================
 
 import { useState, useCallback } from 'react';
-import { Webhook, Plus, Settings } from 'lucide-react';
+import { Webhook, Plus, Settings, Search } from 'lucide-react';
 import { useConfirm } from '../../overlays/ConfirmModal';
 import { HookForm } from './HookForm';
 import { HookCard } from './HookCard';
-import { useHooks, useHookFilters } from './useHooks';
+import { BuiltinHookCard } from './BuiltinHookCard';
+import { useHooks, useHookFiltersWithBuiltIn } from './useHooks';
 import { EVENT_TYPES, EVENT_TYPE_ICONS, type Hook } from './types';
+import { BUILT_IN_HOOKS, CATEGORY_COLORS, CATEGORY_LABELS, type BuiltinHook } from './builtinHooks';
 
 // ============================================================================
 // MAIN HOOKS VIEW
@@ -26,7 +28,18 @@ export default function HooksView() {
   });
 
   const { hooks, loading, handleSave, handleToggle, handleDelete, handleTest } = useHooks();
-  const { filter, setFilter, filteredHooks } = useHookFilters(hooks);
+  const {
+    filter,
+    setFilter,
+    categoryFilter,
+    setCategoryFilter,
+    searchQuery,
+    setSearchQuery,
+    showBuiltIn,
+    setShowBuiltIn,
+    filteredHooks,
+    filteredBuiltIn,
+  } = useHookFiltersWithBuiltIn(hooks, BUILT_IN_HOOKS);
 
   const onSave = async (hookData: Partial<Hook>) => {
     const success = await handleSave(hookData);
@@ -50,6 +63,29 @@ export default function HooksView() {
     setEditingHook(hook);
     setShowForm(true);
   };
+
+  // Install a built-in hook by copying it to user's hooks
+  const handleInstallBuiltIn = async (builtinHook: BuiltinHook) => {
+    const hookData: Partial<Hook> = {
+      name: builtinHook.name,
+      eventType: builtinHook.eventType,
+      matcher: builtinHook.matcher,
+      command: builtinHook.command,
+      hookType: builtinHook.hookType,
+      prompt: builtinHook.prompt,
+      timeout: builtinHook.timeout,
+      enabled: true,
+    };
+
+    const success = await handleSave(hookData);
+    if (success) {
+      // Could show a toast notification here
+      alert(`Hook "${builtinHook.name}" installed successfully!`);
+    }
+  };
+
+  const hasNoResults =
+    filteredHooks.length === 0 && (!showBuiltIn || filteredBuiltIn.length === 0);
 
   return (
     <div className="h-full flex flex-col">
@@ -78,11 +114,35 @@ export default function HooksView() {
           </button>
         </div>
 
-        {/* Filter tabs */}
-        <div className="flex gap-2 mt-4">
+        {/* Search and filters */}
+        <div className="flex gap-4 mt-4">
+          <div className="flex-1 relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-surface-500" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search hooks..."
+              className="w-full pl-10 pr-3 py-2 bg-surface-800 border border-surface-600 rounded-lg text-surface-100 focus:ring-2 focus:ring-accent-purple focus:border-transparent"
+            />
+          </div>
+          <button
+            onClick={() => setShowBuiltIn(!showBuiltIn)}
+            className={`px-3 py-2 text-sm rounded-lg transition-colors ${
+              showBuiltIn
+                ? 'bg-surface-700 text-surface-200'
+                : 'text-surface-400 hover:text-surface-200 hover:bg-surface-800'
+            }`}
+          >
+            {showBuiltIn ? 'Hide Built-in' : 'Show Built-in'}
+          </button>
+        </div>
+
+        {/* Event type filter tabs */}
+        <div className="flex gap-2 mt-4 overflow-x-auto pb-1">
           <button
             onClick={() => setFilter('all')}
-            className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
+            className={`px-3 py-1.5 text-sm rounded-md transition-colors whitespace-nowrap ${
               filter === 'all'
                 ? 'bg-accent-purple text-white'
                 : 'text-surface-400 hover:text-surface-200 hover:bg-surface-800'
@@ -94,7 +154,7 @@ export default function HooksView() {
             <button
               key={type.value}
               onClick={() => setFilter(type.value)}
-              className={`px-3 py-1.5 text-sm rounded-md transition-colors flex items-center gap-2 ${
+              className={`px-3 py-1.5 text-sm rounded-md transition-colors flex items-center gap-2 whitespace-nowrap ${
                 filter === type.value
                   ? 'bg-accent-purple text-white'
                   : 'text-surface-400 hover:text-surface-200 hover:bg-surface-800'
@@ -105,6 +165,36 @@ export default function HooksView() {
             </button>
           ))}
         </div>
+
+        {/* Category filter (only shown when built-in hooks are visible) */}
+        {showBuiltIn && (
+          <div className="flex gap-2 mt-3">
+            <span className="text-xs text-surface-500 self-center mr-1">Category:</span>
+            <button
+              onClick={() => setCategoryFilter('all')}
+              className={`px-2 py-1 text-xs rounded transition-colors ${
+                categoryFilter === 'all'
+                  ? 'bg-surface-700 text-surface-200'
+                  : 'text-surface-400 hover:text-surface-200 hover:bg-surface-800'
+              }`}
+            >
+              All
+            </button>
+            {(Object.keys(CATEGORY_LABELS) as BuiltinHook['category'][]).map((cat) => (
+              <button
+                key={cat}
+                onClick={() => setCategoryFilter(cat)}
+                className={`px-2 py-1 text-xs rounded border transition-colors ${
+                  categoryFilter === cat
+                    ? CATEGORY_COLORS[cat]
+                    : 'text-surface-400 hover:text-surface-200 border-transparent hover:bg-surface-800'
+                }`}
+              >
+                {CATEGORY_LABELS[cat]}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Content */}
@@ -126,32 +216,66 @@ export default function HooksView() {
           <div className="flex items-center justify-center h-64">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent-purple" />
           </div>
-        ) : filteredHooks.length === 0 ? (
+        ) : hasNoResults ? (
           <div className="text-center py-12">
             <Webhook className="w-12 h-12 text-surface-600 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-surface-300">No hooks configured</h3>
+            <h3 className="text-lg font-medium text-surface-300">
+              {searchQuery ? 'No hooks match your search' : 'No hooks configured'}
+            </h3>
             <p className="text-surface-500 mt-2">
-              Create hooks to automate actions when Claude uses tools
+              {searchQuery
+                ? 'Try a different search term or show built-in hooks'
+                : 'Create hooks to automate actions when Claude uses tools'}
             </p>
-            <button
-              onClick={() => setShowForm(true)}
-              className="mt-4 px-4 py-2 bg-surface-700 text-surface-200 rounded-lg hover:bg-surface-600 transition-colors"
-            >
-              Create your first hook
-            </button>
+            {!searchQuery && (
+              <button
+                onClick={() => setShowForm(true)}
+                className="mt-4 px-4 py-2 bg-surface-700 text-surface-200 rounded-lg hover:bg-surface-600 transition-colors"
+              >
+                Create your first hook
+              </button>
+            )}
           </div>
         ) : (
-          <div className="space-y-3">
-            {filteredHooks.map((hook) => (
-              <HookCard
-                key={hook.id}
-                hook={hook}
-                onToggle={handleToggle}
-                onEdit={handleEdit}
-                onDelete={onDelete}
-                onTest={handleTest}
-              />
-            ))}
+          <div className="space-y-6">
+            {/* Custom Hooks */}
+            {filteredHooks.length > 0 && (
+              <div>
+                <h2 className="text-sm font-medium text-surface-400 mb-3">
+                  My Hooks ({filteredHooks.length})
+                </h2>
+                <div className="space-y-3">
+                  {filteredHooks.map((hook) => (
+                    <HookCard
+                      key={hook.id}
+                      hook={hook}
+                      onToggle={handleToggle}
+                      onEdit={handleEdit}
+                      onDelete={onDelete}
+                      onTest={handleTest}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Built-in Hooks */}
+            {showBuiltIn && filteredBuiltIn.length > 0 && (
+              <div>
+                <h2 className="text-sm font-medium text-surface-400 mb-3">
+                  Built-in Hooks ({filteredBuiltIn.length})
+                </h2>
+                <div className="space-y-3">
+                  {filteredBuiltIn.map((hook) => (
+                    <BuiltinHookCard
+                      key={hook.id}
+                      hook={hook}
+                      onInstall={handleInstallBuiltIn}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -170,6 +294,10 @@ export default function HooksView() {
                 <strong className="text-surface-300">Exit codes:</strong> 0 = success, 1 =
                 failure, 2 = block action (PreToolUse only)
               </p>
+              <p className="mt-2">
+                <strong className="text-surface-300">Built-in hooks:</strong> Browse the library
+                of pre-made hooks and click "Install" to add them to your configuration.
+              </p>
             </div>
           </div>
         </div>
@@ -181,3 +309,4 @@ export default function HooksView() {
 
 // Re-export types for convenience
 export type { Hook, HookEventType } from './types';
+export type { BuiltinHook } from './builtinHooks';
