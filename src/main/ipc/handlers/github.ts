@@ -25,6 +25,7 @@ import {
   githubCreateIssueSchema,
   githubListBranchesSchema,
   githubRemoteUrlSchema,
+  githubDeviceFlowOptionsSchema,
 } from '../schemas/github.js';
 import { numericIdSchema } from '../schemas/primitives.js';
 
@@ -112,6 +113,43 @@ export function registerGitHubHandlers(): void {
   ipcMain.handle('github-get-oauth-config', withContext('github-get-oauth-config', async () => {
     const github = await import('../../services/github.js');
     return github.getOAuthConfig();
+  }));
+
+  // ============================================================================
+  // DEVICE FLOW AUTHENTICATION
+  // ============================================================================
+
+  ipcMain.handle('github-device-flow-start', withContext('github-device-flow-start', async (_, options: unknown) => {
+    const validation = validateInput(githubDeviceFlowOptionsSchema, options, 'github-device-flow-start');
+    if (!validation.success) return validation.error;
+    const github = await import('../../services/github.js');
+    return github.startDeviceFlow(validation.data);
+  }));
+
+  ipcMain.handle('github-device-flow-wait', withContext('github-device-flow-wait', async () => {
+    const github = await import('../../services/github.js');
+    return github.waitForDeviceFlowCompletion();
+  }));
+
+  ipcMain.handle('github-device-flow-cancel', withContext('github-device-flow-cancel', async () => {
+    const github = await import('../../services/github.js');
+    github.cancelDeviceFlow();
+    return { success: true };
+  }));
+
+  ipcMain.handle('github-device-flow-state', withContext('github-device-flow-state', async () => {
+    const github = await import('../../services/github.js');
+    return github.getDeviceFlowState();
+  }));
+
+  ipcMain.handle('github-device-flow-available', withContext('github-device-flow-available', async () => {
+    const github = await import('../../services/github.js');
+    return github.isDeviceFlowAvailable();
+  }));
+
+  ipcMain.handle('github-device-flow-client-id', withContext('github-device-flow-client-id', async () => {
+    const github = await import('../../services/github.js');
+    return github.getDeviceFlowClientId();
   }));
 
   // ============================================================================

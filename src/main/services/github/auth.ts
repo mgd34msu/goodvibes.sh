@@ -4,6 +4,7 @@
 //
 // This module orchestrates GitHub authentication by coordinating:
 // - oauth-flow.ts: OAuth flow handling (callbacks, browser windows)
+// - device-flow.ts: OAuth device flow for desktop apps (recommended)
 // - state.ts: Auth state management and credential storage
 // - token-manager.ts: Token refresh operations
 // - oauth-config.ts: OAuth configuration management
@@ -37,6 +38,15 @@ import {
 } from './state.js';
 import { refreshTokenIfNeeded } from './token-manager.js';
 import { getOAuthConfig, setOAuthCredentials, clearOAuthCredentials } from './oauth-config.js';
+import {
+  startDeviceFlow,
+  waitForDeviceFlowCompletion,
+  cancelDeviceFlow,
+  getDeviceFlowState,
+  isDeviceFlowAvailable,
+  authenticateWithDeviceFlow,
+  getDeviceFlowClientId,
+} from './device-flow.js';
 
 const logger = new Logger('GitHubAuth');
 
@@ -48,6 +58,14 @@ export {
   // OAuth flow
   handleOAuthCallback,
   setPendingOAuthCallback,
+  // Device flow
+  startDeviceFlow,
+  waitForDeviceFlowCompletion,
+  cancelDeviceFlow,
+  getDeviceFlowState,
+  isDeviceFlowAvailable,
+  authenticateWithDeviceFlow,
+  getDeviceFlowClientId,
   // State accessors
   getAccessToken,
   isAuthenticated,

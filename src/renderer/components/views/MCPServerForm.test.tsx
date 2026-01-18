@@ -63,37 +63,37 @@ describe('MCPServerForm', () => {
   describe('Rendering', () => {
     it('renders Name input field', () => {
       renderForm();
-      expect(screen.getByLabelText('Name')).toBeInTheDocument();
+      expect(screen.getByPlaceholderText('My MCP Server')).toBeInTheDocument();
     });
 
     it('renders Transport select field', () => {
       renderForm();
-      expect(screen.getByLabelText('Transport')).toBeInTheDocument();
+      expect(screen.getByDisplayValue('STDIO')).toBeInTheDocument();
     });
 
     it('renders Description input field', () => {
       renderForm();
-      expect(screen.getByLabelText('Description')).toBeInTheDocument();
+      expect(screen.getByPlaceholderText('Optional description')).toBeInTheDocument();
     });
 
     it('renders Command field for STDIO transport', () => {
       renderForm();
-      expect(screen.getByLabelText('Command')).toBeInTheDocument();
+      expect(screen.getByPlaceholderText('npx @example/mcp-server')).toBeInTheDocument();
     });
 
     it('renders Arguments field for STDIO transport', () => {
       renderForm();
-      expect(screen.getByLabelText(/Arguments/)).toBeInTheDocument();
+      expect(screen.getByPlaceholderText('--flag value')).toBeInTheDocument();
     });
 
     it('renders Environment Variables textarea', () => {
       renderForm();
-      expect(screen.getByLabelText(/Environment Variables/)).toBeInTheDocument();
+      expect(screen.getByPlaceholderText(/API_KEY=your-key/)).toBeInTheDocument();
     });
 
     it('renders Scope select field', () => {
       renderForm();
-      expect(screen.getByLabelText('Scope')).toBeInTheDocument();
+      expect(screen.getByDisplayValue('User (Global)')).toBeInTheDocument();
     });
 
     it('renders Cancel button', () => {
@@ -119,28 +119,28 @@ describe('MCPServerForm', () => {
   describe('Transport Switching', () => {
     it('shows Command field when transport is STDIO', () => {
       renderForm();
-      expect(screen.getByLabelText('Command')).toBeInTheDocument();
-      expect(screen.queryByLabelText('URL')).not.toBeInTheDocument();
+      expect(screen.getByPlaceholderText('npx @example/mcp-server')).toBeInTheDocument();
+      expect(screen.queryByPlaceholderText('http://localhost:3000')).not.toBeInTheDocument();
     });
 
     it('shows URL field when transport is HTTP', async () => {
       renderForm();
 
-      fireEvent.change(screen.getByLabelText('Transport'), { target: { value: 'http' } });
+      fireEvent.change(screen.getByDisplayValue('STDIO'), { target: { value: 'http' } });
 
       await waitFor(() => {
-        expect(screen.getByLabelText('URL')).toBeInTheDocument();
-        expect(screen.queryByLabelText('Command')).not.toBeInTheDocument();
+        expect(screen.getByPlaceholderText('http://localhost:3000')).toBeInTheDocument();
+        expect(screen.queryByPlaceholderText('npx @example/mcp-server')).not.toBeInTheDocument();
       });
     });
 
     it('hides Arguments field when transport is HTTP', async () => {
       renderForm();
 
-      fireEvent.change(screen.getByLabelText('Transport'), { target: { value: 'http' } });
+      fireEvent.change(screen.getByDisplayValue('STDIO'), { target: { value: 'http' } });
 
       await waitFor(() => {
-        expect(screen.queryByLabelText(/Arguments/)).not.toBeInTheDocument();
+        expect(screen.queryByPlaceholderText('--flag value')).not.toBeInTheDocument();
       });
     });
   });
@@ -188,8 +188,10 @@ describe('MCPServerForm', () => {
       renderForm(createMockServer({
         env: { KEY1: 'value1', KEY2: 'value2' },
       }));
-      const textarea = screen.getByLabelText(/Environment Variables/);
-      expect(textarea).toHaveValue('KEY1=value1\nKEY2=value2');
+      // The textarea will have the value but the placeholder disappears when value is set
+      const textareas = screen.getAllByRole('textbox');
+      const envTextarea = textareas.find(t => (t as HTMLTextAreaElement).tagName === 'TEXTAREA');
+      expect(envTextarea).toHaveValue('KEY1=value1\nKEY2=value2');
     });
 
     it('pre-fills scope from existing server', () => {
@@ -207,10 +209,10 @@ describe('MCPServerForm', () => {
       const user = userEvent.setup();
       renderForm();
 
-      await user.type(screen.getByLabelText('Name'), 'New Server');
-      await user.type(screen.getByLabelText('Command'), 'npx new-server');
+      await user.type(screen.getByPlaceholderText('My MCP Server'), 'New Server');
+      await user.type(screen.getByPlaceholderText('npx @example/mcp-server'), 'npx new-server');
 
-      fireEvent.submit(screen.getByRole('form') || screen.getByText('Add Server').closest('form')!);
+      fireEvent.submit(screen.getByText('Add Server').closest('form')!);
 
       await waitFor(() => {
         expect(mockOnSave).toHaveBeenCalledWith(
@@ -228,8 +230,9 @@ describe('MCPServerForm', () => {
       const user = userEvent.setup();
       renderForm(createMockServer({ id: 5 }));
 
-      await user.clear(screen.getByDisplayValue('Test Server'));
-      await user.type(screen.getByLabelText('Name'), 'Updated Server');
+      const nameInput = screen.getByDisplayValue('Test Server');
+      await user.clear(nameInput);
+      await user.type(nameInput, 'Updated Server');
 
       fireEvent.submit(screen.getByText('Update Server').closest('form')!);
 
@@ -247,9 +250,9 @@ describe('MCPServerForm', () => {
       const user = userEvent.setup();
       renderForm();
 
-      await user.type(screen.getByLabelText('Name'), 'Server');
-      await user.type(screen.getByLabelText('Command'), 'cmd');
-      await user.type(screen.getByLabelText(/Environment Variables/), 'KEY1=value1\nKEY2=value2');
+      await user.type(screen.getByPlaceholderText('My MCP Server'), 'Server');
+      await user.type(screen.getByPlaceholderText('npx @example/mcp-server'), 'cmd');
+      await user.type(screen.getByPlaceholderText(/API_KEY=your-key/), 'KEY1=value1\nKEY2=value2');
 
       fireEvent.submit(screen.getByText('Add Server').closest('form')!);
 
@@ -266,9 +269,9 @@ describe('MCPServerForm', () => {
       const user = userEvent.setup();
       renderForm();
 
-      await user.type(screen.getByLabelText('Name'), 'Server');
-      await user.type(screen.getByLabelText('Command'), 'cmd');
-      await user.type(screen.getByLabelText(/Environment Variables/), 'CONNECTION=host=localhost;port=5432');
+      await user.type(screen.getByPlaceholderText('My MCP Server'), 'Server');
+      await user.type(screen.getByPlaceholderText('npx @example/mcp-server'), 'cmd');
+      await user.type(screen.getByPlaceholderText(/API_KEY=your-key/), 'CONNECTION=host=localhost;port=5432');
 
       fireEvent.submit(screen.getByText('Add Server').closest('form')!);
 
@@ -285,9 +288,9 @@ describe('MCPServerForm', () => {
       const user = userEvent.setup();
       renderForm();
 
-      await user.type(screen.getByLabelText('Name'), 'Server');
-      await user.type(screen.getByLabelText('Command'), 'cmd');
-      await user.type(screen.getByLabelText(/Arguments/), '--flag1 --flag2 value');
+      await user.type(screen.getByPlaceholderText('My MCP Server'), 'Server');
+      await user.type(screen.getByPlaceholderText('npx @example/mcp-server'), 'cmd');
+      await user.type(screen.getByPlaceholderText('--flag value'), '--flag1 --flag2 value');
 
       fireEvent.submit(screen.getByText('Add Server').closest('form')!);
 
@@ -304,9 +307,9 @@ describe('MCPServerForm', () => {
       const user = userEvent.setup();
       renderForm();
 
-      await user.type(screen.getByLabelText('Name'), 'Server');
-      await user.type(screen.getByLabelText('Command'), 'cmd');
-      await user.type(screen.getByLabelText(/Arguments/), '  --flag1   --flag2  ');
+      await user.type(screen.getByPlaceholderText('My MCP Server'), 'Server');
+      await user.type(screen.getByPlaceholderText('npx @example/mcp-server'), 'cmd');
+      await user.type(screen.getByPlaceholderText('--flag value'), '  --flag1   --flag2  ');
 
       fireEvent.submit(screen.getByText('Add Server').closest('form')!);
 
@@ -323,14 +326,14 @@ describe('MCPServerForm', () => {
       const user = userEvent.setup();
       renderForm();
 
-      await user.type(screen.getByLabelText('Name'), 'HTTP Server');
-      fireEvent.change(screen.getByLabelText('Transport'), { target: { value: 'http' } });
+      await user.type(screen.getByPlaceholderText('My MCP Server'), 'HTTP Server');
+      fireEvent.change(screen.getByDisplayValue('STDIO'), { target: { value: 'http' } });
 
       await waitFor(() => {
-        expect(screen.getByLabelText('URL')).toBeInTheDocument();
+        expect(screen.getByPlaceholderText('http://localhost:3000')).toBeInTheDocument();
       });
 
-      await user.type(screen.getByLabelText('URL'), 'http://localhost:3000');
+      await user.type(screen.getByPlaceholderText('http://localhost:3000'), 'http://localhost:3000');
 
       fireEvent.submit(screen.getByText('Add Server').closest('form')!);
 
@@ -348,8 +351,8 @@ describe('MCPServerForm', () => {
       const user = userEvent.setup();
       renderForm();
 
-      await user.type(screen.getByLabelText('Name'), 'STDIO Server');
-      await user.type(screen.getByLabelText('Command'), 'npx server');
+      await user.type(screen.getByPlaceholderText('My MCP Server'), 'STDIO Server');
+      await user.type(screen.getByPlaceholderText('npx @example/mcp-server'), 'npx server');
 
       fireEvent.submit(screen.getByText('Add Server').closest('form')!);
 
@@ -367,9 +370,9 @@ describe('MCPServerForm', () => {
       const user = userEvent.setup();
       renderForm();
 
-      await user.type(screen.getByLabelText('Name'), 'Server');
-      await user.type(screen.getByLabelText('Description'), 'A useful server');
-      await user.type(screen.getByLabelText('Command'), 'cmd');
+      await user.type(screen.getByPlaceholderText('My MCP Server'), 'Server');
+      await user.type(screen.getByPlaceholderText('Optional description'), 'A useful server');
+      await user.type(screen.getByPlaceholderText('npx @example/mcp-server'), 'cmd');
 
       fireEvent.submit(screen.getByText('Add Server').closest('form')!);
 
@@ -386,8 +389,8 @@ describe('MCPServerForm', () => {
       const user = userEvent.setup();
       renderForm();
 
-      await user.type(screen.getByLabelText('Name'), 'Server');
-      await user.type(screen.getByLabelText('Command'), 'cmd');
+      await user.type(screen.getByPlaceholderText('My MCP Server'), 'Server');
+      await user.type(screen.getByPlaceholderText('npx @example/mcp-server'), 'cmd');
 
       fireEvent.submit(screen.getByText('Add Server').closest('form')!);
 
@@ -430,23 +433,23 @@ describe('MCPServerForm', () => {
   describe('Form Validation', () => {
     it('requires Name field', () => {
       renderForm();
-      const nameInput = screen.getByLabelText('Name');
+      const nameInput = screen.getByPlaceholderText('My MCP Server');
       expect(nameInput).toBeRequired();
     });
 
     it('requires Command field for STDIO transport', () => {
       renderForm();
-      const commandInput = screen.getByLabelText('Command');
+      const commandInput = screen.getByPlaceholderText('npx @example/mcp-server');
       expect(commandInput).toBeRequired();
     });
 
     it('requires URL field for HTTP transport', async () => {
       renderForm();
 
-      fireEvent.change(screen.getByLabelText('Transport'), { target: { value: 'http' } });
+      fireEvent.change(screen.getByDisplayValue('STDIO'), { target: { value: 'http' } });
 
       await waitFor(() => {
-        const urlInput = screen.getByLabelText('URL');
+        const urlInput = screen.getByPlaceholderText('http://localhost:3000');
         expect(urlInput).toBeRequired();
       });
     });
@@ -482,8 +485,8 @@ describe('MCPServerForm', () => {
       const user = userEvent.setup();
       renderForm();
 
-      await user.type(screen.getByLabelText('Name'), 'Server');
-      await user.type(screen.getByLabelText('Command'), 'cmd');
+      await user.type(screen.getByPlaceholderText('My MCP Server'), 'Server');
+      await user.type(screen.getByPlaceholderText('npx @example/mcp-server'), 'cmd');
 
       fireEvent.submit(screen.getByText('Add Server').closest('form')!);
 
@@ -500,9 +503,9 @@ describe('MCPServerForm', () => {
       const user = userEvent.setup();
       renderForm();
 
-      await user.type(screen.getByLabelText('Name'), 'Server');
-      await user.type(screen.getByLabelText('Command'), 'cmd');
-      await user.type(screen.getByLabelText(/Environment Variables/), 'INVALID_LINE\nKEY=value');
+      await user.type(screen.getByPlaceholderText('My MCP Server'), 'Server');
+      await user.type(screen.getByPlaceholderText('npx @example/mcp-server'), 'cmd');
+      await user.type(screen.getByPlaceholderText(/API_KEY=your-key/), 'INVALID_LINE\nKEY=value');
 
       fireEvent.submit(screen.getByText('Add Server').closest('form')!);
 
@@ -519,8 +522,8 @@ describe('MCPServerForm', () => {
       const user = userEvent.setup();
       renderForm();
 
-      await user.type(screen.getByLabelText('Name'), 'Server');
-      await user.type(screen.getByLabelText('Command'), 'cmd');
+      await user.type(screen.getByPlaceholderText('My MCP Server'), 'Server');
+      await user.type(screen.getByPlaceholderText('npx @example/mcp-server'), 'cmd');
 
       fireEvent.submit(screen.getByText('Add Server').closest('form')!);
 
@@ -549,13 +552,13 @@ describe('MCPServerForm', () => {
 
     it('handles server with empty env object', () => {
       renderForm(createMockServer({ env: {} }));
-      const textarea = screen.getByLabelText(/Environment Variables/);
+      const textarea = screen.getByPlaceholderText(/API_KEY=your-key/);
       expect(textarea).toHaveValue('');
     });
 
     it('handles server with empty args array', () => {
       renderForm(createMockServer({ args: [] }));
-      const argsInput = screen.getByLabelText(/Arguments/);
+      const argsInput = screen.getByPlaceholderText('--flag value');
       expect(argsInput).toHaveValue('');
     });
   });

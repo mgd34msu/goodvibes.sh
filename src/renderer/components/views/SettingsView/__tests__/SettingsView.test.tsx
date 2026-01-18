@@ -144,36 +144,30 @@ describe('SettingsView', () => {
   });
 
   describe('Theme Settings', () => {
-    it('renders theme selector with current value', async () => {
+    it('renders Color Theme section', async () => {
       await renderSettingsView();
-      const themeSelect = screen.getByDisplayValue('Dark');
-      expect(themeSelect).toBeInTheDocument();
+      expect(screen.getByText('Color Theme')).toBeInTheDocument();
     });
 
-    it('changes theme when selector is changed to light', async () => {
+    it('renders theme preview with current theme name', async () => {
       await renderSettingsView();
-
-      const themeSelect = screen.getByDisplayValue('Dark');
-      await act(async () => {
-        fireEvent.change(themeSelect, { target: { value: 'light' } });
-      });
-
-      await waitFor(() => {
-        const state = useSettingsStore.getState();
-        expect(state.settings.theme).toBe('light');
-      });
+      // The default theme is goodvibes-classic which shows its name
+      expect(screen.getByText('Goodvibes Classic')).toBeInTheDocument();
     });
 
-    it('persists theme change in store', async () => {
+    it('displays dark themes section when expanded', async () => {
       await renderSettingsView();
 
-      const themeSelect = screen.getByDisplayValue('Dark');
-      await act(async () => {
-        fireEvent.change(themeSelect, { target: { value: 'light' } });
-      });
+      // Click to expand the Color Theme section
+      const colorThemeButton = screen.getByText('Color Theme').closest('button');
+      if (colorThemeButton) {
+        await act(async () => {
+          fireEvent.click(colorThemeButton);
+        });
+      }
 
       await waitFor(() => {
-        expect(vi.mocked(window.goodvibes.setSetting)).toHaveBeenCalledWith('theme', 'light');
+        expect(screen.getByText('Dark Themes')).toBeInTheDocument();
       });
     });
   });
@@ -1644,27 +1638,7 @@ describe('SettingsView Store Integration', () => {
   it('persists settings changes to store', async () => {
     await renderSettingsView();
 
-    const themeSelect = screen.getByDisplayValue('Dark');
-    await act(async () => {
-      fireEvent.change(themeSelect, { target: { value: 'light' } });
-    });
-
-    await waitFor(() => {
-      const state = useSettingsStore.getState();
-      expect(state.settings.theme).toBe('light');
-    });
-  });
-
-  it('persists multiple settings changes', async () => {
-    await renderSettingsView();
-
-    // Change theme
-    const themeSelect = screen.getByDisplayValue('Dark');
-    await act(async () => {
-      fireEvent.change(themeSelect, { target: { value: 'light' } });
-    });
-
-    // Change font size
+    // Change font size instead of theme (theme is now a color theme grid)
     const increaseButton = screen.getByLabelText('Increase font size');
     await act(async () => {
       fireEvent.click(increaseButton);
@@ -1672,15 +1646,36 @@ describe('SettingsView Store Integration', () => {
 
     await waitFor(() => {
       const state = useSettingsStore.getState();
-      expect(state.settings.theme).toBe('light');
       expect(state.settings.fontSize).toBe(15);
+    });
+  });
+
+  it('persists multiple settings changes', async () => {
+    await renderSettingsView();
+
+    // Change font size
+    const increaseButton = screen.getByLabelText('Increase font size');
+    await act(async () => {
+      fireEvent.click(increaseButton);
+    });
+
+    // Change startup behavior
+    const startupSelect = screen.getByDisplayValue('Show empty state');
+    await act(async () => {
+      fireEvent.change(startupSelect, { target: { value: 'last-project' } });
+    });
+
+    await waitFor(() => {
+      const state = useSettingsStore.getState();
+      expect(state.settings.fontSize).toBe(15);
+      expect(state.settings.startupBehavior).toBe('last-project');
     });
   });
 
   it('maintains settings after re-render', async () => {
     await act(async () => {
       useSettingsStore.setState({
-        settings: { ...DEFAULT_SETTINGS, theme: 'light', fontSize: 18 },
+        settings: { ...DEFAULT_SETTINGS, fontSize: 18, gitPanelPosition: 'left' },
         isLoaded: true,
       });
     });
@@ -1688,8 +1683,8 @@ describe('SettingsView Store Integration', () => {
     const { unmount } = await renderSettingsView();
 
     // Verify initial state
-    expect(screen.getByDisplayValue('Light')).toBeInTheDocument();
     expect(screen.getByText('18px')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('Left')).toBeInTheDocument();
 
     // Unmount and re-render
     await act(async () => {
@@ -1699,8 +1694,8 @@ describe('SettingsView Store Integration', () => {
     await renderSettingsView();
 
     // Verify state persisted
-    expect(screen.getByDisplayValue('Light')).toBeInTheDocument();
     expect(screen.getByText('18px')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('Left')).toBeInTheDocument();
   });
 
   it('handles setting update errors gracefully', async () => {
@@ -1708,9 +1703,10 @@ describe('SettingsView Store Integration', () => {
 
     await renderSettingsView();
 
-    const themeSelect = screen.getByDisplayValue('Dark');
+    // Try to change font size - this will trigger the failing setSetting
+    const increaseButton = screen.getByLabelText('Increase font size');
     await act(async () => {
-      fireEvent.change(themeSelect, { target: { value: 'light' } });
+      fireEvent.click(increaseButton);
     });
 
     // The store should handle the error gracefully

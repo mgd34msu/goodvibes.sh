@@ -195,6 +195,18 @@ const mockGoodVibesAPI = {
   setMCPServerStatus: vi.fn().mockResolvedValue(true),
   onMCPServerStatus: vi.fn().mockReturnValue(() => {}),
 
+  // Agent Templates
+  getAgentTemplates: vi.fn().mockResolvedValue([]),
+  createAgentTemplate: vi.fn().mockResolvedValue({ id: '1', name: 'Test Agent' }),
+  updateAgentTemplate: vi.fn().mockResolvedValue(true),
+  deleteAgentTemplate: vi.fn().mockResolvedValue(true),
+
+  // Projects (for ProjectSelector)
+  getProjects: vi.fn().mockResolvedValue([]),
+  getProject: vi.fn().mockResolvedValue(null),
+  projectGetAll: vi.fn().mockResolvedValue([]),
+  projectRegister: vi.fn().mockResolvedValue({ id: 1, name: 'Test Project', path: '/test/path' }),
+
   // Event Listeners
   onTerminalData: vi.fn(),
   onTerminalExit: vi.fn(),

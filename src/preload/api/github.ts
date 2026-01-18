@@ -22,6 +22,58 @@ export const githubApi = {
     ipcRenderer.invoke('github-get-oauth-config'),
 
   // ============================================================================
+  // DEVICE FLOW AUTHENTICATION
+  // ============================================================================
+  /**
+   * Start the device flow authentication process.
+   * Returns a user code and verification URL for the user to authorize.
+   */
+  githubDeviceFlowStart: (options?: { scopes?: string[]; openBrowser?: boolean }) =>
+    ipcRenderer.invoke('github-device-flow-start', options),
+
+  /**
+   * Wait for the device flow to complete.
+   * This is a long-polling call that resolves when the user authorizes or the flow times out.
+   */
+  githubDeviceFlowWait: () =>
+    ipcRenderer.invoke('github-device-flow-wait'),
+
+  /**
+   * Cancel an active device flow.
+   */
+  githubDeviceFlowCancel: () =>
+    ipcRenderer.invoke('github-device-flow-cancel'),
+
+  /**
+   * Get the current device flow state.
+   */
+  githubDeviceFlowState: () =>
+    ipcRenderer.invoke('github-device-flow-state'),
+
+  /**
+   * Check if device flow is available.
+   */
+  githubDeviceFlowAvailable: () =>
+    ipcRenderer.invoke('github-device-flow-available'),
+
+  /**
+   * Get the configured GitHub client ID.
+   */
+  githubDeviceFlowClientId: () =>
+    ipcRenderer.invoke('github-device-flow-client-id'),
+
+  /**
+   * Subscribe to device flow state changes.
+   */
+  onDeviceFlowStateChange: (callback: (state: unknown) => void) => {
+    const handler = (_event: unknown, state: unknown) => callback(state);
+    ipcRenderer.on('github-device-flow-state', handler);
+    return () => {
+      ipcRenderer.removeListener('github-device-flow-state', handler);
+    };
+  },
+
+  // ============================================================================
   // REPOSITORY OPERATIONS
   // ============================================================================
   githubListRepos: (options?: { sort?: string; direction?: string; per_page?: number; page?: number }) =>

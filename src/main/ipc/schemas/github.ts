@@ -195,3 +195,11 @@ export const githubListBranchesSchema = z.object({
 export const githubRemoteUrlSchema = z.object({
   remoteUrl: z.string().min(1).max(1000),
 });
+
+/**
+ * GitHub device flow options schema
+ */
+export const githubDeviceFlowOptionsSchema = z.object({
+  scopes: z.array(z.string().max(100)).optional(),
+  openBrowser: z.boolean().optional(),
+}).optional();

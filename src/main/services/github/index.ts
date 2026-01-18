@@ -11,6 +11,15 @@ export {
   authenticateWithGitHub,
   handleOAuthCallback,
   setPendingOAuthCallback,
+  // Device flow exports
+  startDeviceFlow,
+  waitForDeviceFlowCompletion,
+  cancelDeviceFlow,
+  getDeviceFlowState,
+  isDeviceFlowAvailable,
+  authenticateWithDeviceFlow,
+  getDeviceFlowClientId,
+  // Auth state
   logout,
   refreshTokenIfNeeded,
   getAccessToken,

@@ -76,9 +76,9 @@ describe('SettingsView', () => {
       expect(screen.getByText('Settings')).toBeInTheDocument();
     });
 
-    it('renders Appearance section', async () => {
+    it('renders Display section', async () => {
       await renderSettingsView();
-      expect(screen.getByText('Appearance')).toBeInTheDocument();
+      expect(screen.getByText('Display')).toBeInTheDocument();
     });
 
     it('renders Startup Behavior section', async () => {
@@ -118,25 +118,17 @@ describe('SettingsView', () => {
   });
 
   describe('Theme Settings', () => {
-    it('renders theme selector with current value', async () => {
+    it('renders Color Theme section', async () => {
       await renderSettingsView();
 
-      const themeSelect = screen.getByDisplayValue('Dark');
-      expect(themeSelect).toBeInTheDocument();
+      expect(screen.getByText('Color Theme')).toBeInTheDocument();
     });
 
-    it('changes theme when selector is changed', async () => {
+    it('displays current theme name in collapsed preview', async () => {
       await renderSettingsView();
 
-      const themeSelect = screen.getByDisplayValue('Dark');
-      await act(async () => {
-        fireEvent.change(themeSelect, { target: { value: 'light' } });
-      });
-
-      await waitFor(() => {
-        const state = useSettingsStore.getState();
-        expect(state.settings.theme).toBe('light');
-      });
+      // The default theme is goodvibes-classic which shows its name in collapsed view
+      expect(screen.getByText('Goodvibes Classic')).toBeInTheDocument();
     });
   });
 
@@ -508,14 +500,15 @@ describe('SettingsView Store Integration', () => {
   it('persists settings changes', async () => {
     await renderSettingsView();
 
-    const themeSelect = screen.getByDisplayValue('Dark');
+    // Use font size change instead of theme (theme is now a color theme grid)
+    const increaseButton = screen.getByLabelText('Increase font size');
     await act(async () => {
-      fireEvent.change(themeSelect, { target: { value: 'light' } });
+      fireEvent.click(increaseButton);
     });
 
     await waitFor(() => {
       const state = useSettingsStore.getState();
-      expect(state.settings.theme).toBe('light');
+      expect(state.settings.fontSize).toBe(15);
     });
 
     // Re-render and verify persistence
@@ -525,7 +518,7 @@ describe('SettingsView Store Integration', () => {
     });
 
     const finalState = useSettingsStore.getState();
-    expect(finalState.settings.theme).toBe('light');
+    expect(finalState.settings.fontSize).toBe(15);
   });
 
   it('resets all settings to defaults', async () => {

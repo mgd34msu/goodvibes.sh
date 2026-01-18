@@ -361,3 +361,63 @@ export interface GitHubApiResult<T> {
   data?: T;
   error?: string;
 }
+
+// ============================================================================
+// GitHub Device Flow Types
+// ============================================================================
+
+/**
+ * Response from GitHub's device code request
+ */
+export interface GitHubDeviceCodeResponse {
+  device_code: string;
+  user_code: string;
+  verification_uri: string;
+  expires_in: number;
+  interval: number;
+}
+
+/**
+ * State of the device flow authentication process
+ */
+export type DeviceFlowStatus =
+  | 'idle'
+  | 'awaiting_code'
+  | 'polling'
+  | 'completed'
+  | 'expired'
+  | 'cancelled'
+  | 'error';
+
+/**
+ * Device flow state exposed to the renderer
+ */
+export interface DeviceFlowState {
+  status: DeviceFlowStatus;
+  userCode: string | null;
+  verificationUri: string | null;
+  expiresAt: number | null;
+  error: string | null;
+}
+
+/**
+ * Result of starting the device flow
+ */
+export interface DeviceFlowStartResult {
+  success: boolean;
+  userCode?: string;
+  verificationUri?: string;
+  expiresIn?: number;
+  error?: string;
+}
+
+/**
+ * Result of polling for device flow completion
+ */
+export interface DeviceFlowPollResult {
+  success: boolean;
+  completed: boolean;
+  user?: GitHubUser;
+  error?: string;
+  shouldRetry?: boolean;
+}
