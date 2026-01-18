@@ -26,6 +26,7 @@ import {
   setDatabaseInstance,
   clearDatabaseInstance,
 } from './connection.js';
+import { runMigrations, MIGRATIONS } from './migrations.js';
 
 // Re-export getDatabase from connection.ts for backward compatibility
 export { getDatabase } from './connection.js';
@@ -97,6 +98,12 @@ export async function initDatabase(userDataPath: string): Promise<void> {
 
   // Create session summaries tables (for cross-session search and resumption)
   createSessionSummariesTables();
+
+  // Run database migrations
+  const migrationsApplied = runMigrations(db, MIGRATIONS);
+  if (migrationsApplied > 0) {
+    logger.info(`Applied ${migrationsApplied} database migrations`);
+  }
 
   logger.info(`Database initialized at ${dbPath}`);
 }

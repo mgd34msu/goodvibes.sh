@@ -13,6 +13,7 @@ import {
   Clock,
   ChevronRight,
   Terminal,
+  MessageSquare,
 } from 'lucide-react';
 import { EVENT_TYPES, EVENT_TYPE_ICONS, type Hook } from './types';
 
@@ -82,6 +83,17 @@ export function HookCard({ hook, onToggle, onEdit, onDelete, onTest }: HookCardP
               <span className="card-badge">
                 {hook.scope}
               </span>
+              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs ${
+                hook.hookType === 'prompt'
+                  ? 'bg-blue-500/10 text-blue-400'
+                  : 'bg-green-500/10 text-green-400'
+              }`}>
+                {hook.hookType === 'prompt' ? (
+                  <><MessageSquare className="w-3 h-3" /> Prompt</>
+                ) : (
+                  <><Terminal className="w-3 h-3" /> Command</>
+                )}
+              </span>
               {hook.executionCount > 0 && getResultBadge()}
             </div>
             <p className="card-description">
@@ -92,6 +104,15 @@ export function HookCard({ hook, onToggle, onEdit, onDelete, onTest }: HookCardP
                 </span>
               )}
             </p>
+            {hook.hookType === 'prompt' ? (
+              <p className="text-xs text-surface-500 font-mono truncate mt-1">
+                {hook.prompt && hook.prompt.length > 80 ? `${hook.prompt.slice(0, 80)}...` : hook.prompt}
+              </p>
+            ) : (
+              <p className="text-xs text-surface-500 font-mono truncate mt-1">
+                {hook.command}
+              </p>
+            )}
             {hook.executionCount > 0 && (
               <div className="card-meta mt-3">
                 <span className="card-meta-item">
@@ -143,11 +164,17 @@ export function HookCard({ hook, onToggle, onEdit, onDelete, onTest }: HookCardP
 
           <div>
             <span className="text-xs text-text-muted uppercase tracking-wider font-medium">
-              Command
+              {hook.hookType === 'prompt' ? 'Prompt' : 'Command'}
             </span>
-            <div className="card-code-block mt-2 flex items-center gap-2">
-              <Terminal className="w-4 h-4 text-text-muted flex-shrink-0" />
-              {hook.command}
+            <div className="card-code-block mt-2 flex items-start gap-2">
+              {hook.hookType === 'prompt' ? (
+                <MessageSquare className="w-4 h-4 text-text-muted flex-shrink-0 mt-0.5" />
+              ) : (
+                <Terminal className="w-4 h-4 text-text-muted flex-shrink-0 mt-0.5" />
+              )}
+              <span className="whitespace-pre-wrap break-words">
+                {hook.hookType === 'prompt' ? hook.prompt : hook.command}
+              </span>
             </div>
           </div>
 

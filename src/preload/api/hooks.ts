@@ -12,8 +12,17 @@ export const hooksApi = {
     ipcRenderer.invoke('get-hooks'),
   getHook: (id: number) =>
     ipcRenderer.invoke('get-hook', id),
-  createHook: (hook: { name: string; eventType: string; matchPattern?: string; command: string; enabled: boolean; timeout?: number; projectPath?: string }) =>
-    ipcRenderer.invoke('create-hook', hook),
+  createHook: (hook: {
+    name: string;
+    eventType: string;
+    matchPattern?: string;
+    command: string;
+    enabled: boolean;
+    timeout?: number;
+    projectPath?: string;
+    hookType?: 'command' | 'prompt';
+    prompt?: string | null;
+  }) => ipcRenderer.invoke('create-hook', hook),
   updateHook: (id: number, updates: Record<string, unknown>) =>
     ipcRenderer.invoke('update-hook', { id, updates }),
   deleteHook: (id: number) =>
@@ -42,6 +51,12 @@ export const hooksApi = {
     ipcRenderer.invoke('hook-scripts-validate'),
   hookClaudeConfig: () =>
     ipcRenderer.invoke('hook-claude-config'),
+
+  // ============================================================================
+  // HOOK TESTING
+  // ============================================================================
+  testHook: (params: { command: string; input: Record<string, unknown> }): Promise<{ stdout: string; stderr: string; exitCode: number }> =>
+    ipcRenderer.invoke('test-hook', params),
 
   // ============================================================================
   // HOOK EVENT QUERIES

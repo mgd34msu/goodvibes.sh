@@ -54,6 +54,8 @@ export function useHooks(): UseHooksReturn {
             command: hookData.command || '',
             enabled: hookData.enabled ?? true,
             timeout: hookData.timeout,
+            hookType: hookData.hookType || 'command',
+            prompt: hookData.prompt || null,
           });
         }
         await loadHooks();

@@ -20,8 +20,8 @@ export function createHook(hook: Omit<HookConfig, 'id' | 'executionCount' | 'las
 
   const result = db.prepare(`
     INSERT INTO hooks (
-      name, event_type, matcher, command, timeout, enabled, scope, project_path
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      name, event_type, matcher, command, timeout, enabled, scope, project_path, hook_type, prompt
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     hook.name,
     hook.eventType,
@@ -30,7 +30,9 @@ export function createHook(hook: Omit<HookConfig, 'id' | 'executionCount' | 'las
     hook.timeout,
     hook.enabled ? 1 : 0,
     hook.scope,
-    hook.projectPath
+    hook.projectPath,
+    hook.hookType || 'command',
+    hook.prompt || null
   );
 
   const inserted = getHook(result.lastInsertRowid as number);
@@ -93,7 +95,8 @@ export function updateHook(id: number, updates: Partial<HookConfig>): void {
   db.prepare(`
     UPDATE hooks SET
       name = ?, event_type = ?, matcher = ?, command = ?, timeout = ?,
-      enabled = ?, scope = ?, project_path = ?, updated_at = datetime('now')
+      enabled = ?, scope = ?, project_path = ?, hook_type = ?, prompt = ?,
+      updated_at = datetime('now')
     WHERE id = ?
   `).run(
     merged.name,
@@ -104,6 +107,8 @@ export function updateHook(id: number, updates: Partial<HookConfig>): void {
     merged.enabled ? 1 : 0,
     merged.scope,
     merged.projectPath,
+    merged.hookType || 'command',
+    merged.prompt || null,
     id
   );
 }
@@ -141,6 +146,8 @@ function mapRowToHook(row: HookRow): HookConfig {
     lastResult: row.last_result,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    hookType: (row.hook_type as 'command' | 'prompt') || 'command',
+    prompt: row.prompt,
   };
 }
 

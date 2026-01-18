@@ -254,18 +254,47 @@ export function getMigrationHistory(db: Database.Database): SchemaVersionRow[] {
  * Add new migrations here as the schema evolves
  */
 export const MIGRATIONS: Migration[] = [
-  // Future migrations will be added here
-  // Example:
-  // {
-  //   version: 1,
-  //   description: 'Add search index to sessions',
-  //   up: (db) => {
-  //     db.exec('CREATE INDEX IF NOT EXISTS idx_sessions_search ON sessions(project_name, custom_title)');
-  //   },
-  //   down: (db) => {
-  //     db.exec('DROP INDEX IF EXISTS idx_sessions_search');
-  //   },
-  // },
+  {
+    version: 1,
+    description: 'Add hook_type and prompt columns to hooks table',
+    up: (db) => {
+      // Add hook_type column with default 'command'
+      db.exec(`ALTER TABLE hooks ADD COLUMN hook_type TEXT DEFAULT 'command'`);
+      // Add prompt column for prompt-type hooks
+      db.exec(`ALTER TABLE hooks ADD COLUMN prompt TEXT`);
+    },
+    down: (db) => {
+      // SQLite doesn't support DROP COLUMN directly, so we need to recreate the table
+      // This is a simplified rollback - in production you'd want to preserve data
+      db.exec(`
+        CREATE TABLE hooks_backup AS SELECT
+          id, name, event_type, matcher, command, timeout, enabled, scope,
+          project_path, execution_count, last_executed, last_result, created_at, updated_at
+        FROM hooks
+      `);
+      db.exec(`DROP TABLE hooks`);
+      db.exec(`
+        CREATE TABLE hooks (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT NOT NULL,
+          event_type TEXT NOT NULL,
+          matcher TEXT,
+          command TEXT NOT NULL,
+          timeout INTEGER DEFAULT 30000,
+          enabled INTEGER DEFAULT 1,
+          scope TEXT DEFAULT 'user',
+          project_path TEXT,
+          execution_count INTEGER DEFAULT 0,
+          last_executed TEXT,
+          last_result TEXT,
+          created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+          updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+      db.exec(`INSERT INTO hooks SELECT * FROM hooks_backup`);
+      db.exec(`DROP TABLE hooks_backup`);
+    },
+  },
 ];
 
 // ============================================================================

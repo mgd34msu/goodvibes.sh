@@ -98,6 +98,78 @@ export function registerHooksHandlers(): void {
   }));
 
   // ============================================================================
+  // HOOK TESTING
+  // ============================================================================
+
+  ipcMain.handle('test-hook', withContext('test-hook', async (_, { command, input }: { command: string; input: Record<string, unknown> }) => {
+    const { spawn } = await import('child_process');
+
+    return new Promise<{ stdout: string; stderr: string; exitCode: number }>((resolve) => {
+      try {
+        // Prepare the input as JSON to pass via stdin
+        const inputJson = JSON.stringify(input);
+
+        // Determine shell based on platform
+        const isWindows = process.platform === 'win32';
+        const shell = isWindows ? 'cmd.exe' : '/bin/sh';
+        const shellArgs = isWindows ? ['/c', command] : ['-c', command];
+
+        const child = spawn(shell, shellArgs, {
+          env: { ...process.env },
+          stdio: ['pipe', 'pipe', 'pipe'],
+        });
+
+        let stdout = '';
+        let stderr = '';
+
+        child.stdout.on('data', (data: Buffer) => {
+          stdout += data.toString();
+        });
+
+        child.stderr.on('data', (data: Buffer) => {
+          stderr += data.toString();
+        });
+
+        // Write input JSON to stdin
+        child.stdin.write(inputJson);
+        child.stdin.end();
+
+        child.on('close', (code: number | null) => {
+          resolve({
+            stdout: stdout.trim(),
+            stderr: stderr.trim(),
+            exitCode: code ?? 0,
+          });
+        });
+
+        child.on('error', (err: Error) => {
+          resolve({
+            stdout: '',
+            stderr: err.message,
+            exitCode: 1,
+          });
+        });
+
+        // Set a timeout of 30 seconds
+        setTimeout(() => {
+          child.kill();
+          resolve({
+            stdout: stdout.trim(),
+            stderr: stderr.trim() || 'Command timed out after 30 seconds',
+            exitCode: 124, // Standard timeout exit code
+          });
+        }, 30000);
+      } catch (err) {
+        resolve({
+          stdout: '',
+          stderr: err instanceof Error ? err.message : 'Unknown error',
+          exitCode: 1,
+        });
+      }
+    });
+  }));
+
+  // ============================================================================
   // HOOK EVENT QUERIES
   // ============================================================================
 

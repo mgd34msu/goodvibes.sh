@@ -39,6 +39,8 @@ export interface HookRow {
   last_result: 'success' | 'failure' | 'timeout' | null;
   created_at: string;
   updated_at: string;
+  hook_type: 'command' | 'prompt';
+  prompt: string | null;
 }
 
 /** Raw row from mcp_servers table */
@@ -205,6 +207,8 @@ export interface HookConfig {
   lastResult: 'success' | 'failure' | 'timeout' | null;
   createdAt: string;
   updatedAt: string;
+  hookType: 'command' | 'prompt';
+  prompt: string | null;
 }
 
 export type HookEventType =
