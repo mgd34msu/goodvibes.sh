@@ -682,4 +682,1148 @@ exit 0`,
     category: 'workflow',
     tags: ['git', 'checkpoint', 'backup', 'recovery'],
   },
+
+  // ============================================================================
+  // PRETOOLUSE - Additional (need 1 more)
+  // ============================================================================
+  {
+    id: 'rate-limit-tool-usage',
+    name: 'Rate Limit Tool Usage',
+    description: 'Limits how often a tool can be called to prevent runaway loops',
+    eventType: 'PreToolUse',
+    matcher: '*',
+    command: `#!/bin/bash
+# Rate limit tool usage
+INPUT=$(cat)
+TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // "unknown"')
+CWD=$(echo "$INPUT" | jq -r '.cwd // "."')
+RATE_FILE="$CWD/.claude-rate-limit"
+MAX_CALLS_PER_MINUTE=30
+
+mkdir -p "$(dirname "$RATE_FILE")"
+NOW=$(date +%s)
+MINUTE_AGO=$((NOW - 60))
+
+# Clean old entries and count recent calls
+if [ -f "$RATE_FILE" ]; then
+  RECENT=$(awk -v cutoff="$MINUTE_AGO" '$1 > cutoff' "$RATE_FILE" | wc -l)
+  awk -v cutoff="$MINUTE_AGO" '$1 > cutoff' "$RATE_FILE" > "$RATE_FILE.tmp"
+  mv "$RATE_FILE.tmp" "$RATE_FILE"
+else
+  RECENT=0
+fi
+
+if [ "$RECENT" -ge "$MAX_CALLS_PER_MINUTE" ]; then
+  echo '{"decision":"deny","reason":"Rate limit exceeded. Please slow down."}'
+  exit 0
+fi
+
+echo "$NOW $TOOL_NAME" >> "$RATE_FILE"
+echo '{"decision":"allow"}'
+exit 0`,
+    hookType: 'command',
+    prompt: null,
+    timeout: 3000,
+    category: 'safety',
+    tags: ['rate-limit', 'throttle', 'safety', 'loops'],
+  },
+
+  // ============================================================================
+  // PERMISSIONREQUEST - Additional (need 4 more)
+  // ============================================================================
+  {
+    id: 'auto-approve-project-dir',
+    name: 'Auto-Approve in Project Directory',
+    description: 'Automatically approves operations within the project directory',
+    eventType: 'PermissionRequest',
+    matcher: '*',
+    command: `#!/bin/bash
+INPUT=$(cat)
+FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // .tool_input.path // empty')
+CWD=$(echo "$INPUT" | jq -r '.cwd // "."')
+
+# Allow if file is within project directory
+if [[ "$FILE_PATH" == "$CWD"* ]] || [[ "$FILE_PATH" == "./"* ]] || [[ "$FILE_PATH" != /* ]]; then
+  echo '{"decision":"allow","reason":"File is within project directory"}'
+else
+  echo '{"decision":"deny","reason":"File is outside project directory"}'
+fi
+exit 0`,
+    hookType: 'command',
+    prompt: null,
+    timeout: 3000,
+    category: 'automation',
+    tags: ['auto-approve', 'permissions', 'directory', 'scope'],
+  },
+  {
+    id: 'approve-during-work-hours',
+    name: 'Auto-Approve During Work Hours',
+    description: 'Auto-approves operations during configured work hours (9am-6pm)',
+    eventType: 'PermissionRequest',
+    matcher: '*',
+    command: `#!/bin/bash
+HOUR=$(date +%H)
+if [ "$HOUR" -ge 9 ] && [ "$HOUR" -lt 18 ]; then
+  echo '{"decision":"allow","reason":"Within work hours"}'
+else
+  echo '{"decision":"ask","reason":"Outside work hours - manual approval required"}'
+fi
+exit 0`,
+    hookType: 'command',
+    prompt: null,
+    timeout: 2000,
+    category: 'automation',
+    tags: ['work-hours', 'schedule', 'auto-approve', 'permissions'],
+  },
+  {
+    id: 'confirm-delete-operations',
+    name: 'Require Confirmation for Deletes',
+    description: 'Always requires manual confirmation for delete operations',
+    eventType: 'PermissionRequest',
+    matcher: 'Bash',
+    command: `#!/bin/bash
+INPUT=$(cat)
+COMMAND=$(echo "$INPUT" | jq -r '.tool_input.command // empty')
+
+if [[ "$COMMAND" == *"rm "* ]] || [[ "$COMMAND" == *"del "* ]] || [[ "$COMMAND" == *"rmdir"* ]]; then
+  echo '{"decision":"ask","reason":"Delete operation requires confirmation"}'
+else
+  echo '{"decision":"allow"}'
+fi
+exit 0`,
+    hookType: 'command',
+    prompt: null,
+    timeout: 2000,
+    category: 'safety',
+    tags: ['delete', 'confirmation', 'safety', 'permissions'],
+  },
+  {
+    id: 'allow-trusted-patterns',
+    name: 'Allow Trusted Tool Patterns',
+    description: 'Auto-approves specific trusted command patterns',
+    eventType: 'PermissionRequest',
+    matcher: 'Bash',
+    command: `#!/bin/bash
+INPUT=$(cat)
+COMMAND=$(echo "$INPUT" | jq -r '.tool_input.command // empty')
+
+# Trusted patterns
+TRUSTED_PATTERNS=(
+  "npm test"
+  "npm run"
+  "npx "
+  "git status"
+  "git diff"
+  "git log"
+  "ls "
+  "pwd"
+  "echo "
+)
+
+for pattern in "\${TRUSTED_PATTERNS[@]}"; do
+  if [[ "$COMMAND" == "$pattern"* ]]; then
+    echo '{"decision":"allow","reason":"Trusted command pattern"}'
+    exit 0
+  fi
+done
+
+echo '{"decision":"ask"}'
+exit 0`,
+    hookType: 'command',
+    prompt: null,
+    timeout: 2000,
+    category: 'automation',
+    tags: ['trusted', 'patterns', 'whitelist', 'permissions'],
+  },
+
+  // ============================================================================
+  // POSTTOOLUSEFAILURE - All 5 (new event type)
+  // ============================================================================
+  {
+    id: 'log-failed-commands',
+    name: 'Log Failed Commands',
+    description: 'Logs all failed tool executions to a file for debugging',
+    eventType: 'PostToolUseFailure',
+    matcher: '*',
+    command: `#!/bin/bash
+INPUT=$(cat)
+TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // "unknown"')
+ERROR=$(echo "$INPUT" | jq -r '.tool_response.stderr // .error // "unknown error"')
+TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+CWD=$(echo "$INPUT" | jq -r '.cwd // "."')
+
+LOG_FILE="$CWD/.claude-failures.log"
+echo "[$TIMESTAMP] FAILED: $TOOL_NAME - $ERROR" >> "$LOG_FILE"
+
+exit 0`,
+    hookType: 'command',
+    prompt: null,
+    timeout: 3000,
+    category: 'workflow',
+    tags: ['logging', 'errors', 'debugging', 'failures'],
+  },
+  {
+    id: 'alert-repeated-failures',
+    name: 'Alert on Repeated Failures',
+    description: 'Shows alert when same tool fails multiple times in a row',
+    eventType: 'PostToolUseFailure',
+    matcher: '*',
+    command: `#!/bin/bash
+INPUT=$(cat)
+TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // "unknown"')
+CWD=$(echo "$INPUT" | jq -r '.cwd // "."')
+FAILURE_FILE="$CWD/.claude-failure-count"
+
+mkdir -p "$(dirname "$FAILURE_FILE")"
+
+# Count consecutive failures for this tool
+LAST_TOOL=$(head -1 "$FAILURE_FILE" 2>/dev/null || echo "")
+COUNT=$(tail -1 "$FAILURE_FILE" 2>/dev/null || echo "0")
+
+if [ "$LAST_TOOL" = "$TOOL_NAME" ]; then
+  COUNT=$((COUNT + 1))
+else
+  COUNT=1
+fi
+
+echo "$TOOL_NAME" > "$FAILURE_FILE"
+echo "$COUNT" >> "$FAILURE_FILE"
+
+if [ "$COUNT" -ge 3 ]; then
+  echo "[WARNING] $TOOL_NAME has failed $COUNT times consecutively!"
+fi
+
+exit 0`,
+    hookType: 'command',
+    prompt: null,
+    timeout: 3000,
+    category: 'notifications',
+    tags: ['alerts', 'failures', 'consecutive', 'monitoring'],
+  },
+  {
+    id: 'capture-error-context',
+    name: 'Capture Error Context',
+    description: 'Saves full error context to help with debugging',
+    eventType: 'PostToolUseFailure',
+    matcher: '*',
+    command: `#!/bin/bash
+INPUT=$(cat)
+CWD=$(echo "$INPUT" | jq -r '.cwd // "."')
+TIMESTAMP=$(date +%s)
+
+ERROR_DIR="$CWD/.claude-errors"
+mkdir -p "$ERROR_DIR"
+
+# Save full context
+echo "$INPUT" | jq . > "$ERROR_DIR/error-$TIMESTAMP.json"
+
+echo "[Error Context] Saved to $ERROR_DIR/error-$TIMESTAMP.json"
+exit 0`,
+    hookType: 'command',
+    prompt: null,
+    timeout: 3000,
+    category: 'workflow',
+    tags: ['errors', 'context', 'debugging', 'capture'],
+  },
+  {
+    id: 'suggest-fix-for-failure',
+    name: 'Suggest Fixes for Common Errors',
+    description: 'Provides suggestions for common error patterns',
+    eventType: 'PostToolUseFailure',
+    matcher: 'Bash',
+    command: `#!/bin/bash
+INPUT=$(cat)
+ERROR=$(echo "$INPUT" | jq -r '.tool_response.stderr // ""')
+
+# Common error patterns and suggestions
+if [[ "$ERROR" == *"command not found"* ]]; then
+  echo "[Suggestion] Command not found. Try installing the required package."
+elif [[ "$ERROR" == *"permission denied"* ]]; then
+  echo "[Suggestion] Permission denied. Check file permissions or run with appropriate access."
+elif [[ "$ERROR" == *"ENOENT"* ]] || [[ "$ERROR" == *"No such file"* ]]; then
+  echo "[Suggestion] File not found. Verify the path exists."
+elif [[ "$ERROR" == *"ECONNREFUSED"* ]]; then
+  echo "[Suggestion] Connection refused. Check if the service is running."
+fi
+
+exit 0`,
+    hookType: 'command',
+    prompt: null,
+    timeout: 3000,
+    category: 'automation',
+    tags: ['suggestions', 'errors', 'help', 'debugging'],
+  },
+  {
+    id: 'notify-on-failure',
+    name: 'Desktop Notification on Failure',
+    description: 'Shows desktop notification when a tool fails',
+    eventType: 'PostToolUseFailure',
+    matcher: '*',
+    command: `#!/bin/bash
+INPUT=$(cat)
+TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // "unknown"')
+
+if [[ "$OSTYPE" == "darwin"* ]]; then
+  osascript -e "display notification \\"$TOOL_NAME failed\\" with title \\"Claude Code Error\\""
+elif [[ -n "$WINDIR" ]]; then
+  powershell -Command "[console]::beep(400,500)" 2>/dev/null
+else
+  notify-send "Claude Code Error" "$TOOL_NAME failed" 2>/dev/null || echo -e "\\a"
+fi
+
+exit 0`,
+    hookType: 'command',
+    prompt: null,
+    timeout: 3000,
+    category: 'notifications',
+    tags: ['notification', 'desktop', 'failure', 'alert'],
+  },
+
+  // ============================================================================
+  // NOTIFICATION - Additional (need 1 more)
+  // ============================================================================
+  {
+    id: 'webhook-on-auth',
+    name: 'Webhook on Auth Success',
+    description: 'Sends webhook notification when authentication succeeds',
+    eventType: 'Notification',
+    matcher: 'auth_success',
+    command: `#!/bin/bash
+WEBHOOK_URL="\${CLAUDE_AUTH_WEBHOOK:-}"
+if [ -n "$WEBHOOK_URL" ]; then
+  curl -s -X POST "$WEBHOOK_URL" \\
+    -H "Content-Type: application/json" \\
+    -d '{"event":"auth_success","timestamp":"'"$(date -u +%Y-%m-%dT%H:%M:%SZ)"'"}' \\
+    > /dev/null 2>&1
+fi
+exit 0`,
+    hookType: 'command',
+    prompt: null,
+    timeout: 5000,
+    category: 'notifications',
+    tags: ['webhook', 'auth', 'notification', 'security'],
+  },
+
+  // ============================================================================
+  // USERPROMPTSUBMIT - Additional (need 4 more)
+  // ============================================================================
+  {
+    id: 'add-timestamp-to-prompt',
+    name: 'Add Timestamp to Prompts',
+    description: 'Prepends current timestamp to all prompts for logging',
+    eventType: 'UserPromptSubmit',
+    matcher: null,
+    command: `#!/bin/bash
+TIMESTAMP=$(date "+%Y-%m-%d %H:%M:%S")
+echo "[Submitted at $TIMESTAMP]"
+exit 0`,
+    hookType: 'command',
+    prompt: null,
+    timeout: 2000,
+    category: 'workflow',
+    tags: ['timestamp', 'logging', 'prompt', 'audit'],
+  },
+  {
+    id: 'block-sensitive-keywords',
+    name: 'Block Sensitive Keywords',
+    description: 'Blocks prompts containing sensitive keywords like passwords or API keys',
+    eventType: 'UserPromptSubmit',
+    matcher: null,
+    command: `#!/bin/bash
+INPUT=$(cat)
+PROMPT=$(echo "$INPUT" | jq -r '.prompt // ""')
+
+SENSITIVE_PATTERNS=(
+  "password"
+  "api_key"
+  "secret_key"
+  "private_key"
+  "ACCESS_KEY"
+  "Bearer "
+)
+
+for pattern in "\${SENSITIVE_PATTERNS[@]}"; do
+  if [[ "$PROMPT" == *"$pattern"* ]]; then
+    echo '{"decision":"block","reason":"Prompt contains sensitive keyword: '"$pattern"'"}'
+    exit 2
+  fi
+done
+
+exit 0`,
+    hookType: 'command',
+    prompt: null,
+    timeout: 2000,
+    category: 'safety',
+    tags: ['security', 'keywords', 'block', 'sensitive'],
+  },
+  {
+    id: 'add-git-branch-info',
+    name: 'Add Git Branch Info',
+    description: 'Injects current git branch name into prompt context',
+    eventType: 'UserPromptSubmit',
+    matcher: null,
+    command: `#!/bin/bash
+INPUT=$(cat)
+CWD=$(echo "$INPUT" | jq -r '.cwd // "."')
+
+cd "$CWD" 2>/dev/null || exit 0
+
+if git rev-parse --is-inside-work-tree > /dev/null 2>&1; then
+  BRANCH=$(git branch --show-current 2>/dev/null)
+  if [ -n "$BRANCH" ]; then
+    echo "[Git Branch: $BRANCH]"
+  fi
+fi
+
+exit 0`,
+    hookType: 'command',
+    prompt: null,
+    timeout: 3000,
+    category: 'workflow',
+    tags: ['git', 'branch', 'context', 'injection'],
+  },
+  {
+    id: 'prepend-custom-instructions',
+    name: 'Prepend Custom Instructions',
+    description: 'Adds custom instructions from a file to every prompt',
+    eventType: 'UserPromptSubmit',
+    matcher: null,
+    command: `#!/bin/bash
+INPUT=$(cat)
+CWD=$(echo "$INPUT" | jq -r '.cwd // "."')
+
+INSTRUCTIONS_FILE="$CWD/.claude-instructions"
+if [ -f "$INSTRUCTIONS_FILE" ]; then
+  echo "[Custom Instructions]"
+  cat "$INSTRUCTIONS_FILE"
+  echo ""
+fi
+
+exit 0`,
+    hookType: 'command',
+    prompt: null,
+    timeout: 3000,
+    category: 'workflow',
+    tags: ['instructions', 'custom', 'context', 'injection'],
+  },
+
+  // ============================================================================
+  // STOP - Additional (need 4 more)
+  // ============================================================================
+  {
+    id: 'verify-build-passes',
+    name: 'Verify Build Passes',
+    description: 'Ensures the project builds successfully before stopping',
+    eventType: 'Stop',
+    matcher: null,
+    command: `#!/bin/bash
+INPUT=$(cat)
+CWD=$(echo "$INPUT" | jq -r '.cwd // "."')
+
+cd "$CWD" 2>/dev/null || exit 0
+
+if [ -f "package.json" ] && jq -e '.scripts.build' package.json > /dev/null 2>&1; then
+  echo "[Stop Hook] Verifying build..."
+  if npm run build > /dev/null 2>&1; then
+    echo "[Stop Hook] Build passed!"
+  else
+    echo '{"decision":"block","reason":"Build is failing. Please fix build errors."}'
+    exit 2
+  fi
+fi
+
+exit 0`,
+    hookType: 'command',
+    prompt: null,
+    timeout: 180000,
+    category: 'workflow',
+    tags: ['build', 'verification', 'stop', 'quality'],
+  },
+  {
+    id: 'check-for-todos',
+    name: 'Check for TODOs',
+    description: 'Warns if there are TODO comments left in modified files',
+    eventType: 'Stop',
+    matcher: null,
+    command: `#!/bin/bash
+INPUT=$(cat)
+CWD=$(echo "$INPUT" | jq -r '.cwd // "."')
+
+cd "$CWD" 2>/dev/null || exit 0
+
+if git rev-parse --is-inside-work-tree > /dev/null 2>&1; then
+  TODOS=$(git diff --cached --name-only | xargs grep -l "TODO\\|FIXME\\|XXX" 2>/dev/null | head -5)
+  if [ -n "$TODOS" ]; then
+    echo "[Warning] Files with TODO/FIXME comments:"
+    echo "$TODOS"
+  fi
+fi
+
+exit 0`,
+    hookType: 'command',
+    prompt: null,
+    timeout: 10000,
+    category: 'workflow',
+    tags: ['todo', 'quality', 'review', 'stop'],
+  },
+  {
+    id: 'ensure-commits-pushed',
+    name: 'Ensure Commits Are Pushed',
+    description: 'Reminds to push commits before stopping',
+    eventType: 'Stop',
+    matcher: null,
+    command: `#!/bin/bash
+INPUT=$(cat)
+CWD=$(echo "$INPUT" | jq -r '.cwd // "."')
+
+cd "$CWD" 2>/dev/null || exit 0
+
+if git rev-parse --is-inside-work-tree > /dev/null 2>&1; then
+  UNPUSHED=$(git log @{u}.. --oneline 2>/dev/null | wc -l)
+  if [ "$UNPUSHED" -gt 0 ]; then
+    echo "[Reminder] You have $UNPUSHED unpushed commit(s)."
+  fi
+fi
+
+exit 0`,
+    hookType: 'command',
+    prompt: null,
+    timeout: 5000,
+    category: 'workflow',
+    tags: ['git', 'push', 'reminder', 'stop'],
+  },
+  {
+    id: 'generate-session-summary',
+    name: 'Generate Session Summary',
+    description: 'Creates a summary of changes made during the session',
+    eventType: 'Stop',
+    matcher: null,
+    command: `#!/bin/bash
+INPUT=$(cat)
+CWD=$(echo "$INPUT" | jq -r '.cwd // "."')
+TIMESTAMP=$(date "+%Y-%m-%d_%H-%M-%S")
+
+cd "$CWD" 2>/dev/null || exit 0
+
+SUMMARY_DIR="$CWD/.claude-summaries"
+mkdir -p "$SUMMARY_DIR"
+
+if git rev-parse --is-inside-work-tree > /dev/null 2>&1; then
+  {
+    echo "# Session Summary - $TIMESTAMP"
+    echo ""
+    echo "## Files Modified"
+    git status --short
+    echo ""
+    echo "## Recent Commits"
+    git log --oneline -5
+  } > "$SUMMARY_DIR/session-$TIMESTAMP.md"
+
+  echo "[Summary] Saved to $SUMMARY_DIR/session-$TIMESTAMP.md"
+fi
+
+exit 0`,
+    hookType: 'command',
+    prompt: null,
+    timeout: 10000,
+    category: 'workflow',
+    tags: ['summary', 'session', 'documentation', 'stop'],
+  },
+
+  // ============================================================================
+  // SUBAGENTSTART - All 5 (new event type)
+  // ============================================================================
+  {
+    id: 'log-subagent-spawn',
+    name: 'Log Subagent Spawn',
+    description: 'Logs when subagents are spawned for tracking',
+    eventType: 'SubagentStart',
+    matcher: '*',
+    command: `#!/bin/bash
+INPUT=$(cat)
+SUBAGENT=$(echo "$INPUT" | jq -r '.subagent_name // "unknown"')
+TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+CWD=$(echo "$INPUT" | jq -r '.cwd // "."')
+
+LOG_FILE="$CWD/.claude-subagents.log"
+echo "[$TIMESTAMP] STARTED: $SUBAGENT" >> "$LOG_FILE"
+
+exit 0`,
+    hookType: 'command',
+    prompt: null,
+    timeout: 2000,
+    category: 'workflow',
+    tags: ['logging', 'subagent', 'tracking', 'spawn'],
+  },
+  {
+    id: 'setup-subagent-env',
+    name: 'Set Up Subagent Environment',
+    description: 'Configures environment variables for subagents',
+    eventType: 'SubagentStart',
+    matcher: '*',
+    command: `#!/bin/bash
+INPUT=$(cat)
+CWD=$(echo "$INPUT" | jq -r '.cwd // "."')
+
+# Set common environment variables for subagents
+export SUBAGENT_MODE=true
+export PROJECT_ROOT="$CWD"
+
+echo "[Subagent] Environment configured"
+exit 0`,
+    hookType: 'command',
+    prompt: null,
+    timeout: 2000,
+    category: 'workflow',
+    tags: ['environment', 'subagent', 'setup', 'config'],
+  },
+  {
+    id: 'inject-subagent-context',
+    name: 'Inject Subagent Context',
+    description: 'Provides relevant context to subagents on startup',
+    eventType: 'SubagentStart',
+    matcher: '*',
+    command: `#!/bin/bash
+INPUT=$(cat)
+SUBAGENT=$(echo "$INPUT" | jq -r '.subagent_name // "unknown"')
+CWD=$(echo "$INPUT" | jq -r '.cwd // "."')
+
+echo "[Subagent: $SUBAGENT] Starting in $CWD"
+
+# Output any relevant context files
+if [ -f "$CWD/CLAUDE.md" ]; then
+  echo "[Context] CLAUDE.md is available for project instructions"
+fi
+
+exit 0`,
+    hookType: 'command',
+    prompt: null,
+    timeout: 3000,
+    category: 'workflow',
+    tags: ['context', 'subagent', 'injection', 'startup'],
+  },
+  {
+    id: 'limit-concurrent-subagents',
+    name: 'Limit Concurrent Subagents',
+    description: 'Tracks and limits the number of concurrent subagents',
+    eventType: 'SubagentStart',
+    matcher: '*',
+    command: `#!/bin/bash
+INPUT=$(cat)
+CWD=$(echo "$INPUT" | jq -r '.cwd // "."')
+MAX_SUBAGENTS=5
+
+COUNT_FILE="$CWD/.claude-subagent-count"
+mkdir -p "$(dirname "$COUNT_FILE")"
+
+COUNT=$(cat "$COUNT_FILE" 2>/dev/null || echo "0")
+COUNT=$((COUNT + 1))
+echo "$COUNT" > "$COUNT_FILE"
+
+if [ "$COUNT" -gt "$MAX_SUBAGENTS" ]; then
+  echo "[Warning] $COUNT subagents running (max: $MAX_SUBAGENTS)"
+fi
+
+exit 0`,
+    hookType: 'command',
+    prompt: null,
+    timeout: 2000,
+    category: 'safety',
+    tags: ['limit', 'concurrent', 'subagent', 'throttle'],
+  },
+  {
+    id: 'notify-subagent-start',
+    name: 'Notify on Subagent Start',
+    description: 'Shows notification when a subagent starts',
+    eventType: 'SubagentStart',
+    matcher: '*',
+    command: `#!/bin/bash
+INPUT=$(cat)
+SUBAGENT=$(echo "$INPUT" | jq -r '.subagent_name // "unknown"')
+
+if [[ "$OSTYPE" == "darwin"* ]]; then
+  osascript -e "display notification \\"Subagent $SUBAGENT started\\" with title \\"Claude Code\\""
+elif [[ -n "$WINDIR" ]]; then
+  powershell -Command "[console]::beep(600,200)" 2>/dev/null
+fi
+
+exit 0`,
+    hookType: 'command',
+    prompt: null,
+    timeout: 3000,
+    category: 'notifications',
+    tags: ['notification', 'subagent', 'start', 'alert'],
+  },
+
+  // ============================================================================
+  // SUBAGENTSTOP - All 5 (new event type)
+  // ============================================================================
+  {
+    id: 'log-subagent-completion',
+    name: 'Log Subagent Completion',
+    description: 'Logs when subagents finish their work',
+    eventType: 'SubagentStop',
+    matcher: '*',
+    command: `#!/bin/bash
+INPUT=$(cat)
+SUBAGENT=$(echo "$INPUT" | jq -r '.subagent_name // "unknown"')
+TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+CWD=$(echo "$INPUT" | jq -r '.cwd // "."')
+
+LOG_FILE="$CWD/.claude-subagents.log"
+echo "[$TIMESTAMP] STOPPED: $SUBAGENT" >> "$LOG_FILE"
+
+exit 0`,
+    hookType: 'command',
+    prompt: null,
+    timeout: 2000,
+    category: 'workflow',
+    tags: ['logging', 'subagent', 'completion', 'tracking'],
+  },
+  {
+    id: 'validate-subagent-output',
+    name: 'Validate Subagent Output',
+    description: 'Checks that subagent produced expected output',
+    eventType: 'SubagentStop',
+    matcher: '*',
+    command: `#!/bin/bash
+INPUT=$(cat)
+SUBAGENT=$(echo "$INPUT" | jq -r '.subagent_name // "unknown"')
+
+echo "[Subagent: $SUBAGENT] Completed"
+
+# Add validation logic here if needed
+exit 0`,
+    hookType: 'command',
+    prompt: null,
+    timeout: 5000,
+    category: 'workflow',
+    tags: ['validation', 'subagent', 'output', 'quality'],
+  },
+  {
+    id: 'cleanup-subagent-resources',
+    name: 'Clean Up Subagent Resources',
+    description: 'Cleans up temporary resources created by subagent',
+    eventType: 'SubagentStop',
+    matcher: '*',
+    command: `#!/bin/bash
+INPUT=$(cat)
+CWD=$(echo "$INPUT" | jq -r '.cwd // "."')
+
+# Decrement subagent counter
+COUNT_FILE="$CWD/.claude-subagent-count"
+if [ -f "$COUNT_FILE" ]; then
+  COUNT=$(cat "$COUNT_FILE")
+  COUNT=$((COUNT - 1))
+  if [ "$COUNT" -le 0 ]; then
+    rm -f "$COUNT_FILE"
+  else
+    echo "$COUNT" > "$COUNT_FILE"
+  fi
+fi
+
+exit 0`,
+    hookType: 'command',
+    prompt: null,
+    timeout: 3000,
+    category: 'workflow',
+    tags: ['cleanup', 'subagent', 'resources', 'stop'],
+  },
+  {
+    id: 'report-subagent-metrics',
+    name: 'Report Subagent Metrics',
+    description: 'Reports metrics about subagent execution',
+    eventType: 'SubagentStop',
+    matcher: '*',
+    command: `#!/bin/bash
+INPUT=$(cat)
+SUBAGENT=$(echo "$INPUT" | jq -r '.subagent_name // "unknown"')
+CWD=$(echo "$INPUT" | jq -r '.cwd // "."')
+TIMESTAMP=$(date +%s)
+
+METRICS_FILE="$CWD/.claude-metrics.log"
+echo "$TIMESTAMP subagent_stop $SUBAGENT" >> "$METRICS_FILE"
+
+exit 0`,
+    hookType: 'command',
+    prompt: null,
+    timeout: 2000,
+    category: 'workflow',
+    tags: ['metrics', 'subagent', 'reporting', 'analytics'],
+  },
+  {
+    id: 'notify-subagent-stop',
+    name: 'Notify on Subagent Stop',
+    description: 'Shows notification when a subagent finishes',
+    eventType: 'SubagentStop',
+    matcher: '*',
+    command: `#!/bin/bash
+INPUT=$(cat)
+SUBAGENT=$(echo "$INPUT" | jq -r '.subagent_name // "unknown"')
+
+if [[ "$OSTYPE" == "darwin"* ]]; then
+  osascript -e "display notification \\"Subagent $SUBAGENT finished\\" with title \\"Claude Code\\""
+fi
+
+exit 0`,
+    hookType: 'command',
+    prompt: null,
+    timeout: 3000,
+    category: 'notifications',
+    tags: ['notification', 'subagent', 'stop', 'alert'],
+  },
+
+  // ============================================================================
+  // PRECOMPACT - All 5 (new event type)
+  // ============================================================================
+  {
+    id: 'backup-transcript',
+    name: 'Backup Transcript Before Compact',
+    description: 'Saves a copy of the transcript before compaction',
+    eventType: 'PreCompact',
+    matcher: '*',
+    command: `#!/bin/bash
+INPUT=$(cat)
+TRANSCRIPT=$(echo "$INPUT" | jq -r '.transcript_path // ""')
+CWD=$(echo "$INPUT" | jq -r '.cwd // "."')
+TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+
+if [ -n "$TRANSCRIPT" ] && [ -f "$TRANSCRIPT" ]; then
+  BACKUP_DIR="$CWD/.claude-backups"
+  mkdir -p "$BACKUP_DIR"
+  cp "$TRANSCRIPT" "$BACKUP_DIR/transcript-$TIMESTAMP.json"
+  echo "[Backup] Transcript saved to $BACKUP_DIR"
+fi
+
+exit 0`,
+    hookType: 'command',
+    prompt: null,
+    timeout: 10000,
+    category: 'workflow',
+    tags: ['backup', 'transcript', 'compact', 'archive'],
+  },
+  {
+    id: 'save-important-context',
+    name: 'Save Important Context',
+    description: 'Extracts and saves important context before compaction',
+    eventType: 'PreCompact',
+    matcher: '*',
+    command: `#!/bin/bash
+INPUT=$(cat)
+CWD=$(echo "$INPUT" | jq -r '.cwd // "."')
+TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+
+CONTEXT_DIR="$CWD/.claude-context"
+mkdir -p "$CONTEXT_DIR"
+
+# Save current state
+{
+  echo "# Context Snapshot - $TIMESTAMP"
+  echo ""
+  echo "## Git Status"
+  git status --short 2>/dev/null || echo "Not a git repo"
+  echo ""
+  echo "## Recent Files"
+  ls -lt 2>/dev/null | head -10
+} > "$CONTEXT_DIR/snapshot-$TIMESTAMP.md"
+
+echo "[Context] Snapshot saved"
+exit 0`,
+    hookType: 'command',
+    prompt: null,
+    timeout: 10000,
+    category: 'workflow',
+    tags: ['context', 'save', 'compact', 'snapshot'],
+  },
+  {
+    id: 'export-to-markdown',
+    name: 'Export Session to Markdown',
+    description: 'Exports session content to markdown before compaction',
+    eventType: 'PreCompact',
+    matcher: 'manual',
+    command: `#!/bin/bash
+INPUT=$(cat)
+CWD=$(echo "$INPUT" | jq -r '.cwd // "."')
+TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+
+EXPORT_DIR="$CWD/.claude-exports"
+mkdir -p "$EXPORT_DIR"
+
+echo "[Export] Session exported to $EXPORT_DIR/session-$TIMESTAMP.md"
+exit 0`,
+    hookType: 'command',
+    prompt: null,
+    timeout: 10000,
+    category: 'workflow',
+    tags: ['export', 'markdown', 'compact', 'documentation'],
+  },
+  {
+    id: 'archive-to-git',
+    name: 'Archive Session to Git',
+    description: 'Commits session artifacts to git before compaction',
+    eventType: 'PreCompact',
+    matcher: '*',
+    command: `#!/bin/bash
+INPUT=$(cat)
+CWD=$(echo "$INPUT" | jq -r '.cwd // "."')
+
+cd "$CWD" 2>/dev/null || exit 0
+
+if git rev-parse --is-inside-work-tree > /dev/null 2>&1; then
+  if [ -d ".claude-context" ]; then
+    git add .claude-context/ 2>/dev/null
+    git commit -m "chore: archive claude context before compact" --no-verify 2>/dev/null
+    echo "[Archive] Context committed to git"
+  fi
+fi
+
+exit 0`,
+    hookType: 'command',
+    prompt: null,
+    timeout: 10000,
+    category: 'workflow',
+    tags: ['git', 'archive', 'compact', 'commit'],
+  },
+  {
+    id: 'notify-compact',
+    name: 'Notify Before Compact',
+    description: 'Shows notification before context compaction',
+    eventType: 'PreCompact',
+    matcher: '*',
+    command: `#!/bin/bash
+INPUT=$(cat)
+TRIGGER=$(echo "$INPUT" | jq -r '.trigger // "unknown"')
+
+if [[ "$OSTYPE" == "darwin"* ]]; then
+  osascript -e "display notification \\"Context compacting ($TRIGGER)\\" with title \\"Claude Code\\""
+fi
+
+echo "[PreCompact] Trigger: $TRIGGER"
+exit 0`,
+    hookType: 'command',
+    prompt: null,
+    timeout: 3000,
+    category: 'notifications',
+    tags: ['notification', 'compact', 'alert', 'context'],
+  },
+
+  // ============================================================================
+  // SESSIONSTART - Additional (need 4 more)
+  // ============================================================================
+  {
+    id: 'check-dependencies',
+    name: 'Check Dependencies on Start',
+    description: 'Verifies required dependencies are installed on session start',
+    eventType: 'SessionStart',
+    matcher: 'startup',
+    command: `#!/bin/bash
+INPUT=$(cat)
+CWD=$(echo "$INPUT" | jq -r '.cwd // "."')
+
+cd "$CWD" 2>/dev/null || exit 0
+
+if [ -f "package.json" ] && [ ! -d "node_modules" ]; then
+  echo "[SessionStart] Warning: node_modules not found. Run 'npm install'."
+fi
+
+if [ -f "requirements.txt" ] && ! pip list > /dev/null 2>&1; then
+  echo "[SessionStart] Warning: Python dependencies may not be installed."
+fi
+
+exit 0`,
+    hookType: 'command',
+    prompt: null,
+    timeout: 5000,
+    category: 'workflow',
+    tags: ['dependencies', 'check', 'startup', 'validation'],
+  },
+  {
+    id: 'initialize-logging',
+    name: 'Initialize Session Logging',
+    description: 'Sets up logging infrastructure for the session',
+    eventType: 'SessionStart',
+    matcher: 'startup',
+    command: `#!/bin/bash
+INPUT=$(cat)
+CWD=$(echo "$INPUT" | jq -r '.cwd // "."')
+TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+LOG_DIR="$CWD/.claude-logs"
+mkdir -p "$LOG_DIR"
+
+echo "[$TIMESTAMP] Session started" >> "$LOG_DIR/session.log"
+echo "[SessionStart] Logging initialized in $LOG_DIR"
+
+exit 0`,
+    hookType: 'command',
+    prompt: null,
+    timeout: 3000,
+    category: 'workflow',
+    tags: ['logging', 'initialize', 'startup', 'session'],
+  },
+  {
+    id: 'restore-previous-state',
+    name: 'Restore Previous State',
+    description: 'Attempts to restore state from previous session',
+    eventType: 'SessionStart',
+    matcher: 'resume',
+    command: `#!/bin/bash
+INPUT=$(cat)
+CWD=$(echo "$INPUT" | jq -r '.cwd // "."')
+
+STATE_FILE="$CWD/.claude-state.json"
+if [ -f "$STATE_FILE" ]; then
+  echo "[SessionStart] Previous state file found"
+  cat "$STATE_FILE" | jq -r '.lastWorkingDir // empty' 2>/dev/null
+fi
+
+exit 0`,
+    hookType: 'command',
+    prompt: null,
+    timeout: 3000,
+    category: 'workflow',
+    tags: ['restore', 'state', 'resume', 'session'],
+  },
+  {
+    id: 'show-project-status',
+    name: 'Show Project Status on Start',
+    description: 'Displays project status information when session starts',
+    eventType: 'SessionStart',
+    matcher: 'startup',
+    command: `#!/bin/bash
+INPUT=$(cat)
+CWD=$(echo "$INPUT" | jq -r '.cwd // "."')
+
+cd "$CWD" 2>/dev/null || exit 0
+
+echo "[Project Status]"
+if [ -f "package.json" ]; then
+  NAME=$(jq -r '.name // "unnamed"' package.json)
+  VERSION=$(jq -r '.version // "0.0.0"' package.json)
+  echo "  Name: $NAME v$VERSION"
+fi
+
+if git rev-parse --is-inside-work-tree > /dev/null 2>&1; then
+  BRANCH=$(git branch --show-current 2>/dev/null)
+  echo "  Branch: $BRANCH"
+  CHANGES=$(git status --short | wc -l)
+  echo "  Uncommitted changes: $CHANGES"
+fi
+
+exit 0`,
+    hookType: 'command',
+    prompt: null,
+    timeout: 5000,
+    category: 'workflow',
+    tags: ['status', 'project', 'startup', 'info'],
+  },
+
+  // ============================================================================
+  // SESSIONEND - Additional (need 4 more)
+  // ============================================================================
+  {
+    id: 'save-session-summary',
+    name: 'Save Session Summary',
+    description: 'Creates a summary of the session when it ends',
+    eventType: 'SessionEnd',
+    matcher: null,
+    command: `#!/bin/bash
+INPUT=$(cat)
+REASON=$(echo "$INPUT" | jq -r '.reason // "unknown"')
+CWD=$(echo "$INPUT" | jq -r '.cwd // "."')
+TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+
+SUMMARY_DIR="$CWD/.claude-summaries"
+mkdir -p "$SUMMARY_DIR"
+
+{
+  echo "# Session End Summary"
+  echo "End Reason: $REASON"
+  echo "Time: $(date)"
+} > "$SUMMARY_DIR/end-$TIMESTAMP.md"
+
+exit 0`,
+    hookType: 'command',
+    prompt: null,
+    timeout: 5000,
+    category: 'workflow',
+    tags: ['summary', 'session', 'end', 'documentation'],
+  },
+  {
+    id: 'cleanup-temp-files',
+    name: 'Clean Up Temp Files',
+    description: 'Removes temporary files created during the session',
+    eventType: 'SessionEnd',
+    matcher: null,
+    command: `#!/bin/bash
+INPUT=$(cat)
+CWD=$(echo "$INPUT" | jq -r '.cwd // "."')
+
+# Clean up common temp files
+rm -f "$CWD/.claude-rate-limit" 2>/dev/null
+rm -f "$CWD/.claude-failure-count" 2>/dev/null
+rm -f "$CWD/.claude-subagent-count" 2>/dev/null
+
+echo "[Cleanup] Temporary files removed"
+exit 0`,
+    hookType: 'command',
+    prompt: null,
+    timeout: 5000,
+    category: 'workflow',
+    tags: ['cleanup', 'temp', 'session', 'end'],
+  },
+  {
+    id: 'push-pending-commits',
+    name: 'Push Pending Commits',
+    description: 'Attempts to push any pending commits when session ends',
+    eventType: 'SessionEnd',
+    matcher: null,
+    command: `#!/bin/bash
+INPUT=$(cat)
+CWD=$(echo "$INPUT" | jq -r '.cwd // "."')
+
+cd "$CWD" 2>/dev/null || exit 0
+
+if git rev-parse --is-inside-work-tree > /dev/null 2>&1; then
+  UNPUSHED=$(git log @{u}.. --oneline 2>/dev/null | wc -l)
+  if [ "$UNPUSHED" -gt 0 ]; then
+    echo "[SessionEnd] Pushing $UNPUSHED pending commit(s)..."
+    git push 2>/dev/null && echo "[SessionEnd] Push successful" || echo "[SessionEnd] Push failed - manual push required"
+  fi
+fi
+
+exit 0`,
+    hookType: 'command',
+    prompt: null,
+    timeout: 30000,
+    category: 'workflow',
+    tags: ['git', 'push', 'session', 'end'],
+  },
+  {
+    id: 'archive-session-logs',
+    name: 'Archive Session Logs',
+    description: 'Archives log files when session ends',
+    eventType: 'SessionEnd',
+    matcher: null,
+    command: `#!/bin/bash
+INPUT=$(cat)
+CWD=$(echo "$INPUT" | jq -r '.cwd // "."')
+TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+
+LOG_DIR="$CWD/.claude-logs"
+ARCHIVE_DIR="$CWD/.claude-archives"
+
+if [ -d "$LOG_DIR" ]; then
+  mkdir -p "$ARCHIVE_DIR"
+  tar -czf "$ARCHIVE_DIR/logs-$TIMESTAMP.tar.gz" -C "$CWD" .claude-logs 2>/dev/null
+  echo "[Archive] Logs archived to $ARCHIVE_DIR"
+fi
+
+exit 0`,
+    hookType: 'command',
+    prompt: null,
+    timeout: 10000,
+    category: 'workflow',
+    tags: ['archive', 'logs', 'session', 'end'],
+  },
 ];
