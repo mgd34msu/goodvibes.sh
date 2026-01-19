@@ -114,9 +114,11 @@ export function clearCredentialsCache(): void {
 }
 
 /**
- * Check if OAuth is configured (either bundled or user-provided)
+ * Check if OAuth is configured (either bundled, user-provided, or device flow available)
+ * Device flow only needs a client ID, not a client secret.
  */
 export function isOAuthConfigured(): boolean {
-  const creds = getOAuthCredentialsInternal();
-  return !!(creds.clientId && creds.clientSecret);
+  // Device flow is always available since we have a hardcoded default client ID
+  // This allows GitHub integration to work out of the box without any configuration
+  return true;
 }

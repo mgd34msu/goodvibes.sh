@@ -2,10 +2,11 @@
 // GITHUB CONNECTION STATUS COMPONENT
 // ============================================================================
 
-import { useState, useEffect } from 'react';
-import type { GitHubAuthState } from '../../../../shared/types/github';
+import { useState, useEffect, useCallback } from 'react';
+import type { GitHubAuthState, GitHubUser } from '../../../../shared/types/github';
 import { toast } from '../../../stores/toastStore';
 import { createLogger } from '../../../../shared/logger';
+import { DeviceFlowLogin } from '../../github/DeviceFlowLogin';
 
 const logger = createLogger('SettingsView');
 
@@ -16,16 +17,11 @@ export function GitHubConnectionStatus(): React.JSX.Element {
     accessToken: null,
     tokenExpiresAt: null,
   });
-  const [oauthConfig, setOauthConfig] = useState<{
-    isConfigured: boolean;
-    source: string;
-  } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [showDeviceFlow, setShowDeviceFlow] = useState(false);
 
   useEffect(() => {
     loadAuthState();
-    loadOAuthConfig();
   }, []);
 
   const loadAuthState = async () => {
@@ -37,42 +33,29 @@ export function GitHubConnectionStatus(): React.JSX.Element {
     }
   };
 
-  const loadOAuthConfig = async () => {
-    try {
-      const config = await window.goodvibes.githubGetOAuthConfig();
-      setOauthConfig(config);
-    } catch (err) {
-      logger.error('Failed to load OAuth config:', err);
-    }
+  const handleLogin = () => {
+    setShowDeviceFlow(true);
   };
 
-  const handleLogin = async () => {
-    setIsLoading(true);
-    setError(null);
+  const handleAuthSuccess = useCallback((user: GitHubUser) => {
+    setAuthState({
+      isAuthenticated: true,
+      user,
+      accessToken: null,
+      tokenExpiresAt: null,
+    });
+    setShowDeviceFlow(false);
+    toast.success(`Connected to GitHub as ${user.login}`);
+  }, []);
 
-    try {
-      const result = await window.goodvibes.githubAuth();
+  const handleAuthError = useCallback((error: string) => {
+    toast.error(error || 'Failed to connect to GitHub');
+    setShowDeviceFlow(false);
+  }, []);
 
-      if (result.success && result.user) {
-        setAuthState({
-          isAuthenticated: true,
-          user: result.user,
-          accessToken: null,
-          tokenExpiresAt: null,
-        });
-        toast.success(`Connected to GitHub as ${result.user.login}`);
-      } else {
-        setError(result.error || 'Authentication failed');
-        toast.error(result.error || 'Failed to connect to GitHub');
-      }
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Authentication failed';
-      setError(message);
-      toast.error(message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const handleCancel = useCallback(() => {
+    setShowDeviceFlow(false);
+  }, []);
 
   const handleLogout = async () => {
     setIsLoading(true);
@@ -94,22 +77,16 @@ export function GitHubConnectionStatus(): React.JSX.Element {
     }
   };
 
-  // If OAuth is not configured, show a message for developers
-  if (oauthConfig && !oauthConfig.isConfigured) {
+  // If showing device flow, render the device flow UI
+  if (showDeviceFlow) {
     return (
-      <div className="px-5 py-4 border-b border-surface-700/50 bg-surface-800/20">
-        <div className="flex items-center gap-3 mb-2">
-          <div className="w-8 h-8 rounded-lg bg-surface-700 flex items-center justify-center">
-            <GitHubIcon className="w-4 h-4 text-surface-400" />
-          </div>
-          <span className="text-sm font-medium text-surface-300">GitHub Connection</span>
-        </div>
-        <p className="text-xs text-surface-500 mb-1.5 leading-relaxed">
-          GitHub integration is not configured. To enable it, the application developer needs to set up OAuth credentials.
-        </p>
-        <p className="text-xs text-surface-600">
-          See .env.example or github-oauth.json for configuration instructions.
-        </p>
+      <div className="px-5 py-4 border-b border-surface-700/50">
+        <DeviceFlowLogin
+          onAuthSuccess={handleAuthSuccess}
+          onAuthError={handleAuthError}
+          onCancel={handleCancel}
+          compact
+        />
       </div>
     );
   }
@@ -170,21 +147,12 @@ export function GitHubConnectionStatus(): React.JSX.Element {
         </div>
         <button
           onClick={handleLogin}
-          disabled={isLoading}
           className="btn btn-primary btn-sm flex items-center gap-2"
         >
           <GitHubIcon className="w-4 h-4" />
-          {isLoading ? 'Connecting...' : 'Connect GitHub'}
+          Connect GitHub
         </button>
       </div>
-      {error && (
-        <p className="text-xs text-error-400 mt-3 flex items-center gap-1.5">
-          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-          </svg>
-          {error}
-        </p>
-      )}
     </div>
   );
 }
