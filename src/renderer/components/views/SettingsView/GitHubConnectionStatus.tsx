@@ -70,8 +70,34 @@ export function GitHubConnectionStatus({ oauthStatus }: GitHubConnectionStatusPr
     }
   };
 
-  const handleLogin = () => {
-    setShowDeviceFlow(true);
+  const handleLogin = async () => {
+    // Check if custom credentials are configured to NOT use device flow
+    if (oauthStatus && oauthStatus.source === 'custom' && !oauthStatus.useDeviceFlow) {
+      // Use Authorization Code Flow
+      setIsLoading(true);
+      try {
+        const result = await window.goodvibes.githubAuth();
+        if (result.success && result.user) {
+          setAuthState({
+            isAuthenticated: true,
+            user: result.user,
+            accessToken: null,
+            tokenExpiresAt: null,
+          });
+          toast.success(`Connected to GitHub as ${result.user.login}`);
+        } else {
+          toast.error(result.error || 'Failed to connect to GitHub');
+        }
+      } catch (err) {
+        logger.error('GitHub auth failed:', err);
+        toast.error('Failed to connect to GitHub');
+      } finally {
+        setIsLoading(false);
+      }
+    } else {
+      // Use Device Flow (default)
+      setShowDeviceFlow(true);
+    }
   };
 
   const handleAuthSuccess = useCallback((user: GitHubUser) => {
@@ -195,10 +221,11 @@ export function GitHubConnectionStatus({ oauthStatus }: GitHubConnectionStatusPr
         </div>
         <button
           onClick={handleLogin}
+          disabled={isLoading}
           className="btn btn-primary btn-sm flex items-center gap-2"
         >
           <GitHubIcon className="w-4 h-4" />
-          Connect GitHub
+          {isLoading ? 'Connecting...' : 'Connect GitHub'}
         </button>
       </div>
     </div>
