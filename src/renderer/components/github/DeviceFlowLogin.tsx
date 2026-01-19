@@ -72,11 +72,15 @@ function GitHubIcon({ className }: { className?: string }) {
 // ============================================================================
 
 function useCountdown(expiresAt: number | null): number {
-  const [secondsRemaining, setSecondsRemaining] = useState(0);
+  // Initialize with a large value to prevent false "expired" triggers during the first render
+  const [secondsRemaining, setSecondsRemaining] = useState(() => {
+    if (!expiresAt) return -1; // -1 means "not started"
+    return Math.max(0, Math.floor((expiresAt - Date.now()) / 1000));
+  });
 
   useEffect(() => {
     if (!expiresAt) {
-      setSecondsRemaining(0);
+      setSecondsRemaining(-1);
       return;
     }
 
@@ -95,6 +99,7 @@ function useCountdown(expiresAt: number | null): number {
 }
 
 function formatTime(seconds: number): string {
+  if (seconds < 0) return '--:--'; // Not started yet
   const mins = Math.floor(seconds / 60);
   const secs = seconds % 60;
   return `${mins}:${secs.toString().padStart(2, '0')}`;
@@ -176,6 +181,7 @@ export function DeviceFlowLogin({
   }, [onAuthError]);
 
   // Handle code expiration
+  // Note: secondsRemaining === -1 means countdown hasn't started yet, 0 means actually expired
   useEffect(() => {
     if (flowState.step === 'code_display' || flowState.step === 'polling') {
       if (secondsRemaining === 0 && flowState.expiresAt) {
@@ -460,7 +466,7 @@ export function DeviceFlowLogin({
           <div
             className={clsx(
               'flex items-center gap-2',
-              secondsRemaining < 60 ? 'text-warning-400' : 'text-surface-400'
+              secondsRemaining >= 0 && secondsRemaining < 60 ? 'text-warning-400' : 'text-surface-400'
             )}
           >
             {isPolling && <Loader2 className="w-4 h-4 animate-spin" />}
@@ -471,7 +477,7 @@ export function DeviceFlowLogin({
               {formatTime(secondsRemaining)}
             </span>
           </div>
-          {secondsRemaining < 60 && (
+          {secondsRemaining >= 0 && secondsRemaining < 60 && (
             <p className="text-xs text-warning-400">Code expiring soon!</p>
           )}
         </div>
