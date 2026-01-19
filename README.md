@@ -1,5 +1,7 @@
 # GoodVibes
 
+![GoodVibes](assets/goodvibes.png)
+
 GoodVibes is an Electron-based desktop application that provides an enhanced interface for Claude CLI with session management, analytics, Git integration, and a rich plugin ecosystem.
 
 ## Features

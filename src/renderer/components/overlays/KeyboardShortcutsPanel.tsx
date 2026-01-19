@@ -17,6 +17,7 @@ import {
   Check,
 } from 'lucide-react';
 import { FocusTrap } from '../common/FocusTrap';
+import { ErrorBoundary } from '../common/ErrorBoundary';
 import { useConfirm } from './ConfirmModal';
 import {
   useShortcutState,
@@ -151,112 +152,126 @@ export function KeyboardShortcutsPanel(): React.JSX.Element | null {
     >
       {/* Panel */}
       <FocusTrap active>
-        <div
-          className="modal-panel-premium modal-lg"
-          onClick={(e) => e.stopPropagation()}
+        <ErrorBoundary
+          fallback={
+            <div className="modal-panel-premium modal-lg">
+              <div className="p-8 text-center">
+                <p className="text-slate-400">Keyboard Shortcuts Panel encountered an error</p>
+                <button onClick={closeHelp} className="btn btn-secondary mt-4">
+                  Close
+                </button>
+              </div>
+            </div>
+          }
+          onReset={closeHelp}
         >
-          {/* Header */}
-          <div className="modal-header-premium">
-            <div className="flex items-center gap-3">
-              <div className="modal-icon-container icon-info" style={{ width: 44, height: 44, margin: 0 }}>
-                <Keyboard className="w-5 h-5 text-violet-400" />
+          <div
+            className="modal-panel-premium modal-lg"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="modal-header-premium">
+              <div className="flex items-center gap-3">
+                <div className="modal-icon-container icon-info" style={{ width: 44, height: 44, margin: 0 }}>
+                  <Keyboard className="w-5 h-5 text-violet-400" />
+                </div>
+                <div>
+                  <h2 id="shortcuts-title">Keyboard Shortcuts</h2>
+                  <p className="modal-subtitle">
+                    {shortcutsByCategory.size > 0
+                      ? `${Array.from(shortcutsByCategory.values()).reduce((a, b) => a + b.length, 0)} shortcuts available`
+                      : 'Loading shortcuts...'}
+                  </p>
+                </div>
               </div>
-              <div>
-                <h2 id="shortcuts-title">Keyboard Shortcuts</h2>
-                <p className="modal-subtitle">
-                  {shortcutsByCategory.size > 0
-                    ? `${Array.from(shortcutsByCategory.values()).reduce((a, b) => a + b.length, 0)} shortcuts available`
-                    : 'Loading shortcuts...'}
-                </p>
-              </div>
-            </div>
-            <button onClick={closeHelp} className="modal-close-premium">
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-
-          {/* Search */}
-          <div className="modal-search-premium border-b border-white/[0.06]">
-            <Search className="w-4 h-4 search-icon" />
-            <input
-              ref={searchInputRef}
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search shortcuts..."
-              aria-label="Search shortcuts"
-            />
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery('')}
-                className="p-1 rounded text-slate-500 hover:text-slate-300 transition-colors"
-                aria-label="Clear search"
-              >
-                <X className="w-3 h-3" />
+              <button onClick={closeHelp} className="modal-close-premium">
+                <X className="w-4 h-4" />
               </button>
-            )}
-          </div>
-
-          {/* Conflicts Warning */}
-          {hasConflicts && (
-            <div className="px-6 py-2.5 bg-amber-500/10 border-b border-amber-500/20">
-              <div className="flex items-center gap-2 text-sm text-amber-400">
-                <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-                <span>
-                  {conflicts.length} shortcut conflict{conflicts.length > 1 ? 's' : ''} detected
-                </span>
-              </div>
             </div>
-          )}
 
-          {/* Shortcuts List */}
-          <div className="modal-body-premium p-0">
-            {filteredCategories.size === 0 ? (
-              <div className="flex flex-col items-center justify-center py-16 text-center">
-                <Search className="w-12 h-12 text-slate-600 mb-4" />
-                <p className="text-slate-400 font-medium">No shortcuts found</p>
-                <p className="text-sm text-slate-500 mt-1">
-                  Try a different search term
-                </p>
-              </div>
-            ) : (
-              <div className="py-2">
-                {CATEGORY_ORDER.filter((cat) => filteredCategories.has(cat)).map((category) => (
-                  <CategorySection
-                    key={category}
-                    category={category}
-                    shortcuts={filteredCategories.get(category) || []}
-                    isExpanded={expandedCategories.has(category)}
-                    onToggle={() => toggleCategory(category)}
-                    editingShortcut={editingShortcut}
-                    onEditShortcut={setEditingShortcut}
-                    getEffectiveBinding={getEffectiveBinding}
-                    hasCustomBinding={hasCustomBinding}
-                    hasConflict={hasConflict}
-                    onSetCustomBinding={setCustomBinding}
-                    onResetBinding={resetBinding}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Footer */}
-          <div className="modal-footer-premium modal-footer-split">
-            <div className="text-xs text-slate-500">
-              Press <kbd className="kbd-premium">Esc</kbd> to close
+            {/* Search */}
+            <div className="modal-search-premium border-b border-white/[0.06]">
+              <Search className="w-4 h-4 search-icon" />
+              <input
+                ref={searchInputRef}
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search shortcuts..."
+                aria-label="Search shortcuts"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="p-1 rounded text-slate-500 hover:text-slate-300 transition-colors"
+                  aria-label="Clear search"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              )}
             </div>
-            {hasCustomizations && (
-              <button
-                onClick={handleResetAll}
-                className="flex items-center gap-1.5 text-sm text-slate-400 hover:text-slate-200 transition-colors"
-              >
-                <RotateCcw className="w-3.5 h-3.5" />
-                Reset All
-              </button>
+
+            {/* Conflicts Warning */}
+            {hasConflicts && (
+              <div className="px-6 py-2.5 bg-amber-500/10 border-b border-amber-500/20">
+                <div className="flex items-center gap-2 text-sm text-amber-400">
+                  <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+                  <span>
+                    {conflicts.length} shortcut conflict{conflicts.length > 1 ? 's' : ''} detected
+                  </span>
+                </div>
+              </div>
             )}
+
+            {/* Shortcuts List */}
+            <div className="modal-body-premium p-0">
+              {filteredCategories.size === 0 ? (
+                <div className="flex flex-col items-center justify-center py-16 text-center">
+                  <Search className="w-12 h-12 text-slate-600 mb-4" />
+                  <p className="text-slate-400 font-medium">No shortcuts found</p>
+                  <p className="text-sm text-slate-500 mt-1">
+                    Try a different search term
+                  </p>
+                </div>
+              ) : (
+                <div className="py-2">
+                  {CATEGORY_ORDER.filter((cat) => filteredCategories.has(cat)).map((category) => (
+                    <CategorySection
+                      key={category}
+                      category={category}
+                      shortcuts={filteredCategories.get(category) || []}
+                      isExpanded={expandedCategories.has(category)}
+                      onToggle={() => toggleCategory(category)}
+                      editingShortcut={editingShortcut}
+                      onEditShortcut={setEditingShortcut}
+                      getEffectiveBinding={getEffectiveBinding}
+                      hasCustomBinding={hasCustomBinding}
+                      hasConflict={hasConflict}
+                      onSetCustomBinding={setCustomBinding}
+                      onResetBinding={resetBinding}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="modal-footer-premium modal-footer-split">
+              <div className="text-xs text-slate-500">
+                Press <kbd className="kbd-premium">Esc</kbd> to close
+              </div>
+              {hasCustomizations && (
+                <button
+                  onClick={handleResetAll}
+                  className="flex items-center gap-1.5 text-sm text-slate-400 hover:text-slate-200 transition-colors"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  Reset All
+                </button>
+              )}
+            </div>
           </div>
-        </div>
+        </ErrorBoundary>
       </FocusTrap>
     </div>
     </>

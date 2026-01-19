@@ -13,8 +13,8 @@ export type {
   PatternDefinition,
 } from './types.js';
 
-// Re-export pattern utilities
-export { isToolName, STREAM_PATTERNS } from './patterns.js';
+// Note: Pattern utilities (isToolName, STREAM_PATTERNS) are internal
+// and should be imported directly from './patterns.js' if needed.
 
 // Re-export the service class
 export { PTYStreamAnalyzerService };

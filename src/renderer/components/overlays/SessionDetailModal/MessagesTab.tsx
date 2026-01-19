@@ -13,6 +13,7 @@ import type { SessionMessage, AppSettings } from '../../../../shared/types';
 import { formatNumber } from '../../../../shared/utils';
 import { useSettingsStore } from '../../../stores/settingsStore';
 import { CopyButton } from '../../common/CopyButton';
+import { ErrorBoundary } from '../../common/ErrorBoundary';
 import {
   prettifyToolUse,
   prettifyThinking,
@@ -114,14 +115,25 @@ export function MessagesTab({ messages, loading }: MessagesTabProps): React.JSX.
       </div>
 
       {/* Entries */}
-      {visibleEntries.map((entry) => (
-        <EntryCard
-          key={entry.id}
-          entry={entry}
-          settings={settings}
-          globalExpanded={globalExpanded}
-        />
-      ))}
+      <ErrorBoundary
+        fallback={
+          <div className="flex items-center justify-center py-12">
+            <div className="text-center p-6 rounded-lg bg-error-500/10 border border-error-500/30">
+              <p className="text-error-400 font-medium mb-2">Failed to render messages</p>
+              <p className="text-surface-400 text-sm">There was an error displaying the session messages.</p>
+            </div>
+          </div>
+        }
+      >
+        {visibleEntries.map((entry) => (
+          <EntryCard
+            key={entry.id}
+            entry={entry}
+            settings={settings}
+            globalExpanded={globalExpanded}
+          />
+        ))}
+      </ErrorBoundary>
     </div>
   );
 }
@@ -232,7 +244,17 @@ function EntryCard({ entry, settings, globalExpanded }: { entry: ParsedEntry; se
 
       {isExpanded && (
         <div className="px-4 py-3 border-t border-inherit">
-          <EntryContentRenderer entry={entry} />
+          <ErrorBoundary
+            fallback={
+              <div className="p-3 rounded-lg bg-error-500/10 border border-error-500/30">
+                <p className="text-error-400 text-sm">Failed to render content</p>
+                <p className="text-surface-500 text-xs mt-1">The content could not be displayed.</p>
+              </div>
+            }
+            resetKeys={[entry.id]}
+          >
+            <EntryContentRenderer entry={entry} />
+          </ErrorBoundary>
         </div>
       )}
     </div>
@@ -365,10 +387,18 @@ function ToolResultRenderer({ content, isError }: { content: string; isError?: b
   );
 }
 
-// Markdown renderer for modal
+// Markdown renderer for modal with error boundary
 function ModalMarkdownRenderer({ content }: { content: string }) {
   return (
-    <ReactMarkdown
+    <ErrorBoundary
+      fallback={
+        <div className="p-2 text-surface-400 text-sm bg-surface-800/50 rounded border border-surface-700">
+          <p className="text-error-400 text-xs mb-1">Failed to render markdown</p>
+          <pre className="whitespace-pre-wrap font-mono text-xs">{content.slice(0, 500)}{content.length > 500 ? '...' : ''}</pre>
+        </div>
+      }
+    >
+      <ReactMarkdown
       remarkPlugins={[remarkGfm]}
       rehypePlugins={[rehypeHighlight]}
       components={{
@@ -440,6 +470,7 @@ function ModalMarkdownRenderer({ content }: { content: string }) {
     >
       {content}
     </ReactMarkdown>
+    </ErrorBoundary>
   );
 }
 

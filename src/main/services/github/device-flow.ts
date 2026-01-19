@@ -33,7 +33,6 @@ import type {
   DeviceFlowState,
   DeviceFlowStartResult,
   GitHubOAuthTokens,
-  GitHubUser,
   GitHubAuthResult,
 } from '../../../shared/types/github.js';
 
@@ -446,8 +445,8 @@ export async function startDeviceFlow(options?: {
     expiresIn: deviceCodeResponse.expires_in,
   });
 
-  // Create the auth result promise
-  const authPromise = new Promise<GitHubAuthResult>((resolve) => {
+  // Create the auth result promise (stored in activeFlow.resolve for later access)
+  new Promise<GitHubAuthResult>((resolve) => {
     activeFlow = {
       deviceCode: deviceCodeResponse.device_code,
       userCode: deviceCodeResponse.user_code,

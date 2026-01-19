@@ -11,11 +11,12 @@ export {
   getPTYStreamAnalyzer,
   shutdownPTYStreamAnalyzer,
   PTYStreamAnalyzerService,
-  isToolName,
-  STREAM_PATTERNS,
   type StreamEvent,
   type StreamEventType,
   type ToolCall,
   type StreamMetrics,
   type PatternDefinition,
 } from './ptyStreamAnalyzer/index.js';
+
+// Internal utilities - import directly from './ptyStreamAnalyzer/patterns.js' if needed
+export { isToolName, STREAM_PATTERNS } from './ptyStreamAnalyzer/patterns.js';

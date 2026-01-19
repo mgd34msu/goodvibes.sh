@@ -2,29 +2,6 @@
 // SHARED CONSTANTS
 // ============================================================================
 
-// Context window limit for Claude
-export const CONTEXT_WINDOW_LIMIT = 200000;
-
-// Pagination
-export const DEFAULT_PAGE_SIZE = 50;
-
-// Session file patterns
-export const SESSION_FILE_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.jsonl$/i;
-export const AGENT_SESSION_PATTERN = /^agent-[a-z0-9]+\.jsonl$/i;
-
-// Auto-tag patterns
-export const AUTO_TAG_PATTERNS = [
-  { pattern: /\b(bug|fix|error|issue|crash|fail)\b/i, tag: 'bugfix', color: '#ef4444' },
-  { pattern: /\b(feature|implement|add|create|new)\b/i, tag: 'feature', color: '#22c55e' },
-  { pattern: /\b(refactor|clean|improve|optimize)\b/i, tag: 'refactor', color: '#8b5cf6' },
-  { pattern: /\b(test|spec|jest|mocha|pytest)\b/i, tag: 'testing', color: '#06b6d4' },
-  { pattern: /\b(doc|readme|comment|explain)\b/i, tag: 'docs', color: '#f59e0b' },
-  { pattern: /\b(deploy|build|ci|cd|pipeline)\b/i, tag: 'devops', color: '#ec4899' },
-  { pattern: /\b(react|vue|angular|svelte)\b/i, tag: 'frontend', color: '#3b82f6' },
-  { pattern: /\b(api|server|backend|database|sql)\b/i, tag: 'backend', color: '#10b981' },
-  { pattern: /\b(style|css|scss|tailwind|design)\b/i, tag: 'styling', color: '#f472b6' },
-] as const;
-
 // Maximum recent projects to keep
 export const MAX_RECENT_PROJECTS = 10;
 
@@ -74,15 +51,6 @@ export const CACHE_READ_MULTIPLIER = 0.1;
 export const DEFAULT_INPUT_PRICE = 3;
 export const DEFAULT_OUTPUT_PRICE = 15;
 
-/** @deprecated Use MODEL_PRICING instead */
-export const COST_PER_MILLION_INPUT_TOKENS = 3;
-
-/** @deprecated Use MODEL_PRICING instead */
-export const COST_PER_MILLION_OUTPUT_TOKENS = 15;
-
-/** @deprecated No longer used - we have actual token breakdowns */
-export const TOKEN_RATIO_ASSUMPTION = 0.5;
-
 // ============================================================================
 // TIMEOUTS AND LIMITS
 // ============================================================================
@@ -105,108 +73,12 @@ export const GIT_COMMAND_TIMEOUT_MS = 30000;
 /** Default hook timeout (ms) */
 export const DEFAULT_HOOK_TIMEOUT_MS = 30000;
 
-/** Hook script HTTP timeout (ms) */
-export const HOOK_SCRIPT_TIMEOUT_MS = 5000;
-
 /** Deduplication window for agent detection (ms) */
 export const AGENT_DEDUP_WINDOW_MS = 5000;
 
-/** Default retry delay (ms) */
-export const DEFAULT_RETRY_DELAY_MS = 1000;
-
-/** Maximum retry delay (ms) */
-export const MAX_RETRY_DELAY_MS = 30000;
-
-/** Default number of retries */
-export const DEFAULT_MAX_RETRIES = 3;
-
-/** File watch interval (ms) */
-export const DEFAULT_FILE_WATCH_INTERVAL_MS = 1000;
-
 // ============================================================================
-// ARRAY VALIDATION HELPERS
+// UI CONFIGURATION
 // ============================================================================
-
-/**
- * Check if an array has elements
- */
-export function hasElements<T>(arr: T[] | null | undefined): arr is T[] {
-  return Array.isArray(arr) && arr.length > 0;
-}
-
-/**
- * Check if an array is empty or undefined
- */
-export function isEmpty<T>(arr: T[] | null | undefined): boolean {
-  return !hasElements(arr);
-}
-
-// Terminal themes
-export const TERMINAL_THEMES = {
-  dark: {
-    background: '#020617',
-    foreground: '#e4e4e7',
-    cursor: '#a855f7',
-    cursorAccent: '#020617',
-    selectionBackground: '#6366f150',
-    black: '#27272a',
-    red: '#ef4444',
-    green: '#22c55e',
-    yellow: '#f59e0b',
-    blue: '#3b82f6',
-    magenta: '#a855f7',
-    cyan: '#06b6d4',
-    white: '#e4e4e7',
-    brightBlack: '#52525b',
-    brightRed: '#f87171',
-    brightGreen: '#4ade80',
-    brightYellow: '#fbbf24',
-    brightBlue: '#60a5fa',
-    brightMagenta: '#c084fc',
-    brightCyan: '#22d3ee',
-    brightWhite: '#fafafa',
-  },
-  light: {
-    background: '#fafafa',
-    foreground: '#18181b',
-    cursor: '#7c3aed',
-    cursorAccent: '#fafafa',
-    selectionBackground: '#6366f130',
-    black: '#18181b',
-    red: '#dc2626',
-    green: '#16a34a',
-    yellow: '#d97706',
-    blue: '#2563eb',
-    magenta: '#7c3aed',
-    cyan: '#0891b2',
-    white: '#f4f4f5',
-    brightBlack: '#71717a',
-    brightRed: '#ef4444',
-    brightGreen: '#22c55e',
-    brightYellow: '#f59e0b',
-    brightBlue: '#3b82f6',
-    brightMagenta: '#a855f7',
-    brightCyan: '#06b6d4',
-    brightWhite: '#fafafa',
-  },
-} as const;
-
-// Keyboard shortcuts
-export const KEYBOARD_SHORTCUTS = {
-  newTerminal: { key: 'n', ctrlKey: true },
-  closeTab: { key: 'w', ctrlKey: true },
-  nextTab: { key: 'Tab', ctrlKey: true },
-  prevTab: { key: 'Tab', ctrlKey: true, shiftKey: true },
-  quickSwitcher: { key: 'k', ctrlKey: true },
-  commandPalette: { key: 'p', ctrlKey: true, shiftKey: true },
-  search: { key: 'f', ctrlKey: true },
-  zoomIn: { key: '+', ctrlKey: true },
-  zoomOut: { key: '-', ctrlKey: true },
-  zoomReset: { key: '0', ctrlKey: true },
-  toggleGit: { key: 'g', ctrlKey: true },
-  quickNote: { key: 'n', ctrlKey: true, shiftKey: true },
-  help: { key: 'F1' },
-} as const;
 
 // View names
 export const VIEWS = [
@@ -258,12 +130,3 @@ export const NAV_GROUPS: NavGroup[] = [
   },
 ];
 
-// Session templates
-export const SESSION_TEMPLATES = [
-  { id: 'code-review', icon: '🔍', label: 'Code Review', desc: 'Review code for bugs, best practices, and improvements' },
-  { id: 'refactor', icon: '🔧', label: 'Refactor', desc: 'Improve code structure and readability' },
-  { id: 'debug', icon: '🐛', label: 'Debug Issue', desc: 'Find and fix bugs in the codebase' },
-  { id: 'docs', icon: '📝', label: 'Documentation', desc: 'Generate or improve documentation' },
-  { id: 'test', icon: '🧪', label: 'Write Tests', desc: 'Create unit and integration tests' },
-  { id: 'feature', icon: '✨', label: 'New Feature', desc: 'Implement a new feature or enhancement' },
-] as const;

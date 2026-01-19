@@ -6,6 +6,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useSettingsStore } from '../../../stores/settingsStore';
+import { ErrorBoundary } from '../../common/ErrorBoundary';
 import type { RawEntry, SessionPreviewViewProps } from './types';
 import { parseAllEntries } from './utils';
 import { EntryBlock } from './EntryBlock';
@@ -161,20 +162,32 @@ export function SessionPreviewView({ sessionId, sessionName }: SessionPreviewVie
         className="flex-1 overflow-auto p-4 space-y-3"
         onScroll={handleScroll}
       >
-        {visibleEntries.length === 0 ? (
-          <div className="flex items-center justify-center h-full text-surface-400">
-            No entries to display
-          </div>
-        ) : (
-          visibleEntries.map((entry) => (
-            <EntryBlock
-              key={entry.id}
-              entry={entry}
-              settings={settings}
-              globalExpanded={globalExpanded}
-            />
-          ))
-        )}
+        <ErrorBoundary
+          fallback={
+            <div className="flex items-center justify-center h-full">
+              <div className="text-center p-6 rounded-lg bg-error-500/10 border border-error-500/30">
+                <p className="text-error-400 font-medium mb-2">Failed to render session entries</p>
+                <p className="text-surface-400 text-sm">There was an error displaying the session content. Try refreshing.</p>
+              </div>
+            </div>
+          }
+          resetKeys={[sessionId]}
+        >
+          {visibleEntries.length === 0 ? (
+            <div className="flex items-center justify-center h-full text-surface-400">
+              No entries to display
+            </div>
+          ) : (
+            visibleEntries.map((entry) => (
+              <EntryBlock
+                key={entry.id}
+                entry={entry}
+                settings={settings}
+                globalExpanded={globalExpanded}
+              />
+            ))
+          )}
+        </ErrorBoundary>
       </div>
 
       {/* Scroll to bottom button */}

@@ -8,6 +8,7 @@ import { createPortal } from 'react-dom';
 import { clsx } from 'clsx';
 import { AlertTriangle, CheckCircle2, Info } from 'lucide-react';
 import { FocusTrap } from '../common/FocusTrap';
+import { ErrorBoundary } from '../common/ErrorBoundary';
 
 interface ConfirmModalProps {
   isOpen: boolean;
@@ -99,58 +100,72 @@ export function ConfirmModal({
     <div className="modal-backdrop-premium" onClick={onCancel}>
       {/* Modal Panel */}
       <FocusTrap>
-        <div
-          role="alertdialog"
-          aria-modal="true"
-          aria-labelledby="confirm-modal-title"
-          aria-describedby="confirm-modal-message"
-          className={clsx(
-            'modal-panel-premium modal-sm',
-            panelVariantClass[variant]
-          )}
-          onClick={(e) => e.stopPropagation()}
-        >
-          {/* Content */}
-          <div className="modal-body-premium text-center">
-            {/* Icon */}
-            <div className={clsx('modal-icon-container', iconContainerClass[variant])}>
-              {renderIcon()}
+        <ErrorBoundary
+          fallback={
+            <div className="modal-panel-premium modal-sm">
+              <div className="p-8 text-center">
+                <p className="text-slate-400">Confirm Dialog encountered an error</p>
+                <button onClick={onCancel} className="btn btn-secondary mt-4">
+                  Cancel
+                </button>
+              </div>
             </div>
+          }
+          onReset={onCancel}
+        >
+          <div
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="confirm-modal-title"
+            aria-describedby="confirm-modal-message"
+            className={clsx(
+              'modal-panel-premium modal-sm',
+              panelVariantClass[variant]
+            )}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Content */}
+            <div className="modal-body-premium text-center">
+              {/* Icon */}
+              <div className={clsx('modal-icon-container', iconContainerClass[variant])}>
+                {renderIcon()}
+              </div>
 
-            {/* Title */}
-            <h2
-              id="confirm-modal-title"
-              className="text-xl font-semibold text-slate-100 mb-2"
-            >
-              {title}
-            </h2>
-
-            {/* Message */}
-            <p
-              id="confirm-modal-message"
-              className="text-sm text-slate-400 leading-relaxed max-w-sm mx-auto"
-            >
-              {message}
-            </p>
-
-            {/* Actions */}
-            <div className="mt-8 flex gap-3 justify-center">
-              <button
-                onClick={onCancel}
-                className="btn btn-secondary min-w-[100px]"
+              {/* Title */}
+              <h2
+                id="confirm-modal-title"
+                className="text-xl font-semibold text-slate-100 mb-2"
               >
-                {cancelText}
-              </button>
-              <button
-                ref={confirmButtonRef}
-                onClick={onConfirm}
-                className={clsx('btn min-w-[100px]', variantStyles[variant])}
+                {title}
+              </h2>
+
+              {/* Message */}
+              <p
+                id="confirm-modal-message"
+                className="text-sm text-slate-400 leading-relaxed max-w-sm mx-auto"
               >
-                {confirmText}
-              </button>
+                {message}
+              </p>
+
+              {/* Actions */}
+              <div className="mt-8 flex gap-3 justify-center">
+                <button
+                  onClick={onCancel}
+                  className="btn btn-secondary min-w-[100px]"
+                >
+                  {cancelText}
+                </button>
+                <button
+                  ref={confirmButtonRef}
+                  onClick={onConfirm}
+                  className={clsx('btn min-w-[100px]', variantStyles[variant])}
+                >
+                  {confirmText}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        </ErrorBoundary>
       </FocusTrap>
     </div>,
     document.body

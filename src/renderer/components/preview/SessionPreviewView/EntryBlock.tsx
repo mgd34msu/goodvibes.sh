@@ -7,6 +7,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { clsx } from 'clsx';
 import type { AppSettings, ParsedSessionEntry } from '../../../../shared/types';
 import { CopyButton } from '../../common/CopyButton';
+import { ErrorBoundary } from '../../common/ErrorBoundary';
 import {
   prettifyToolUse,
   prettifyThinking,
@@ -160,7 +161,17 @@ export function EntryBlock({ entry, settings, globalExpanded }: EntryBlockProps)
       {/* Content - Shown when expanded */}
       {isExpanded && (
         <div className="px-4 py-3 border-t border-inherit">
-          <EntryContent entry={entry} />
+          <ErrorBoundary
+            fallback={
+              <div className="p-3 rounded-lg bg-error-500/10 border border-error-500/30">
+                <p className="text-error-400 text-sm">Failed to render content</p>
+                <p className="text-surface-500 text-xs mt-1">The content could not be displayed.</p>
+              </div>
+            }
+            resetKeys={[entry.id]}
+          >
+            <EntryContent entry={entry} />
+          </ErrorBoundary>
         </div>
       )}
     </div>

@@ -27,7 +27,7 @@ import {
   githubRemoteUrlSchema,
   githubDeviceFlowOptionsSchema,
 } from '../schemas/github.js';
-import { numericIdSchema } from '../schemas/primitives.js';
+// numericIdSchema import removed - not used in current handlers
 
 const logger = new Logger('IPC:GitHub');
 

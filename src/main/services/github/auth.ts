@@ -14,7 +14,7 @@
 // ============================================================================
 
 import { Logger } from '../logger.js';
-import type { GitHubAuthResult, GitHubAuthState, GitHubUser } from '../../../shared/types/github.js';
+import type { GitHubAuthResult } from '../../../shared/types/github.js';
 import { getOAuthCredentialsInternal } from './credentials.js';
 import { verifyToken } from './api.js';
 import {

@@ -16,20 +16,6 @@ export function formatTimestamp(): string {
 }
 
 /**
- * Convert a Date object to ISO timestamp string
- *
- * @param date - The Date object to format
- * @returns Date in ISO 8601 format (e.g., "2024-01-15T10:30:00.000Z")
- *
- * @example
- * const isoString = formatDateToISO(new Date(2024, 0, 15, 10, 30));
- * // Returns "2024-01-15T10:30:00.000Z" (in UTC)
- */
-export function formatDateToISO(date: Date): string {
-  return date.toISOString();
-}
-
-/**
  * Extract the date portion from an ISO timestamp
  *
  * @param date - Optional Date object (defaults to current date)

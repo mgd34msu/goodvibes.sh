@@ -10,6 +10,7 @@ import { useAppStore } from '../../stores/appStore';
 import { VIEWS } from '../../../shared/constants';
 import { toast } from '../../stores/toastStore';
 import { createLogger } from '../../../shared/logger';
+import { ErrorBoundary } from '../common/ErrorBoundary';
 
 const logger = createLogger('CommandPalette');
 
@@ -170,90 +171,104 @@ export function CommandPalette(): React.JSX.Element | null {
       className="modal-backdrop-premium items-start pt-[15vh]"
       onClick={close}
     >
-      <div
-        className="modal-palette-premium"
-        onClick={(e) => e.stopPropagation()}
+      <ErrorBoundary
+        fallback={
+          <div className="modal-palette-premium">
+            <div className="p-8 text-center">
+              <p className="text-slate-400">Command Palette encountered an error</p>
+              <button onClick={close} className="btn btn-secondary mt-4">
+                Close
+              </button>
+            </div>
+          </div>
+        }
+        onReset={close}
       >
-        {/* Search input */}
-        <div className="modal-search-premium">
-          <Command className="w-5 h-5 search-icon" />
-          <input
-            type="text"
-            placeholder="Type a command..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            onKeyDown={handleKeyDown}
-            autoFocus
-          />
-          <kbd className="kbd-premium">esc</kbd>
-        </div>
+        <div
+          className="modal-palette-premium"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Search input */}
+          <div className="modal-search-premium">
+            <Command className="w-5 h-5 search-icon" />
+            <input
+              type="text"
+              placeholder="Type a command..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              onKeyDown={handleKeyDown}
+              autoFocus
+            />
+            <kbd className="kbd-premium">esc</kbd>
+          </div>
 
-        {/* Commands list */}
-        <div className="modal-list-premium">
-          {Object.entries(groupedCommands).map(([category, cmds]) => (
-            <div key={category}>
-              <div className="modal-category-header">
-                {category}
-              </div>
-              {cmds.map((cmd) => {
-                const globalIndex = filteredCommands.indexOf(cmd);
-                return (
-                  <button
-                    key={cmd.id}
-                    onClick={cmd.action}
-                    className={clsx(
-                      'modal-list-item-premium',
-                      globalIndex === selectedIndex && 'selected'
-                    )}
-                  >
-                    <div className="item-icon">
-                      <Command className="w-4 h-4" />
-                    </div>
-                    <div className="item-content">
-                      <div className="item-title">{cmd.label}</div>
-                      {cmd.description && (
-                        <div className="item-subtitle">{cmd.description}</div>
+          {/* Commands list */}
+          <div className="modal-list-premium">
+            {Object.entries(groupedCommands).map(([category, cmds]) => (
+              <div key={category}>
+                <div className="modal-category-header">
+                  {category}
+                </div>
+                {cmds.map((cmd) => {
+                  const globalIndex = filteredCommands.indexOf(cmd);
+                  return (
+                    <button
+                      key={cmd.id}
+                      onClick={cmd.action}
+                      className={clsx(
+                        'modal-list-item-premium',
+                        globalIndex === selectedIndex && 'selected'
                       )}
-                    </div>
-                    {cmd.shortcut && (
-                      <kbd className="kbd-premium">
-                        {cmd.shortcut}
-                      </kbd>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          ))}
+                    >
+                      <div className="item-icon">
+                        <Command className="w-4 h-4" />
+                      </div>
+                      <div className="item-content">
+                        <div className="item-title">{cmd.label}</div>
+                        {cmd.description && (
+                          <div className="item-subtitle">{cmd.description}</div>
+                        )}
+                      </div>
+                      {cmd.shortcut && (
+                        <kbd className="kbd-premium">
+                          {cmd.shortcut}
+                        </kbd>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            ))}
 
-          {filteredCommands.length === 0 && (
-            <div className="py-12 text-center">
-              <Search className="w-10 h-10 mx-auto mb-3 text-slate-600" />
-              <p className="text-slate-500">No commands found</p>
-            </div>
-          )}
-        </div>
+            {filteredCommands.length === 0 && (
+              <div className="py-12 text-center">
+                <Search className="w-10 h-10 mx-auto mb-3 text-slate-600" />
+                <p className="text-slate-500">No commands found</p>
+              </div>
+            )}
+          </div>
 
-        {/* Footer */}
-        <div className="modal-footer-hints">
-          <div className="hint-group">
+          {/* Footer */}
+          <div className="modal-footer-hints">
+            <div className="hint-group">
+              <span className="hint">
+                <kbd className="kbd-premium">↑</kbd>
+                <kbd className="kbd-premium">↓</kbd>
+                <span className="ml-1">Navigate</span>
+              </span>
+              <span className="hint">
+                <kbd className="kbd-premium">Enter</kbd>
+                <span className="ml-1">Execute</span>
+              </span>
+            </div>
             <span className="hint">
-              <kbd className="kbd-premium">↑</kbd>
-              <kbd className="kbd-premium">↓</kbd>
-              <span className="ml-1">Navigate</span>
-            </span>
-            <span className="hint">
-              <kbd className="kbd-premium">Enter</kbd>
-              <span className="ml-1">Execute</span>
+              <kbd className="kbd-premium">Ctrl</kbd>
+              <kbd className="kbd-premium">K</kbd>
+              <span className="ml-1">Toggle</span>
             </span>
           </div>
-          <span className="hint">
-            <kbd className="kbd-premium">Ctrl</kbd>
-            <kbd className="kbd-premium">K</kbd>
-            <span className="ml-1">Toggle</span>
-          </span>
         </div>
-      </div>
+      </ErrorBoundary>
     </div>
   );
 }

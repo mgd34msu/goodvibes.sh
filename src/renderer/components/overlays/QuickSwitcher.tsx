@@ -8,6 +8,7 @@ import { clsx } from 'clsx';
 import { Terminal, Search } from 'lucide-react';
 import { useAppStore } from '../../stores/appStore';
 import { useTerminalStore } from '../../stores/terminalStore';
+import { ErrorBoundary } from '../common/ErrorBoundary';
 
 export function QuickSwitcher(): React.JSX.Element | null {
   const isOpen = useAppStore((s) => s.isQuickSwitcherOpen);
@@ -78,84 +79,98 @@ export function QuickSwitcher(): React.JSX.Element | null {
       className="modal-backdrop-premium items-start pt-[15vh]"
       onClick={close}
     >
-      <div
-        className="modal-palette-premium max-w-md"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Search input */}
-        <div className="modal-search-premium">
-          <Terminal className="w-5 h-5 search-icon" />
-          <input
-            type="text"
-            placeholder="Search terminals..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            onKeyDown={handleKeyDown}
-            autoFocus
-          />
-          <kbd className="kbd-premium">esc</kbd>
-        </div>
-
-        {/* Terminals list */}
-        <div className="modal-list-premium max-h-72">
-          {filteredTerminals.map((terminal, index) => (
-            <button
-              key={terminal.id}
-              onClick={() => {
-                setActiveTerminal(terminal.id);
-                setCurrentView('terminal');
-                close();
-              }}
-              className={clsx(
-                'modal-list-item-premium',
-                index === selectedIndex && 'selected'
-              )}
-            >
-              <div className="item-icon">
-                <Terminal className="w-4 h-4" />
-              </div>
-              <div className="item-content">
-                <div className="item-title">{terminal.name}</div>
-                <div className="item-subtitle">{terminal.cwd}</div>
-              </div>
-              {terminal.sessionType === 'subagent' && (
-                <span className="px-2 py-0.5 text-xs font-medium rounded-md bg-violet-500/20 text-violet-300 border border-violet-500/30">
-                  Subagent
-                </span>
-              )}
-            </button>
-          ))}
-
-          {filteredTerminals.length === 0 && (
-            <div className="py-12 text-center">
-              <Search className="w-10 h-10 mx-auto mb-3 text-slate-600" />
-              <p className="text-slate-500">
-                {terminals.length === 0 ? 'No terminals open' : 'No matching terminals'}
-              </p>
+      <ErrorBoundary
+        fallback={
+          <div className="modal-palette-premium max-w-md">
+            <div className="p-8 text-center">
+              <p className="text-slate-400">Quick Switcher encountered an error</p>
+              <button onClick={close} className="btn btn-secondary mt-4">
+                Close
+              </button>
             </div>
-          )}
-        </div>
+          </div>
+        }
+        onReset={close}
+      >
+        <div
+          className="modal-palette-premium max-w-md"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Search input */}
+          <div className="modal-search-premium">
+            <Terminal className="w-5 h-5 search-icon" />
+            <input
+              type="text"
+              placeholder="Search terminals..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              onKeyDown={handleKeyDown}
+              autoFocus
+            />
+            <kbd className="kbd-premium">esc</kbd>
+          </div>
 
-        {/* Footer */}
-        <div className="modal-footer-hints">
-          <div className="hint-group">
+          {/* Terminals list */}
+          <div className="modal-list-premium max-h-72">
+            {filteredTerminals.map((terminal, index) => (
+              <button
+                key={terminal.id}
+                onClick={() => {
+                  setActiveTerminal(terminal.id);
+                  setCurrentView('terminal');
+                  close();
+                }}
+                className={clsx(
+                  'modal-list-item-premium',
+                  index === selectedIndex && 'selected'
+                )}
+              >
+                <div className="item-icon">
+                  <Terminal className="w-4 h-4" />
+                </div>
+                <div className="item-content">
+                  <div className="item-title">{terminal.name}</div>
+                  <div className="item-subtitle">{terminal.cwd}</div>
+                </div>
+                {terminal.sessionType === 'subagent' && (
+                  <span className="px-2 py-0.5 text-xs font-medium rounded-md bg-violet-500/20 text-violet-300 border border-violet-500/30">
+                    Subagent
+                  </span>
+                )}
+              </button>
+            ))}
+
+            {filteredTerminals.length === 0 && (
+              <div className="py-12 text-center">
+                <Search className="w-10 h-10 mx-auto mb-3 text-slate-600" />
+                <p className="text-slate-500">
+                  {terminals.length === 0 ? 'No terminals open' : 'No matching terminals'}
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Footer */}
+          <div className="modal-footer-hints">
+            <div className="hint-group">
+              <span className="hint">
+                <kbd className="kbd-premium">↑</kbd>
+                <kbd className="kbd-premium">↓</kbd>
+                <span className="ml-1">Navigate</span>
+              </span>
+              <span className="hint">
+                <kbd className="kbd-premium">Enter</kbd>
+                <span className="ml-1">Select</span>
+              </span>
+            </div>
             <span className="hint">
-              <kbd className="kbd-premium">↑</kbd>
-              <kbd className="kbd-premium">↓</kbd>
-              <span className="ml-1">Navigate</span>
-            </span>
-            <span className="hint">
-              <kbd className="kbd-premium">Enter</kbd>
-              <span className="ml-1">Select</span>
+              <kbd className="kbd-premium">Ctrl</kbd>
+              <kbd className="kbd-premium">Tab</kbd>
+              <span className="ml-1">Toggle</span>
             </span>
           </div>
-          <span className="hint">
-            <kbd className="kbd-premium">Ctrl</kbd>
-            <kbd className="kbd-premium">Tab</kbd>
-            <span className="ml-1">Toggle</span>
-          </span>
         </div>
-      </div>
+      </ErrorBoundary>
     </div>
   );
 }

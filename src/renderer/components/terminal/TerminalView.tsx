@@ -15,6 +15,8 @@ import { EmptyState } from './EmptyState';
 import { FolderPickerModal } from './FolderPickerModal';
 import { TextEditorPickerModal } from './TextEditorPickerModal';
 import { GitPanel } from '../git';
+import { ErrorBoundary } from '../common/ErrorBoundary';
+import { TerminalErrorFallback } from './TerminalErrorFallback';
 
 interface RecentSession {
   sessionId: string;
@@ -107,11 +109,24 @@ export default function TerminalView() {
   return (
     <div className="flex flex-col h-full bg-surface-950">
       {/* Terminal Header */}
-      <TerminalHeader
-        showGitPanel={showGitPanel}
-        onToggleGitPanel={() => setShowGitPanel(!showGitPanel)}
-        hasActiveSession={hasActiveSession}
-      />
+      <ErrorBoundary
+        fallback={
+          <div className="panel-header flex items-center gap-4 px-4 py-3">
+            <div className="flex items-center gap-2 text-error-400">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <span className="text-sm">Tab bar error - please reload</span>
+            </div>
+          </div>
+        }
+      >
+        <TerminalHeader
+          showGitPanel={showGitPanel}
+          onToggleGitPanel={() => setShowGitPanel(!showGitPanel)}
+          hasActiveSession={hasActiveSession}
+        />
+      </ErrorBoundary>
 
       {/* Terminal Content */}
       <div className="flex-1 flex overflow-y-auto">
@@ -134,18 +149,30 @@ export default function TerminalView() {
                     terminal.id === activeTerminalId ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'
                   )}
                 >
-                  {terminal.isPreview && terminal.previewSessionId ? (
-                    <SessionPreviewView
-                      sessionId={terminal.previewSessionId}
-                      sessionName={terminal.name.replace('Preview: ', '')}
-                    />
-                  ) : (
-                    <TerminalInstance
-                      id={terminal.id}
-                      zoomLevel={zoomLevel}
-                      isActive={terminal.id === activeTerminalId}
-                    />
-                  )}
+                  <ErrorBoundary
+                    fallbackRender={({ error, resetErrorBoundary }) => (
+                      <TerminalErrorFallback
+                        error={error}
+                        terminalId={terminal.id}
+                        terminalName={terminal.name}
+                        onRetry={resetErrorBoundary}
+                      />
+                    )}
+                    resetKeys={[terminal.id]}
+                  >
+                    {terminal.isPreview && terminal.previewSessionId ? (
+                      <SessionPreviewView
+                        sessionId={terminal.previewSessionId}
+                        sessionName={terminal.name.replace('Preview: ', '')}
+                      />
+                    ) : (
+                      <TerminalInstance
+                        id={terminal.id}
+                        zoomLevel={zoomLevel}
+                        isActive={terminal.id === activeTerminalId}
+                      />
+                    )}
+                  </ErrorBoundary>
                 </div>
               ))}
             </div>
@@ -166,7 +193,15 @@ export default function TerminalView() {
       </div>
 
       {/* Terminal Footer */}
-      <TerminalFooter />
+      <ErrorBoundary
+        fallback={
+          <div className="footer-premium flex items-center justify-center px-4 py-2.5">
+            <span className="text-xs text-surface-500">Footer unavailable</span>
+          </div>
+        }
+      >
+        <TerminalFooter />
+      </ErrorBoundary>
 
       {/* Folder Picker Modal */}
       <FolderPickerModal />

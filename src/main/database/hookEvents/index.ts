@@ -62,10 +62,9 @@ export {
 } from './mutations.js';
 
 // Re-export analytics operations
-export {
-  getHookEventStats,
-  getHookEventsByHour,
-  getBlockedEventsSummary,
-  getToolUsageFromHooks,
-  getSessionActivitySummary,
-} from './analytics.js';
+// Note: Only getHookEventStats is currently used by IPC handlers.
+// Other analytics functions (getHookEventsByHour, getBlockedEventsSummary,
+// getToolUsageFromHooks, getSessionActivitySummary) are available for
+// future dashboard features but are not re-exported from the barrel
+// to reduce bundle size. Import directly from './analytics.js' if needed.
+export { getHookEventStats } from './analytics.js';

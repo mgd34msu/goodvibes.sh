@@ -18,7 +18,7 @@ import {
 } from './lifecycle/index.js';
 
 const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const _dirname = path.dirname(__filename); // Kept for potential future use, prefixed with _ to avoid unused warning
 
 const logger = new Logger('Main');
 

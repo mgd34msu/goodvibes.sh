@@ -10,7 +10,6 @@
 
 import type {
   Theme,
-  ThemeId,
   ColorScale,
   SemanticColorSet,
   GlowColors,
@@ -297,40 +296,4 @@ export function applyTheme(theme: Theme): void {
 
   // Store the theme ID for later retrieval
   htmlEl.setAttribute(THEME_DATA_ATTR, theme.id);
-}
-
-/**
- * Gets the currently applied theme ID from the document.
- *
- * @returns The ThemeId of the currently applied theme, or null if no theme is applied
- *
- * @example
- * ```typescript
- * const currentTheme = getAppliedThemeId();
- * if (currentTheme === 'dracula') {
- *   console.log('Dracula theme is active');
- * }
- * ```
- */
-export function getAppliedThemeId(): ThemeId | null {
-  const themeId = document.documentElement.getAttribute(THEME_DATA_ATTR);
-  return themeId as ThemeId | null;
-}
-
-/**
- * Removes the applied theme, reverting to default CSS variables.
- * This removes the injected style element and clears theme-related attributes.
- */
-export function removeAppliedTheme(): void {
-  // Remove the style element
-  const styleEl = document.getElementById(THEME_STYLE_ID);
-  if (styleEl) {
-    styleEl.remove();
-  }
-
-  // Remove theme-related attributes and classes
-  const htmlEl = document.documentElement;
-  htmlEl.removeAttribute(THEME_DATA_ATTR);
-  htmlEl.style.colorScheme = '';
-  htmlEl.classList.remove('light', 'dark');
 }

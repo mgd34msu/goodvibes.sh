@@ -14,16 +14,10 @@ export type {
   RateLimitConfig,
 } from './types.js';
 
-// Re-export core utilities (for internal use by other modules if needed)
-export {
-  runGitCommand,
-  validateBranchName,
-  validateCommitHash,
-  validateRemoteName,
-  logger,
-  GIT_TIMEOUT,
-  GIT_MAX_BUFFER,
-} from './core.js';
+// Note: Core utilities (runGitCommand, validateBranchName, validateCommitHash,
+// validateRemoteName, logger, GIT_TIMEOUT, GIT_MAX_BUFFER) are internal
+// and should be imported directly from './core.js' if needed by other
+// modules within this service. They are not part of the public API.
 
 // Re-export basic operations
 export {

@@ -281,13 +281,14 @@ export function TitleBar(): React.JSX.Element {
       'backdrop-blur-xl',
       'border-b border-surface-800/60',
       'shadow-lg shadow-black/20',
-      'relative z-[9999]'
+      'relative z-[9999]',
+      'drag-region'
     )}>
       {/* Subtle top highlight for depth */}
       <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-surface-700/50 to-transparent" />
 
       {/* Logo area - more distinctive */}
-      <div className="flex items-center gap-3 px-5 drag-region group">
+      <div className="flex items-center gap-3 px-5 group">
         <div className="relative">
           <img
             src={appIcon}
@@ -311,7 +312,7 @@ export function TitleBar(): React.JSX.Element {
       <div className="w-px h-6 bg-gradient-to-b from-transparent via-surface-700/60 to-transparent mx-2" />
 
       {/* Navigation dropdowns */}
-      <nav className="flex items-center gap-1.5 px-3 no-drag flex-1" role="navigation" aria-label="Main navigation">
+      <nav className="flex items-center gap-1.5 px-3 no-drag" role="navigation" aria-label="Main navigation">
         {NAV_GROUPS.map((group) => (
           <NavDropdown
             key={group.id}
@@ -321,6 +322,9 @@ export function TitleBar(): React.JSX.Element {
           />
         ))}
       </nav>
+
+      {/* Draggable spacer - fills remaining space */}
+      <div className="flex-1" />
 
       {/* Right side actions */}
       <div className="flex items-center gap-2 px-4 no-drag">

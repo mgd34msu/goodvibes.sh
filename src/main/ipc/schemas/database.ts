@@ -7,7 +7,7 @@
 // ============================================================================
 
 import { z } from 'zod';
-import { numericIdSchema, sessionIdSchema } from './primitives.js';
+import { sessionIdSchema } from './primitives.js';
 
 // ============================================================================
 // ACTIVITY LOG SCHEMAS

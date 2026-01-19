@@ -97,27 +97,6 @@ function generateLineWidths(count: number): string[] {
 }
 
 // ============================================================================
-// SKELETON GROUP - For complex loading patterns
-// ============================================================================
-
-interface SkeletonGroupProps {
-  children: React.ReactNode;
-  className?: string;
-  staggerDelay?: number;
-}
-
-export function SkeletonGroup({ children, className, staggerDelay = 50 }: SkeletonGroupProps): React.JSX.Element {
-  return (
-    <div
-      className={clsx('skeleton-group', className)}
-      style={{ '--stagger-delay': `${staggerDelay}ms` } as React.CSSProperties}
-    >
-      {children}
-    </div>
-  );
-}
-
-// ============================================================================
 // PRE-BUILT SKELETON PATTERNS
 // ============================================================================
 
@@ -163,92 +142,6 @@ export function AnalyticsCardSkeleton(): React.JSX.Element {
         <Skeleton variant="circular" width={20} height={20} />
         <Skeleton width={60} height={14} />
       </div>
-    </div>
-  );
-}
-
-export function TerminalTabSkeleton(): React.JSX.Element {
-  return (
-    <div className="flex items-center gap-2.5 px-4 py-2.5">
-      <Skeleton variant="circular" width={18} height={18} />
-      <Skeleton width={90} height={16} variant="rounded" />
-    </div>
-  );
-}
-
-export function ListItemSkeleton(): React.JSX.Element {
-  return (
-    <div className="flex items-center gap-3 p-3">
-      <Skeleton variant="circular" width={40} height={40} />
-      <div className="flex-1 space-y-2">
-        <Skeleton width="60%" height={16} />
-        <Skeleton width="40%" height={12} />
-      </div>
-      <Skeleton width={24} height={24} variant="circular" />
-    </div>
-  );
-}
-
-export function TableRowSkeleton({ columns = 4 }: { columns?: number }): React.JSX.Element {
-  return (
-    <div className="flex items-center gap-4 p-3 border-b border-surface-800/50">
-      {Array.from({ length: columns }).map((_, i) => (
-        <div key={i} className="flex-1">
-          <Skeleton
-            width={i === 0 ? '70%' : '50%'}
-            height={16}
-            animate="shimmer"
-          />
-        </div>
-      ))}
-    </div>
-  );
-}
-
-export function MessageSkeleton({ isUser = false }: { isUser?: boolean }): React.JSX.Element {
-  return (
-    <div className={clsx('flex gap-3 p-4', isUser && 'flex-row-reverse')}>
-      <Skeleton variant="circular" width={36} height={36} />
-      <div className={clsx('flex-1 max-w-[70%]', isUser && 'flex flex-col items-end')}>
-        <div className={clsx(
-          'space-y-2 p-3 rounded-xl',
-          isUser ? 'bg-indigo-500/10' : 'bg-surface-800/50'
-        )}>
-          <Skeleton lines={3} />
-        </div>
-        <Skeleton width={60} height={12} className="mt-2" />
-      </div>
-    </div>
-  );
-}
-
-export function CodeBlockSkeleton({ lines = 6 }: { lines?: number }): React.JSX.Element {
-  return (
-    <div className="bg-surface-900/80 rounded-xl p-4 space-y-2 font-mono border border-surface-700/30">
-      {/* Header bar */}
-      <div className="flex items-center gap-2 pb-2 border-b border-surface-700/30">
-        <div className="flex gap-1.5">
-          <Skeleton variant="circular" width={10} height={10} />
-          <Skeleton variant="circular" width={10} height={10} />
-          <Skeleton variant="circular" width={10} height={10} />
-        </div>
-        <Skeleton width={80} height={12} className="ml-auto" />
-      </div>
-
-      {/* Code lines with varied indentation */}
-      {Array.from({ length: lines }).map((_, i) => (
-        <div
-          key={i}
-          className="flex items-center gap-2"
-          style={{ paddingLeft: `${(i % 3) * 16}px` }}
-        >
-          <Skeleton
-            width={`${30 + Math.random() * 50}%`}
-            height={14}
-            variant="rounded"
-          />
-        </div>
-      ))}
     </div>
   );
 }

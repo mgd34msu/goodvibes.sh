@@ -14,7 +14,7 @@ import {
 } from './types.js';
 import { getOAuthCredentialsInternal } from './credentials.js';
 import { exchangeCodeForTokens, fetchGitHubUser } from './api.js';
-import { storeTokensAndUser, updateAuthState, getAuthStateInternal } from './state.js';
+import { storeTokensAndUser, updateAuthState } from './state.js';
 
 const logger = new Logger('GitHubOAuthFlow');
 

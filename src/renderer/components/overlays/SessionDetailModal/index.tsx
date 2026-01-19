@@ -11,6 +11,7 @@ import { decodeProjectName, decodeProjectPath } from '../../../../shared/utils';
 import { useAppStore } from '../../../stores/appStore';
 import { useSettingsStore } from '../../../stores/settingsStore';
 import { useTerminalStore } from '../../../stores/terminalStore';
+import { ErrorBoundary } from '../../common/ErrorBoundary';
 import { OverviewTab } from './OverviewTab';
 import { MessagesTab } from './MessagesTab';
 import { TokensTab } from './TokensTab';
@@ -54,107 +55,121 @@ export function SessionDetailModal({ session, onClose }: SessionDetailModalProps
 
   return (
     <div className="modal-backdrop-premium" onClick={onClose}>
-      <div
-        className="modal-panel-premium modal-xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="modal-header-premium">
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2">
-              <h2 className="truncate">{displayName}</h2>
-              {currentSession.favorite && (
-                <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
-              )}
-              {currentSession.archived && (
-                <span className="px-2 py-0.5 text-[10px] font-medium rounded-md bg-slate-500/20 text-slate-400 border border-slate-500/30 flex items-center gap-1">
-                  <Archive className="w-3 h-3" />
-                  Archived
-                </span>
-              )}
+      <ErrorBoundary
+        fallback={
+          <div className="modal-panel-premium modal-xl">
+            <div className="p-8 text-center">
+              <p className="text-slate-400">Session Detail Modal encountered an error</p>
+              <button onClick={onClose} className="btn btn-secondary mt-4">
+                Close
+              </button>
             </div>
-            <p className="modal-subtitle">
-              Session ID: <span className="font-mono">{session.id}</span>
-            </p>
           </div>
-          <button onClick={onClose} className="modal-close-premium">
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-
-        {/* Tabs */}
-        <div className="flex items-center gap-2 px-6 py-3 border-b border-white/[0.06] bg-white/[0.01]">
-          {(['overview', 'messages', 'tokens'] as const).map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={clsx(
-                'px-4 py-1.5 text-sm rounded-lg transition-all',
-                activeTab === tab
-                  ? 'bg-violet-500/20 text-violet-300 border border-violet-500/30'
-                  : 'text-slate-400 hover:bg-white/[0.05] hover:text-slate-200 border border-transparent'
-              )}
-            >
-              {tab.charAt(0).toUpperCase() + tab.slice(1)}
-            </button>
-          ))}
-        </div>
-
-        {/* Content */}
-        <div className="modal-body-premium">
-          {activeTab === 'overview' && (
-            <OverviewTab session={currentSession} duration={duration} displayName={displayName} />
-          )}
-          {activeTab === 'messages' && (
-            <MessagesTab messages={messages} loading={messagesLoading} />
-          )}
-          {activeTab === 'tokens' && (
-            <TokensTab session={currentSession} />
-          )}
-        </div>
-
-        {/* Footer */}
-        <div className="modal-footer-premium modal-footer-split">
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handleOpenPreview}
-              className="btn btn-secondary text-sm"
-            >
-              <Eye className="w-4 h-4 mr-1.5" />
-              Preview
-            </button>
-            <button
-              onClick={async () => {
-                const cwd = decodeProjectPath(session.projectName) || undefined;
-                await createTerminal(cwd, displayName, session.id);
-                setCurrentView('terminal');
-                onClose();
-              }}
-              className="btn btn-primary text-sm"
-            >
-              <Play className="w-4 h-4 mr-1.5" />
-              Resume
-            </button>
-            <button
-              onClick={() => window.goodvibes.exportSession(session.id, 'markdown')}
-              className="btn btn-secondary text-sm"
-            >
-              <FileText className="w-4 h-4 mr-1.5" />
-              Export MD
-            </button>
-            <button
-              onClick={() => window.goodvibes.exportSession(session.id, 'json')}
-              className="btn btn-secondary text-sm"
-            >
-              <FileJson className="w-4 h-4 mr-1.5" />
-              Export JSON
+        }
+        onReset={onClose}
+      >
+        <div
+          className="modal-panel-premium modal-xl"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Header */}
+          <div className="modal-header-premium">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <h2 className="truncate">{displayName}</h2>
+                {currentSession.favorite && (
+                  <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
+                )}
+                {currentSession.archived && (
+                  <span className="px-2 py-0.5 text-[10px] font-medium rounded-md bg-slate-500/20 text-slate-400 border border-slate-500/30 flex items-center gap-1">
+                    <Archive className="w-3 h-3" />
+                    Archived
+                  </span>
+                )}
+              </div>
+              <p className="modal-subtitle">
+                Session ID: <span className="font-mono">{session.id}</span>
+              </p>
+            </div>
+            <button onClick={onClose} className="modal-close-premium">
+              <X className="w-4 h-4" />
             </button>
           </div>
-          <button onClick={onClose} className="btn btn-secondary">
-            Close
-          </button>
+
+          {/* Tabs */}
+          <div className="flex items-center gap-2 px-6 py-3 border-b border-white/[0.06] bg-white/[0.01]">
+            {(['overview', 'messages', 'tokens'] as const).map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={clsx(
+                  'px-4 py-1.5 text-sm rounded-lg transition-all',
+                  activeTab === tab
+                    ? 'bg-violet-500/20 text-violet-300 border border-violet-500/30'
+                    : 'text-slate-400 hover:bg-white/[0.05] hover:text-slate-200 border border-transparent'
+                )}
+              >
+                {tab.charAt(0).toUpperCase() + tab.slice(1)}
+              </button>
+            ))}
+          </div>
+
+          {/* Content */}
+          <div className="modal-body-premium">
+            {activeTab === 'overview' && (
+              <OverviewTab session={currentSession} duration={duration} displayName={displayName} />
+            )}
+            {activeTab === 'messages' && (
+              <MessagesTab messages={messages} loading={messagesLoading} />
+            )}
+            {activeTab === 'tokens' && (
+              <TokensTab session={currentSession} />
+            )}
+          </div>
+
+          {/* Footer */}
+          <div className="modal-footer-premium modal-footer-split">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleOpenPreview}
+                className="btn btn-secondary text-sm"
+              >
+                <Eye className="w-4 h-4 mr-1.5" />
+                Preview
+              </button>
+              <button
+                onClick={async () => {
+                  const cwd = decodeProjectPath(session.projectName) || undefined;
+                  await createTerminal(cwd, displayName, session.id);
+                  setCurrentView('terminal');
+                  onClose();
+                }}
+                className="btn btn-primary text-sm"
+              >
+                <Play className="w-4 h-4 mr-1.5" />
+                Resume
+              </button>
+              <button
+                onClick={() => window.goodvibes.exportSession(session.id, 'markdown')}
+                className="btn btn-secondary text-sm"
+              >
+                <FileText className="w-4 h-4 mr-1.5" />
+                Export MD
+              </button>
+              <button
+                onClick={() => window.goodvibes.exportSession(session.id, 'json')}
+                className="btn btn-secondary text-sm"
+              >
+                <FileJson className="w-4 h-4 mr-1.5" />
+                Export JSON
+              </button>
+            </div>
+            <button onClick={onClose} className="btn btn-secondary">
+              Close
+            </button>
+          </div>
         </div>
-      </div>
+      </ErrorBoundary>
     </div>
   );
 }

@@ -35,8 +35,10 @@ const COMMAND_SUBSTITUTION_PATTERN = /\$\(|\$\{|`/;
 
 /**
  * Windows-specific dangerous patterns
+ * Note: This pattern is defined for future Windows-specific validation.
+ * Currently, SHELL_METACHARACTERS covers most cases for cross-platform security.
  */
-const WINDOWS_DANGEROUS_PATTERNS = /[&|<>^%]/;
+const _WINDOWS_DANGEROUS_PATTERNS = /[&|<>^%]/;
 
 /**
  * Path traversal patterns
