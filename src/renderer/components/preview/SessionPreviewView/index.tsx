@@ -18,11 +18,23 @@ export function SessionPreviewView({ sessionId, sessionName }: SessionPreviewVie
   const [autoScroll, setAutoScroll] = useState(true);
   const [globalExpanded, setGlobalExpanded] = useState<boolean | null>(null);
 
+  // Validate sessionId early
+  const validSessionId = sessionId && typeof sessionId === 'string' && sessionId.trim().length > 0;
+
   // Query for raw session entries
   const { data: rawEntries = [], isLoading, error, refetch } = useQuery({
     queryKey: ['session-raw-entries', sessionId],
-    queryFn: () => window.goodvibes.getSessionRawEntries(sessionId),
-    refetchInterval: 2000,
+    queryFn: async () => {
+      if (!validSessionId) return [];
+      try {
+        return await window.goodvibes.getSessionRawEntries(sessionId);
+      } catch (err) {
+        console.error('[SessionPreviewView] Failed to fetch raw entries:', err);
+        throw err;
+      }
+    },
+    enabled: validSessionId,
+    refetchInterval: validSessionId ? 2000 : false,
     refetchIntervalInBackground: false,
   });
 
@@ -30,7 +42,8 @@ export function SessionPreviewView({ sessionId, sessionName }: SessionPreviewVie
   const { data: isLive = false } = useQuery({
     queryKey: ['session-live', sessionId],
     queryFn: () => window.goodvibes.isSessionLive(sessionId),
-    refetchInterval: 5000,
+    enabled: validSessionId,
+    refetchInterval: validSessionId ? 5000 : false,
     refetchIntervalInBackground: false,
   });
 
@@ -79,6 +92,18 @@ export function SessionPreviewView({ sessionId, sessionName }: SessionPreviewVie
   const handleCollapseAll = () => setGlobalExpanded(false);
   const handleResetExpand = () => setGlobalExpanded(null);
 
+  // Handle invalid sessionId
+  if (!validSessionId) {
+    return (
+      <div className="flex items-center justify-center h-full bg-surface-900">
+        <div className="text-center">
+          <div className="text-error-400 mb-2">Invalid session</div>
+          <div className="text-surface-500 text-sm">Session ID is missing or invalid</div>
+        </div>
+      </div>
+    );
+  }
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-full bg-surface-900">
@@ -90,7 +115,10 @@ export function SessionPreviewView({ sessionId, sessionName }: SessionPreviewVie
   if (error) {
     return (
       <div className="flex items-center justify-center h-full bg-surface-900">
-        <div className="text-error-400">Failed to load session</div>
+        <div className="text-center">
+          <div className="text-error-400 mb-2">Failed to load session</div>
+          <div className="text-surface-500 text-sm">{error instanceof Error ? error.message : 'Unknown error'}</div>
+        </div>
       </div>
     );
   }
