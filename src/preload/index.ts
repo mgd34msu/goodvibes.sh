@@ -58,10 +58,10 @@ const api = {
   // Events
   ...eventsApi,
 
-  // Project registry (Phase 11)
+  // Project registry
   ...projectRegistryApi,
 
-  // Recommendations (Phase 10)
+  // Recommendations
   ...recommendationsApi,
 };
 

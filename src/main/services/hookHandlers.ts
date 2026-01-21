@@ -3,8 +3,8 @@
 // ============================================================================
 //
 // This module registers enhanced hook handlers that integrate:
-// - Approval Queue with Policy Engine (Phase 6)
-// - Agent Tree Orchestration (Phase 7)
+// - Approval Queue with Policy Engine
+// - Agent Tree Orchestration
 //
 // ============================================================================
 

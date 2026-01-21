@@ -325,7 +325,7 @@ export function registerSessionHandlers(): void {
     }
   }));
 
-  // Session summary handlers (for phase5to8Api)
+  // Session summary handlers (for approvalAgentApi)
   ipcMain.handle('session:get', withContext('session:get', async (_, sessionId: string) => {
     // Validate session ID
     const result = sessionIdSchema.safeParse(sessionId);

@@ -55,7 +55,7 @@ export function MarkdownRenderer({ content }: MarkdownRendererProps): React.JSX.
         pre: ({ children }) => <>{children}</>,
         p: ({ children, ...props }) => {
           // react-markdown passes node prop with hast element info
-          const node = (props as { node?: { children?: Array<{ tagName?: string }> } }).node;
+          const node = (props as { node?: { children?: Array<{ tagName?: string; properties?: { className?: string[] } }> } }).node;
           // Check if paragraph contains block-level elements (like code blocks)
           // If so, render as div to avoid invalid HTML nesting (<pre> cannot be inside <p>)
           const hasBlockChild = node?.children?.some(
@@ -65,7 +65,10 @@ export function MarkdownRenderer({ content }: MarkdownRendererProps): React.JSX.
               child.tagName === 'table' ||
               child.tagName === 'blockquote' ||
               child.tagName === 'ul' ||
-              child.tagName === 'ol'
+              child.tagName === 'ol' ||
+              // Code elements will be rendered as code blocks (with div/pre) unless they're inline
+              // We detect code blocks by checking for language class OR if code is direct child of p (not wrapped in other inline)
+              child.tagName === 'code'
           );
           if (hasBlockChild) {
             return <div className="mb-2 last:mb-0">{children}</div>;

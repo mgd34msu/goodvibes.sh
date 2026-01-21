@@ -9,8 +9,8 @@
 import { Logger } from '../services/logger.js';
 import { initProjectRegistry } from '../services/projectRegistry/index.js';
 import { initProjectCoordinator } from '../services/projectCoordinator/index.js';
-import { registerPhase5to8Handlers } from './phase5to8Handlers.js';
-import { registerPhase9to12Handlers } from './phase9to12Handlers.js';
+import { registerApprovalAgentHandlers } from './approvalAgentHandlers.js';
+import { registerProjectAnalyticsHandlers } from './projectAnalyticsHandlers.js';
 
 // Domain handlers
 import {
@@ -96,16 +96,16 @@ export function registerAllIpcHandlers(): void {
   registerClipboardHandlers();
 
   // ============================================================================
-  // PHASE HANDLERS
+  // ADVANCED FEATURE HANDLERS
   // ============================================================================
 
   // Initialize project registry and coordinator services
   initProjectRegistry();
   initProjectCoordinator();
 
-  // Register phase-specific handlers
-  registerPhase5to8Handlers();
-  registerPhase9to12Handlers();
+  // Register approval, agent, and project analytics handlers
+  registerApprovalAgentHandlers();
+  registerProjectAnalyticsHandlers();
 
   logger.info('All IPC handlers registered');
 }

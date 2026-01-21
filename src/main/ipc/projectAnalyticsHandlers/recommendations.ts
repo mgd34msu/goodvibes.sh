@@ -1,5 +1,5 @@
 // ============================================================================
-// RECOMMENDATION IPC HANDLERS (Phase 10)
+// RECOMMENDATION IPC HANDLERS
 // ============================================================================
 
 import { ipcMain } from 'electron';

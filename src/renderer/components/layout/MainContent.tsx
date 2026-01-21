@@ -25,7 +25,7 @@ const MemoryView = lazy(() => import('../views/MemoryView'));
 const SkillsView = lazy(() => import('../views/SkillsView/index'));
 const CommandsView = lazy(() => import('../views/CommandsView/index'));
 const PluginsView = lazy(() => import('../views/PluginsView/index'));
-// Phase 9-12 views
+// Project views
 const ProjectRegistryView = lazy(() => import('../views/ProjectRegistryView/index'));
 
 // ============================================================================

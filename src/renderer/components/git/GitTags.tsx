@@ -42,11 +42,11 @@ export function GitTags({
     <>
       {/* Tags Section */}
       <div className="border border-surface-700 rounded overflow-hidden">
-        <button
-          onClick={() => toggleSection('tags')}
-          className="w-full flex items-center justify-between px-2 py-1.5 bg-surface-800 hover:bg-surface-750 transition-colors"
-        >
-          <div className="flex items-center gap-2">
+        <div className="flex items-center justify-between px-2 py-1.5 bg-surface-800">
+          <button
+            onClick={() => toggleSection('tags')}
+            className="flex items-center gap-2 hover:bg-surface-750 transition-colors rounded px-1 -ml-1"
+          >
             <svg
               className={clsx('w-3 h-3 text-surface-400 transition-transform', expandedSections.tags && 'rotate-90')}
               fill="none"
@@ -59,15 +59,15 @@ export function GitTags({
             {tags.length > 0 && (
               <span className="text-xs text-surface-500">({tags.length})</span>
             )}
-          </div>
+          </button>
           <button
-            onClick={(e) => { e.stopPropagation(); onShowTagModal(); }}
+            onClick={() => onShowTagModal()}
             className="px-1.5 py-0.5 text-[10px] bg-surface-700 hover:bg-surface-600 text-surface-300 rounded"
             title="Create tag"
           >
             + Tag
           </button>
-        </button>
+        </div>
         {expandedSections.tags && (
           <div className="max-h-32 overflow-y-auto">
             {tags.length === 0 ? (

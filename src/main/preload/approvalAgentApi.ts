@@ -1,8 +1,8 @@
 // ============================================================================
-// PHASE 5-8 PRELOAD API - Exposed to renderer for budget, approval, agents
+// APPROVAL & AGENT PRELOAD API - Exposed to renderer for budget, approval, agents
 // ============================================================================
 //
-// This module defines the preload API methods for Phase 5-8 features.
+// This module defines the preload API methods for approval and agent features.
 // These are merged into the main goodvibes API in preload.ts.
 //
 // ============================================================================
@@ -168,9 +168,9 @@ export interface SessionCheckpoint {
 // API METHODS
 // ============================================================================
 
-export const phase5to8Api = {
+export const approvalAgentApi = {
   // =====================
-  // BUDGET API (Phase 5)
+  // BUDGET API
   // =====================
 
   getAllBudgets: (): Promise<BudgetRecord[]> =>
@@ -212,7 +212,7 @@ export const phase5to8Api = {
     ipcRenderer.invoke('budget:projectCost', sessionId, remainingMinutes),
 
   // =====================
-  // APPROVAL API (Phase 6)
+  // APPROVAL API
   // =====================
 
   getPendingApprovals: (sessionId?: string): Promise<ApprovalQueueItem[]> =>
@@ -258,7 +258,7 @@ export const phase5to8Api = {
     ipcRenderer.invoke('policy:delete', id),
 
   // =====================
-  // AGENT TREE API (Phase 7)
+  // AGENT TREE API
   // =====================
 
   getAgent: (sessionId: string): Promise<AgentTreeNode | null> =>
@@ -295,7 +295,7 @@ export const phase5to8Api = {
     ipcRenderer.invoke('agentTree:allocateBudget', sessionId, amount),
 
   // =====================
-  // SESSION INTELLIGENCE API (Phase 8)
+  // SESSION INTELLIGENCE API
   // =====================
 
   getSession: (sessionId: string): Promise<SessionSummary | null> =>

@@ -1,14 +1,14 @@
 // ============================================================================
-// PHASE 9-12 IPC HANDLERS - Project Registry, Coordination, Templates, Recommendations
+// PROJECT ANALYTICS IPC HANDLERS - Project Registry, Coordination, Templates, Recommendations
 // ============================================================================
 //
-// This module registers IPC handlers for the Phase 9-12 features:
+// This module registers IPC handlers for:
 // - Project Registry (registration, settings, analytics)
 // - Project Coordination (cross-project agents, shared skills)
 // - Project Templates (create, apply, manage)
 // - Global Analytics (cross-project metrics)
 // - Test Monitor (test result parsing, statistics)
-// - Agent Recommendations (Phase 10)
+// - Agent Recommendations
 //
 // ============================================================================
 
@@ -25,13 +25,13 @@ import {
 } from './analytics.js';
 import { registerRecommendationHandlers } from './recommendations.js';
 
-const logger = new Logger('Phase9to12IPC');
+const logger = new Logger('ProjectAnalyticsIPC');
 
 // ============================================================================
 // REGISTRATION
 // ============================================================================
 
-export function registerPhase9to12Handlers(): void {
+export function registerProjectAnalyticsHandlers(): void {
   // Project Registry Handlers
   registerProjectHandlers();
 
@@ -47,10 +47,10 @@ export function registerPhase9to12Handlers(): void {
   // Test Monitor Handlers
   registerTestMonitorHandlers();
 
-  // Recommendation Handlers (Phase 10)
+  // Recommendation Handlers
   registerRecommendationHandlers();
 
-  logger.info('Phase 9-12 IPC handlers registered');
+  logger.info('Project Analytics IPC handlers registered');
 }
 
 // ============================================================================
@@ -58,19 +58,19 @@ export function registerPhase9to12Handlers(): void {
 // ============================================================================
 
 /**
- * Initialize Phase 9-12 services
+ * Initialize Project Analytics services
  * Call this during app startup after hook server is ready
  */
-export function initializePhase9to12Services(): void {
+export function initializeProjectAnalyticsServices(): void {
   startTestMonitor();
-  logger.info('Phase 9-12 monitoring services initialized');
+  logger.info('Project Analytics monitoring services initialized');
 }
 
 /**
- * Cleanup Phase 9-12 services
+ * Cleanup Project Analytics services
  * Call this during app shutdown
  */
-export function cleanupPhase9to12Services(): void {
+export function cleanupProjectAnalyticsServices(): void {
   stopTestMonitor();
-  logger.info('Phase 9-12 monitoring services cleaned up');
+  logger.info('Project Analytics monitoring services cleaned up');
 }

@@ -1,5 +1,5 @@
 // ============================================================================
-// PHASE 5-8 IPC HANDLERS - Approval, Agent Tree
+// APPROVAL & AGENT IPC HANDLERS
 // ============================================================================
 //
 // This module registers IPC handlers for:
@@ -13,24 +13,24 @@ import { Logger } from '../services/logger.js';
 import { getPolicyEngine } from '../services/policyEngine.js';
 import { getAgentTreeService } from '../services/agentTree.js';
 
-const logger = new Logger('Phase5to8IPC');
+const logger = new Logger('ApprovalAgentIPC');
 
 // ============================================================================
 // REGISTRATION
 // ============================================================================
 
-export function registerPhase5to8Handlers(): void {
+export function registerApprovalAgentHandlers(): void {
   // Approval Handlers
   registerApprovalHandlers();
 
   // Agent Tree Handlers
   registerAgentTreeHandlers();
 
-  logger.info('Phase 5-8 IPC handlers registered');
+  logger.info('Approval & Agent IPC handlers registered');
 }
 
 // ============================================================================
-// APPROVAL HANDLERS (Phase 6)
+// APPROVAL HANDLERS
 // ============================================================================
 
 function registerApprovalHandlers(): void {
@@ -106,7 +106,7 @@ function registerApprovalHandlers(): void {
 }
 
 // ============================================================================
-// AGENT TREE HANDLERS (Phase 7)
+// AGENT TREE HANDLERS
 // ============================================================================
 
 function registerAgentTreeHandlers(): void {
