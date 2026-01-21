@@ -74,15 +74,14 @@ import type { TerminalInstanceProps } from './types';
 
 /**
  * Converts TerminalColors from theme to xterm.js ITheme format.
- * For Claude Code sessions, cursor is set to transparent (app uses custom cursor rendering).
- * For plain terminals, cursor uses the foreground color.
+ * The cursor is set to transparent to hide it (app uses custom cursor rendering).
  */
-function terminalColorsToXtermTheme(colors: TerminalColors, isPlainTerminal?: boolean): ITheme {
+function terminalColorsToXtermTheme(colors: TerminalColors): ITheme {
   return {
     background: colors.background,
     foreground: colors.foreground,
-    cursor: isPlainTerminal ? colors.foreground : 'transparent',
-    cursorAccent: isPlainTerminal ? colors.background : 'transparent',
+    cursor: 'transparent',
+    cursorAccent: 'transparent',
     selectionBackground: colors.selectionBackground,
     selectionForeground: colors.foreground,
     black: colors.black,
@@ -108,7 +107,7 @@ function terminalColorsToXtermTheme(colors: TerminalColors, isPlainTerminal?: bo
 // COMPONENT
 // ============================================================================
 
-export function TerminalInstance({ id, zoomLevel, isActive, isPlainTerminal }: TerminalInstanceProps): React.JSX.Element {
+export function TerminalInstance({ id, zoomLevel, isActive }: TerminalInstanceProps): React.JSX.Element {
   const containerRef = useRef<HTMLDivElement>(null);
   const terminalRef = useRef<XTermTerminal | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
@@ -116,8 +115,8 @@ export function TerminalInstance({ id, zoomLevel, isActive, isPlainTerminal }: T
 
   // Memoize the xterm theme to prevent unnecessary recalculations
   const xtermTheme = useMemo(
-    () => terminalColorsToXtermTheme(theme.colors.terminal, isPlainTerminal),
-    [theme, isPlainTerminal]
+    () => terminalColorsToXtermTheme(theme.colors.terminal),
+    [theme]
   );
 
   // Reusable function to reinitialize terminal state (called on mount and when becoming active)
@@ -422,10 +421,7 @@ export function TerminalInstance({ id, zoomLevel, isActive, isPlainTerminal }: T
   }, [isActive]);
 
   return (
-    <div
-      className={`relative h-full w-full p-2 ${!isPlainTerminal ? 'terminal-claude-session' : ''}`}
-      onContextMenu={handleContextMenu}
-    >
+    <div className="relative h-full w-full p-2" onContextMenu={handleContextMenu}>
       <div ref={containerRef} className="h-full w-full" />
     </div>
   );
