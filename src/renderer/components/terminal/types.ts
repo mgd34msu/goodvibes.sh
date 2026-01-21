@@ -30,6 +30,7 @@ export interface TerminalInstanceProps {
   id: number;
   zoomLevel: number;
   isActive: boolean;
+  isPlainTerminal?: boolean;
 }
 
 /**
