@@ -26,6 +26,8 @@ export interface VirtualSessionListProps {
 
 export interface MonitorPanelProps {
   projectsRoot: string | null;
+  onSessionClick: (session: Session) => void;
+  onActivityClick?: (sessionId: string) => void;
 }
 
 export interface SessionFiltersProps {
@@ -45,8 +47,10 @@ export interface CompactMetricCardProps {
 export interface CompactLiveSessionCardProps {
   session: Session;
   projectsRoot: string | null;
+  onClick: () => void;
 }
 
 export interface CompactActivityItemProps {
   entry: ActivityLogEntry;
+  onClick?: () => void;
 }

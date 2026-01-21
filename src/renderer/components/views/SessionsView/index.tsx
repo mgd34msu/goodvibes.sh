@@ -2,7 +2,7 @@
 // SESSIONS VIEW COMPONENT - Unified Sessions + Monitor View
 // ============================================================================
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import type { Session, SessionFilter } from './types';
 import { useSessions, useLiveSessions, useSessionFilters } from './hooks';
 import { useSettingsStore } from '../../../stores/settingsStore';
@@ -11,6 +11,7 @@ import { VirtualSessionList } from './VirtualSessionList';
 import { MonitorPanel } from './MonitorPanel';
 import { LoadingSkeleton, EmptyState, ErrorState } from './SessionStates';
 import { SessionDetailModal } from '../../overlays/SessionDetailModal';
+import { toast } from '../../../stores/toastStore';
 
 export default function SessionsView() {
   const { settings } = useSettingsStore();
@@ -21,6 +22,35 @@ export default function SessionsView() {
   const { sessions, isLoading, error } = useSessions(filter);
   const { liveSessionIds } = useLiveSessions();
   const { filteredSessions } = useSessionFilters(sessions, search);
+
+  // Handle clicking activity items - fetch the session by ID and open modal
+  const handleActivityClick = useCallback(async (sessionId: string) => {
+    try {
+      // First try direct lookup
+      let session = await window.goodvibes.getSession(sessionId);
+
+      // If not found, search in currently loaded sessions (includes agents)
+      if (!session) {
+        session = sessions.find(s => s.id === sessionId || s.id.endsWith(`/${sessionId}`)) || null;
+      }
+
+      // If still not found, try fetching all sessions and search
+      if (!session) {
+        const allSessions = await window.goodvibes.getSessions();
+        session = allSessions?.find((s: Session) => s.id === sessionId || s.id.includes(sessionId)) || null;
+      }
+
+      if (session) {
+        setSelectedSession(session);
+      } else {
+        // Session was ephemeral (e.g., short-lived subagent) and is no longer available
+        toast.info('This session has completed and is no longer accessible.', { title: 'Session unavailable' });
+      }
+    } catch (err) {
+      console.error('Failed to fetch session for activity item:', err);
+      toast.error('Failed to load session');
+    }
+  }, [sessions]);
 
   return (
     <div className="flex h-full">
@@ -53,7 +83,11 @@ export default function SessionsView() {
 
       {/* Right Panel - Monitor (40%) */}
       <div className="w-[40%] min-w-0 bg-surface-950/50">
-        <MonitorPanel projectsRoot={settings.projectsRoot} />
+        <MonitorPanel
+          projectsRoot={settings.projectsRoot}
+          onSessionClick={setSelectedSession}
+          onActivityClick={handleActivityClick}
+        />
       </div>
 
       {/* Session Detail Modal */}

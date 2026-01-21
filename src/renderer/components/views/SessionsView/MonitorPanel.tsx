@@ -21,7 +21,7 @@ import { useTerminalStore } from '../../../stores/terminalStore';
 // MONITOR PANEL
 // ============================================================================
 
-export function MonitorPanel({ projectsRoot }: MonitorPanelProps): React.JSX.Element {
+export function MonitorPanel({ projectsRoot, onSessionClick, onActivityClick }: MonitorPanelProps): React.JSX.Element {
   const terminalCount = useTerminalStore((s) => s.terminals.size);
   const appUptime = useAppUptime();
 
@@ -121,6 +121,7 @@ export function MonitorPanel({ projectsRoot }: MonitorPanelProps): React.JSX.Ele
                     key={session.id}
                     session={session}
                     projectsRoot={projectsRoot}
+                    onClick={() => onSessionClick(session)}
                   />
                 ))}
                 {liveSessions.length > 4 && (
@@ -154,7 +155,11 @@ export function MonitorPanel({ projectsRoot }: MonitorPanelProps): React.JSX.Ele
             ) : (
               <div className="divide-y divide-surface-800/50 h-full overflow-auto">
                 {activity.map((entry) => (
-                  <CompactActivityItem key={entry.id} entry={entry} />
+                  <CompactActivityItem
+                    key={entry.id}
+                    entry={entry}
+                    onClick={entry.sessionId && onActivityClick ? () => onActivityClick(entry.sessionId!) : undefined}
+                  />
                 ))}
               </div>
             )}
@@ -214,9 +219,20 @@ function CompactMetricCard({
 // COMPACT LIVE SESSION CARD
 // ============================================================================
 
-function CompactLiveSessionCard({ session, projectsRoot }: CompactLiveSessionCardProps) {
+function CompactLiveSessionCard({ session, projectsRoot, onClick }: CompactLiveSessionCardProps) {
   return (
-    <div className="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-surface-900/60 border border-surface-800/60 hover:bg-surface-800/40 transition-colors">
+    <div
+      className="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-surface-900/60 border border-surface-800/60 hover:bg-surface-800/40 transition-colors cursor-pointer"
+      onClick={onClick}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onClick();
+        }
+      }}
+    >
       <span className="relative flex h-2 w-2 flex-shrink-0">
         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success-400 opacity-75"></span>
         <span className="relative inline-flex rounded-full h-2 w-2 bg-success-500"></span>
@@ -233,7 +249,7 @@ function CompactLiveSessionCard({ session, projectsRoot }: CompactLiveSessionCar
 // COMPACT ACTIVITY ITEM
 // ============================================================================
 
-function CompactActivityItem({ entry }: CompactActivityItemProps) {
+function CompactActivityItem({ entry, onClick }: CompactActivityItemProps) {
   // Parse metadata to extract project name if available
   let projectName: string | null = null;
   if (entry.metadata) {
@@ -249,9 +265,28 @@ function CompactActivityItem({ entry }: CompactActivityItemProps) {
   }
 
   const { icon, bgColor } = getActivityIconConfig(entry.type);
+  const isClickable = !!onClick;
 
   return (
-    <div className="flex items-start gap-2.5 px-3 py-2.5 hover:bg-surface-800/30 transition-colors">
+    <div
+      className={clsx(
+        'flex items-start gap-2.5 px-3 py-2.5 hover:bg-surface-800/30 transition-colors',
+        isClickable && 'cursor-pointer'
+      )}
+      onClick={onClick}
+      role={isClickable ? 'button' : undefined}
+      tabIndex={isClickable ? 0 : undefined}
+      onKeyDown={
+        isClickable
+          ? (e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                onClick();
+              }
+            }
+          : undefined
+      }
+    >
       <div
         className={clsx(
           'w-7 h-7 rounded-md flex items-center justify-center text-sm flex-shrink-0',
