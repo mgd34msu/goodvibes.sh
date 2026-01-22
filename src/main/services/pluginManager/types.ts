@@ -6,11 +6,16 @@
 // PLUGIN MANIFEST
 // ============================================================================
 
+/**
+ * Author can be a string or an object (Anthropic official format)
+ */
+export type PluginAuthor = string | { name: string; email?: string };
+
 export interface PluginManifest {
   name: string;
   version: string;
   description: string;
-  author?: string;
+  author?: PluginAuthor;
   repository?: string;
   commands?: string[]; // paths to command files
   skills?: string[]; // paths to skill files

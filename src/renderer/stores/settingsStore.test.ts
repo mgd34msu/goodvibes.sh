@@ -229,7 +229,7 @@ describe('useSettingsStore', () => {
         restoreTabs: true,
         autoSessionWatch: false,
         hideAgentSessions: true,
-        _settingsVersion: SETTINGS_VERSION,
+        settingsVersion: SETTINGS_VERSION,
       };
 
       vi.mocked(window.goodvibes.getAllSettings).mockResolvedValue(mockSettings);
@@ -244,7 +244,7 @@ describe('useSettingsStore', () => {
 
     it('sets isLoaded state after loading', async () => {
       vi.mocked(window.goodvibes.getAllSettings).mockResolvedValue({
-        _settingsVersion: SETTINGS_VERSION,
+        settingsVersion: SETTINGS_VERSION,
       });
 
       expect(useSettingsStore.getState().isLoaded).toBe(false);
@@ -297,7 +297,7 @@ describe('useSettingsStore', () => {
       });
 
       vi.mocked(window.goodvibes.getAllSettings).mockResolvedValue({
-        _settingsVersion: SETTINGS_VERSION,
+        settingsVersion: SETTINGS_VERSION,
       });
 
       const { loadSettings } = useSettingsStore.getState();
@@ -313,7 +313,7 @@ describe('useSettingsStore', () => {
       const mockSettings = {
         theme: 'light',
         fontSize: 18,
-        _settingsVersion: 1, // Old version, needs migration to SETTINGS_VERSION
+        settingsVersion: 1, // Old version, needs migration to SETTINGS_VERSION
       };
 
       vi.mocked(window.goodvibes.getAllSettings).mockResolvedValue(mockSettings);
@@ -322,14 +322,14 @@ describe('useSettingsStore', () => {
       await loadSettings();
 
       // Should save the version after migration
-      expect(window.goodvibes.setSetting).toHaveBeenCalledWith('_settingsVersion', SETTINGS_VERSION);
+      expect(window.goodvibes.setSetting).toHaveBeenCalledWith('settingsVersion', SETTINGS_VERSION);
     });
 
     it('does not run migration when saved version equals current', async () => {
       const mockSettings = {
         theme: 'light',
         fontSize: 18,
-        _settingsVersion: SETTINGS_VERSION,
+        settingsVersion: SETTINGS_VERSION,
       };
 
       vi.mocked(window.goodvibes.getAllSettings).mockResolvedValue(mockSettings);
@@ -339,7 +339,7 @@ describe('useSettingsStore', () => {
 
       // Should not save settings version if already current
       expect(window.goodvibes.setSetting).not.toHaveBeenCalledWith(
-        '_settingsVersion',
+        'settingsVersion',
         expect.anything()
       );
     });
@@ -348,7 +348,7 @@ describe('useSettingsStore', () => {
       const mockSettings = {
         theme: 'light',
         fontSize: 18,
-        // No _settingsVersion - treated as v1
+        // No settingsVersion - treated as v1
       };
 
       vi.mocked(window.goodvibes.getAllSettings).mockResolvedValue(mockSettings);
@@ -357,7 +357,7 @@ describe('useSettingsStore', () => {
       await loadSettings();
 
       // Should trigger migration from v1 to current
-      expect(window.goodvibes.setSetting).toHaveBeenCalledWith('_settingsVersion', SETTINGS_VERSION);
+      expect(window.goodvibes.setSetting).toHaveBeenCalledWith('settingsVersion', SETTINGS_VERSION);
     });
 
     it('resets migrated keys to defaults during migration', async () => {
@@ -365,7 +365,7 @@ describe('useSettingsStore', () => {
         theme: 'light',
         fontSize: 18,
         colorTheme: 'old-invalid-theme', // This will be reset during v9 migration
-        _settingsVersion: 8, // Version before colorTheme was added
+        settingsVersion: 8, // Version before colorTheme was added
       };
 
       vi.mocked(window.goodvibes.getAllSettings).mockResolvedValue(mockSettings);
@@ -387,7 +387,7 @@ describe('useSettingsStore', () => {
         theme: 'invalid-theme', // Invalid value, should recover to 'dark'
         fontSize: 'not-a-number', // Invalid type, should recover to 14
         autoSessionWatch: 'yes', // Invalid boolean, should recover
-        _settingsVersion: SETTINGS_VERSION,
+        settingsVersion: SETTINGS_VERSION,
       };
 
       vi.mocked(window.goodvibes.getAllSettings).mockResolvedValue(mockSettings);
@@ -411,7 +411,7 @@ describe('useSettingsStore', () => {
         theme: 'light', // Valid
         fontSize: 'invalid', // Invalid, should recover
         autoSessionWatch: false, // Valid
-        _settingsVersion: SETTINGS_VERSION,
+        settingsVersion: SETTINGS_VERSION,
       };
 
       vi.mocked(window.goodvibes.getAllSettings).mockResolvedValue(mockSettings);
@@ -430,7 +430,7 @@ describe('useSettingsStore', () => {
     it('shows warning toast when fields are recovered outside migration', async () => {
       const mockSettings = {
         theme: 123, // Invalid type
-        _settingsVersion: SETTINGS_VERSION, // Current version - not during migration
+        settingsVersion: SETTINGS_VERSION, // Current version - not during migration
       };
 
       vi.mocked(window.goodvibes.getAllSettings).mockResolvedValue(mockSettings);
@@ -447,7 +447,7 @@ describe('useSettingsStore', () => {
     it('does not show warning toast during migration', async () => {
       const mockSettings = {
         theme: 'light',
-        _settingsVersion: 1, // Old version - migration mode
+        settingsVersion: 1, // Old version - migration mode
       };
 
       vi.mocked(window.goodvibes.getAllSettings).mockResolvedValue(mockSettings);
@@ -462,7 +462,7 @@ describe('useSettingsStore', () => {
     it('persists recovered fields to storage', async () => {
       const mockSettings = {
         theme: 'invalid', // Will recover to 'dark'
-        _settingsVersion: SETTINGS_VERSION,
+        settingsVersion: SETTINGS_VERSION,
       };
 
       vi.mocked(window.goodvibes.getAllSettings).mockResolvedValue(mockSettings);
@@ -478,7 +478,7 @@ describe('useSettingsStore', () => {
       const mockSettings = {
         theme: 'light',
         // fontSize missing - should use default
-        _settingsVersion: SETTINGS_VERSION,
+        settingsVersion: SETTINGS_VERSION,
       };
 
       vi.mocked(window.goodvibes.getAllSettings).mockResolvedValue(mockSettings);
@@ -495,7 +495,7 @@ describe('useSettingsStore', () => {
     it('validates colorTheme against valid theme IDs', async () => {
       const mockSettings = {
         colorTheme: 'nonexistent-theme-id', // Invalid theme ID
-        _settingsVersion: SETTINGS_VERSION,
+        settingsVersion: SETTINGS_VERSION,
       };
 
       vi.mocked(window.goodvibes.getAllSettings).mockResolvedValue(mockSettings);
@@ -511,7 +511,7 @@ describe('useSettingsStore', () => {
     it('validates fontSize is within range 8-32', async () => {
       const mockSettings = {
         fontSize: 50, // Out of range (max 32)
-        _settingsVersion: SETTINGS_VERSION,
+        settingsVersion: SETTINGS_VERSION,
       };
 
       vi.mocked(window.goodvibes.getAllSettings).mockResolvedValue(mockSettings);
@@ -528,7 +528,7 @@ describe('useSettingsStore', () => {
       const mockSettings = {
         dailyBudget: -100, // Invalid (must be non-negative or null)
         monthlyBudget: 'not a number', // Invalid type
-        _settingsVersion: SETTINGS_VERSION,
+        settingsVersion: SETTINGS_VERSION,
       };
 
       vi.mocked(window.goodvibes.getAllSettings).mockResolvedValue(mockSettings);
@@ -547,7 +547,7 @@ describe('useSettingsStore', () => {
       const mockSettings = {
         dailyBudget: 100.50,
         monthlyBudget: null,
-        _settingsVersion: SETTINGS_VERSION,
+        settingsVersion: SETTINGS_VERSION,
       };
 
       vi.mocked(window.goodvibes.getAllSettings).mockResolvedValue(mockSettings);
@@ -563,7 +563,7 @@ describe('useSettingsStore', () => {
     it('validates string array settings', async () => {
       const mockSettings = {
         customShells: 'not an array', // Invalid
-        _settingsVersion: SETTINGS_VERSION,
+        settingsVersion: SETTINGS_VERSION,
       };
 
       vi.mocked(window.goodvibes.getAllSettings).mockResolvedValue(mockSettings);
@@ -579,7 +579,7 @@ describe('useSettingsStore', () => {
     it('validates string arrays contain only strings', async () => {
       const mockSettings = {
         customShells: ['/bin/bash', 123, null], // Contains non-strings
-        _settingsVersion: SETTINGS_VERSION,
+        settingsVersion: SETTINGS_VERSION,
       };
 
       vi.mocked(window.goodvibes.getAllSettings).mockResolvedValue(mockSettings);
@@ -595,7 +595,7 @@ describe('useSettingsStore', () => {
     it('accepts valid string array settings', async () => {
       const mockSettings = {
         customShells: ['/bin/bash', '/bin/zsh', '/usr/bin/fish'],
-        _settingsVersion: SETTINGS_VERSION,
+        settingsVersion: SETTINGS_VERSION,
       };
 
       vi.mocked(window.goodvibes.getAllSettings).mockResolvedValue(mockSettings);
@@ -610,7 +610,7 @@ describe('useSettingsStore', () => {
     it('handles migration error during setSetting gracefully', async () => {
       const mockSettings = {
         theme: 'light',
-        _settingsVersion: 1, // Needs migration
+        settingsVersion: 1, // Needs migration
       };
 
       vi.mocked(window.goodvibes.getAllSettings).mockResolvedValue(mockSettings);
@@ -853,7 +853,7 @@ describe('useSettingsStore', () => {
       // Load settings
       vi.mocked(window.goodvibes.getAllSettings).mockResolvedValue({
         theme: 'light',
-        _settingsVersion: SETTINGS_VERSION,
+        settingsVersion: SETTINGS_VERSION,
       });
 
       const store = useSettingsStore.getState();

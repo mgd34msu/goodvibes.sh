@@ -21,6 +21,8 @@ import {
   isGitRepository,
   getRepoNameFromUrl,
   removeDirectory,
+  parseGitHubTreeUrl,
+  normalizeAuthor,
 } from './utils.js';
 
 const logger = new Logger('PluginManager');
@@ -64,7 +66,7 @@ export async function getInstalledPlugins(
           name: manifest.name,
           version: manifest.version,
           description: manifest.description,
-          author: manifest.author,
+          author: normalizeAuthor(manifest.author),
           repository: manifest.repository,
           scope: currentScope,
           projectPath: currentScope === 'project' ? projectPath : undefined,
@@ -90,7 +92,8 @@ export async function getInstalledPlugins(
 
 /**
  * Install a plugin from a git repository
- * @param repository - Git repository URL
+ * Supports both direct repo URLs and GitHub monorepo subdirectories (tree URLs)
+ * @param repository - Git repository URL or GitHub tree URL
  * @param scope - 'user' or 'project'
  * @param projectPath - Required if scope is 'project'
  * @returns The installed plugin
@@ -105,8 +108,12 @@ export async function installPlugin(
     throw new Error('Project path is required for project-scope installation');
   }
 
-  // Validate repository URL
-  if (!isGitRepository(repository)) {
+  // Check if this is a GitHub tree URL (monorepo subdirectory)
+  const treeInfo = parseGitHubTreeUrl(repository);
+
+  // Validate repository URL (either direct repo or the base repo from tree URL)
+  const repoToValidate = treeInfo ? treeInfo.repoUrl : repository;
+  if (!isGitRepository(repoToValidate)) {
     throw new Error(`Invalid git repository URL: ${repository}`);
   }
 
@@ -114,30 +121,61 @@ export async function installPlugin(
   const pluginsDir = getPluginsDir(scope, projectPath);
   ensureDir(pluginsDir);
 
-  // Extract repository name for temporary directory
+  // Extract plugin name
   const repoName = getRepoNameFromUrl(repository);
   if (!repoName) {
     throw new Error(`Could not extract repository name from: ${repository}`);
   }
 
-  const tempPluginDir = `${pluginsDir}/${repoName}`;
+  const tempPluginDir = path.join(pluginsDir, repoName);
 
   // Check if already installed
   if (await isPluginInstalled(repoName, scope, projectPath)) {
     throw new Error(`Plugin ${repoName} is already installed in ${scope} scope`);
   }
 
-  logger.info(`Installing plugin from ${repository}`, { scope, repoName });
+  logger.info(`Installing plugin from ${repository}`, { scope, repoName, isMonorepo: !!treeInfo });
+
+  // Temp directory for cloning (only used for monorepo)
+  const tempCloneDir = treeInfo ? path.join(pluginsDir, `_temp_clone_${Date.now()}`) : null;
 
   try {
-    // Clone repository
-    execSync(`git clone "${repository}" "${tempPluginDir}"`, {
-      stdio: 'pipe',
-      encoding: 'utf-8',
-      timeout: 120000, // 2 minute timeout
-    });
+    if (treeInfo) {
+      // MONOREPO INSTALLATION: Clone full repo, extract subdirectory
+      logger.info(`Detected GitHub monorepo, cloning from ${treeInfo.repoUrl}`);
 
-    logger.info(`Successfully cloned repository to ${tempPluginDir}`);
+      // Clone the full repository to temp location
+      execSync(`git clone --depth 1 --branch "${treeInfo.branch}" "${treeInfo.repoUrl}" "${tempCloneDir}"`, {
+        stdio: 'pipe',
+        encoding: 'utf-8',
+        timeout: 120000, // 2 minute timeout
+      });
+
+      logger.debug(`Cloned base repo to ${tempCloneDir}`);
+
+      // Check that the subdirectory exists
+      const subdirPath = path.join(tempCloneDir!, treeInfo.subdirectory);
+      if (!fs.existsSync(subdirPath)) {
+        throw new Error(`Subdirectory not found in repository: ${treeInfo.subdirectory}`);
+      }
+
+      // Copy the subdirectory to the final location
+      fs.cpSync(subdirPath, tempPluginDir, { recursive: true });
+      logger.debug(`Extracted subdirectory ${treeInfo.subdirectory} to ${tempPluginDir}`);
+
+      // Clean up the temp clone
+      removeDirectory(tempCloneDir!);
+
+    } else {
+      // DIRECT REPO INSTALLATION: Clone directly
+      execSync(`git clone "${repository}" "${tempPluginDir}"`, {
+        stdio: 'pipe',
+        encoding: 'utf-8',
+        timeout: 120000, // 2 minute timeout
+      });
+
+      logger.info(`Successfully cloned repository to ${tempPluginDir}`);
+    }
 
     // Read and validate manifest
     const manifest = readManifest(tempPluginDir);
@@ -147,7 +185,7 @@ export async function installPlugin(
 
     // Generate proper plugin ID from manifest name
     const pluginId = generatePluginId(manifest.name);
-    const finalPluginDir = `${pluginsDir}/${pluginId}`;
+    const finalPluginDir = path.join(pluginsDir, pluginId);
 
     // Rename directory if needed (in case repo name differs from plugin name)
     if (tempPluginDir !== finalPluginDir) {
@@ -156,10 +194,7 @@ export async function installPlugin(
         removeDirectory(tempPluginDir);
         throw new Error(`Plugin ${pluginId} (${manifest.name}) is already installed in ${scope} scope`);
       }
-      execSync(`mv "${tempPluginDir}" "${finalPluginDir}"`, {
-        stdio: 'pipe',
-        encoding: 'utf-8',
-      });
+      fs.renameSync(tempPluginDir, finalPluginDir);
       logger.debug(`Renamed plugin directory from ${repoName} to ${pluginId}`);
     }
 
@@ -171,7 +206,7 @@ export async function installPlugin(
       name: manifest.name,
       version: manifest.version,
       description: manifest.description,
-      author: manifest.author,
+      author: normalizeAuthor(manifest.author),
       repository: manifest.repository || repository,
       scope,
       projectPath: scope === 'project' ? projectPath : undefined,
@@ -188,6 +223,9 @@ export async function installPlugin(
     // Clean up on failure
     try {
       removeDirectory(tempPluginDir);
+      if (tempCloneDir) {
+        removeDirectory(tempCloneDir);
+      }
     } catch (cleanupError) {
       logger.warn('Failed to clean up after failed installation', cleanupError);
     }

@@ -5,7 +5,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { app } from 'electron';
-import type { PluginManifest } from './types.js';
+import type { PluginManifest, PluginAuthor } from './types.js';
 import { Logger } from '../logger.js';
 
 const logger = new Logger('PluginUtils');
@@ -58,12 +58,27 @@ export function ensureDir(dirPath: string): void {
 
 /**
  * Read and parse a plugin manifest file
+ * Supports two locations:
+ * - plugin.json (root) - simple plugins
+ * - .claude-plugin/plugin.json - Anthropic official plugin format
  */
 export function readManifest(pluginDir: string): PluginManifest | null {
-  const manifestPath = path.join(pluginDir, 'plugin.json');
+  // Check both possible manifest locations
+  const manifestPaths = [
+    path.join(pluginDir, 'plugin.json'),                    // Simple format
+    path.join(pluginDir, '.claude-plugin', 'plugin.json'),  // Anthropic official format
+  ];
 
-  if (!fs.existsSync(manifestPath)) {
-    logger.warn(`No plugin.json found in ${pluginDir}`);
+  let manifestPath: string | null = null;
+  for (const p of manifestPaths) {
+    if (fs.existsSync(p)) {
+      manifestPath = p;
+      break;
+    }
+  }
+
+  if (!manifestPath) {
+    logger.warn(`No plugin.json found in ${pluginDir} (checked root and .claude-plugin/)`);
     return null;
   }
 
@@ -71,12 +86,19 @@ export function readManifest(pluginDir: string): PluginManifest | null {
     const content = fs.readFileSync(manifestPath, 'utf-8');
     const manifest = JSON.parse(content) as PluginManifest;
 
-    // Validate required fields
-    if (!manifest.name || !manifest.version || !manifest.description) {
-      logger.error(`Invalid manifest in ${pluginDir}: missing required fields`);
+    // Validate required fields (name and description are required, version is optional)
+    if (!manifest.name || !manifest.description) {
+      logger.error(`Invalid manifest in ${pluginDir}: missing required fields (name or description)`);
       return null;
     }
 
+    // Provide default version if missing (some official Anthropic plugins don't have version)
+    if (!manifest.version) {
+      manifest.version = '1.0.0';
+      logger.debug(`Manifest missing version, using default: 1.0.0`);
+    }
+
+    logger.debug(`Found plugin manifest at ${manifestPath}`);
     return manifest;
   } catch (error) {
     logger.error(`Failed to read manifest from ${pluginDir}`, error);
@@ -89,6 +111,24 @@ export function readManifest(pluginDir: string): PluginManifest | null {
  */
 export function generatePluginId(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9-]/g, '-');
+}
+
+/**
+ * Normalize author field to a string
+ * Handles both string and object formats (Anthropic uses { name, email })
+ */
+export function normalizeAuthor(author: PluginAuthor | undefined): string | undefined {
+  if (!author) {
+    return undefined;
+  }
+  if (typeof author === 'string') {
+    return author;
+  }
+  // Object format: { name: "...", email?: "..." }
+  if (author.email) {
+    return `${author.name} <${author.email}>`;
+  }
+  return author.name;
 }
 
 /**
@@ -117,6 +157,9 @@ export function validatePluginName(name: string): { valid: boolean; error?: stri
 
 /**
  * Scan a directory for plugin subdirectories
+ * Detects plugins with either:
+ * - plugin.json (root)
+ * - .claude-plugin/plugin.json (Anthropic official format)
  */
 export function scanPluginDirectory(baseDir: string): string[] {
   if (!fs.existsSync(baseDir)) {
@@ -126,12 +169,13 @@ export function scanPluginDirectory(baseDir: string): string[] {
   try {
     const entries = fs.readdirSync(baseDir, { withFileTypes: true });
     return entries
-      .filter(entry => entry.isDirectory())
+      .filter(entry => entry.isDirectory() && !entry.name.startsWith('_'))  // Exclude temp dirs
       .map(entry => path.join(baseDir, entry.name))
       .filter(pluginDir => {
-        // Must have a plugin.json file
-        const manifestPath = path.join(pluginDir, 'plugin.json');
-        return fs.existsSync(manifestPath);
+        // Check for plugin.json in either location
+        const rootManifest = path.join(pluginDir, 'plugin.json');
+        const officialManifest = path.join(pluginDir, '.claude-plugin', 'plugin.json');
+        return fs.existsSync(rootManifest) || fs.existsSync(officialManifest);
       });
   } catch (error) {
     logger.error(`Failed to scan directory ${baseDir}`, error);
@@ -160,6 +204,14 @@ export function isGitRepository(url: string): boolean {
  */
 export function getRepoNameFromUrl(url: string): string | null {
   try {
+    // Check if this is a GitHub tree URL (monorepo subdirectory)
+    const treeInfo = parseGitHubTreeUrl(url);
+    if (treeInfo) {
+      // For monorepo subdirectories, use the subdirectory name as the plugin name
+      const subParts = treeInfo.subdirectory.split('/');
+      return subParts[subParts.length - 1];
+    }
+
     // Handle various git URL formats
     const patterns = [
       /\/([^/]+?)(?:\.git)?$/,  // Extract last segment, optionally ending in .git
@@ -178,6 +230,45 @@ export function getRepoNameFromUrl(url: string): string | null {
     logger.error('Failed to extract repo name from URL', error);
     return null;
   }
+}
+
+/**
+ * GitHub tree URL info
+ */
+export interface GitHubTreeInfo {
+  repoUrl: string;      // The base repository URL
+  branch: string;       // The branch name
+  subdirectory: string; // The subdirectory path
+}
+
+/**
+ * Parse a GitHub tree URL to extract repo, branch, and subdirectory
+ * Example: https://github.com/owner/repo/tree/main/path/to/plugin
+ * Returns null if not a tree URL
+ */
+export function parseGitHubTreeUrl(url: string): GitHubTreeInfo | null {
+  // Match: https://github.com/owner/repo/tree/branch/path/to/subdir
+  const treePattern = /^https?:\/\/github\.com\/([^/]+)\/([^/]+)\/tree\/([^/]+)\/(.+)$/;
+  const match = url.match(treePattern);
+
+  if (!match) {
+    return null;
+  }
+
+  const [, owner, repo, branch, subdirectory] = match;
+
+  return {
+    repoUrl: `https://github.com/${owner}/${repo}`,
+    branch,
+    subdirectory,
+  };
+}
+
+/**
+ * Check if a URL is a GitHub tree URL (monorepo subdirectory)
+ */
+export function isGitHubTreeUrl(url: string): boolean {
+  return parseGitHubTreeUrl(url) !== null;
 }
 
 /**

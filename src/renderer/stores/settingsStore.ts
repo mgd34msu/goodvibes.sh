@@ -159,7 +159,7 @@ export const useSettingsStore = create<SettingsState>((set) => ({
       const saved = await window.goodvibes.getAllSettings();
 
       // Check settings version for migrations
-      const savedVersion = (saved._settingsVersion as number) || 1;
+      const savedVersion = (saved.settingsVersion as number) || 1;
       const needsMigration = savedVersion < SETTINGS_VERSION;
 
       // Collect keys that need to be reset due to version migration
@@ -208,7 +208,7 @@ export const useSettingsStore = create<SettingsState>((set) => ({
         // Always save version to prevent re-running migration endlessly
         // Even if some keys failed, we don't want to retry the whole migration
         try {
-          await window.goodvibes.setSetting('_settingsVersion', SETTINGS_VERSION);
+          await window.goodvibes.setSetting('settingsVersion', SETTINGS_VERSION);
         } catch (err) {
           logger.error('Failed to save settings version:', err);
         }
