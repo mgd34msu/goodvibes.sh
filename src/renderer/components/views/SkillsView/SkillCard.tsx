@@ -11,6 +11,7 @@ import {
   ChevronRight,
   Wrench,
   Tag,
+  Check,
 } from 'lucide-react';
 import type { SkillCardSkill } from './types';
 
@@ -18,12 +19,14 @@ interface SkillCardProps {
   skill: SkillCardSkill;
   onInstall?: () => void;
   onDelete?: () => void;
+  isInstalled?: boolean;
 }
 
 export function SkillCard({
   skill,
   onInstall,
   onDelete,
+  isInstalled = false,
 }: SkillCardProps) {
   const [expanded, setExpanded] = useState(false);
   const isBuiltIn = 'isBuiltIn' in skill;
@@ -91,10 +94,17 @@ export function SkillCard({
         {/* Right Section: Actions */}
         <div className="card-actions">
           {isBuiltIn ? (
-            <button onClick={onInstall} className="card-action-primary">
-              <Download className="w-3.5 h-3.5" />
-              Install
-            </button>
+            isInstalled ? (
+              <span className="px-3 py-1.5 text-sm font-medium rounded-lg bg-success-500/20 text-success-400 flex items-center gap-1.5">
+                <Check className="w-3.5 h-3.5" />
+                Installed
+              </span>
+            ) : (
+              <button onClick={onInstall} className="card-action-primary">
+                <Download className="w-3.5 h-3.5" />
+                Install
+              </button>
+            )
           ) : (
             <button
               onClick={onDelete}

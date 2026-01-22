@@ -63,7 +63,7 @@ export function useCommands(): UseCommandsReturn {
         await window.goodvibes.updateSkill(commandData.id, {
           name: commandData.name,
           description: commandData.description,
-          promptTemplate: commandData.content,
+          content: commandData.content,
           allowedTools: commandData.allowedTools,
           scope: commandData.scope,
           projectPath: projectPath || undefined,
@@ -72,8 +72,7 @@ export function useCommands(): UseCommandsReturn {
         await window.goodvibes.createSkill({
           name: commandData.name || '',
           description: commandData.description || undefined,
-          promptTemplate: commandData.content || '',
-          isBuiltIn: false,
+          content: commandData.content || '',
           scope: commandData.scope,
           projectPath: projectPath || undefined,
         });

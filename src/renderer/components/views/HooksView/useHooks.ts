@@ -55,12 +55,10 @@ export function useHooks(): UseHooksReturn {
           await window.goodvibes.createHook({
             name: hookData.name || '',
             eventType: hookData.eventType || 'PostToolUse',
-            matchPattern: hookData.matcher || undefined,
-            command: hookData.command || '',
+            script: hookData.command || '',
             enabled: hookData.enabled ?? true,
             timeout: hookData.timeout,
-            hookType: hookData.hookType || 'command',
-            prompt: hookData.prompt || null,
+            projectPath: hookData.projectPath || undefined,
           });
         }
         await loadHooks();

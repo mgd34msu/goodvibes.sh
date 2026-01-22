@@ -59,6 +59,7 @@ export function AgentList({
                 key={agent.name}
                 agent={agent}
                 onInstall={() => onInstallAgent?.(agent)}
+                isInstalled={customAgents.some((a) => a.name === agent.name)}
               />
             ))}
           </div>

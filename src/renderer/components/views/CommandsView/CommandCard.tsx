@@ -9,6 +9,7 @@ import {
   Star,
   Clock,
   ChevronRight,
+  Check,
 } from 'lucide-react';
 import type { CommandCardCommand } from './types';
 
@@ -16,9 +17,10 @@ interface CommandCardProps {
   command: CommandCardCommand;
   onInstall?: () => void;
   onDelete?: () => void;
+  isInstalled?: boolean;
 }
 
-export function CommandCard({ command, onInstall, onDelete }: CommandCardProps): React.JSX.Element {
+export function CommandCard({ command, onInstall, onDelete, isInstalled = false }: CommandCardProps): React.JSX.Element {
   const [expanded, setExpanded] = useState(false);
   const isBuiltIn = 'isBuiltIn' in command;
 
@@ -80,13 +82,20 @@ export function CommandCard({ command, onInstall, onDelete }: CommandCardProps):
         {/* Right Section: Actions */}
         <div className="card-actions">
           {isBuiltIn ? (
-            <button
-              onClick={onInstall}
-              className="card-action-primary"
-            >
-              <Download className="w-3.5 h-3.5" />
-              Install
-            </button>
+            isInstalled ? (
+              <span className="px-3 py-1.5 text-sm font-medium rounded-lg bg-success-500/20 text-success-400 flex items-center gap-1.5">
+                <Check className="w-3.5 h-3.5" />
+                Installed
+              </span>
+            ) : (
+              <button
+                onClick={onInstall}
+                className="card-action-primary"
+              >
+                <Download className="w-3.5 h-3.5" />
+                Install
+              </button>
+            )
           ) : (
             <button
               onClick={onDelete}

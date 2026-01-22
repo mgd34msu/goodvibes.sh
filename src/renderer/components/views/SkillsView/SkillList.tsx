@@ -85,6 +85,7 @@ export function SkillList({
                 key={skill.name}
                 skill={skill}
                 onInstall={() => onInstallSkill?.(skill)}
+                isInstalled={customSkills.some((s) => s.name === skill.name)}
               />
             ))}
           </div>

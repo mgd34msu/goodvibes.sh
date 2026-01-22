@@ -417,11 +417,19 @@ export function registerFeatureHandlers(): void {
 
     try {
       const { name, scope, projectPath } = result.data;
+      console.log('UNINSTALL DEBUG:', { name, scope, projectPath });
       const baseDir = getBaseDir(scope, projectPath);
       const agentsDir = path.join(baseDir, 'agents');
       const filePath = path.join(agentsDir, `${name}.md`);
+      console.log('UNINSTALL PATH:', filePath);
+      console.log('FILE EXISTS:', fs.existsSync(filePath));
 
-      deleteFile(filePath);
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+        console.log('DELETED:', filePath);
+      } else {
+        console.log('FILE NOT FOUND:', filePath);
+      }
 
       logger.info('Agent uninstalled successfully', { name, scope, filePath });
       return { success: true, filePath };
@@ -450,7 +458,7 @@ export function registerFeatureHandlers(): void {
       const skillsDir = path.join(baseDir, 'skills');
       const filePath = path.join(skillsDir, `${name}.md`);
 
-      deleteFile(filePath);
+      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
 
       logger.info('Skill uninstalled successfully', { name, scope, filePath });
       return { success: true, filePath };
@@ -479,7 +487,7 @@ export function registerFeatureHandlers(): void {
       const commandsDir = path.join(baseDir, 'commands');
       const filePath = path.join(commandsDir, `${name}.md`);
 
-      deleteFile(filePath);
+      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
 
       logger.info('Command uninstalled successfully', { name, scope, filePath });
       return { success: true, filePath };
@@ -512,7 +520,7 @@ export function registerFeatureHandlers(): void {
       const filePath = path.join(hooksDir, `${name}.${scriptExt}`);
 
       // Delete hook script file
-      deleteFile(filePath);
+      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
 
       // Remove hook from settings.json
       removeHookFromSettings(baseDir, name, eventType);

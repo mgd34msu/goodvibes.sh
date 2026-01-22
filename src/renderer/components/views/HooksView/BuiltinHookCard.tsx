@@ -8,6 +8,7 @@ import {
   ChevronRight,
   Terminal,
   Tag,
+  Check,
 } from 'lucide-react';
 import { EVENT_TYPE_ICONS } from './types';
 import { CATEGORY_COLORS, CATEGORY_LABELS, type BuiltinHook } from './builtinHooks';
@@ -15,9 +16,10 @@ import { CATEGORY_COLORS, CATEGORY_LABELS, type BuiltinHook } from './builtinHoo
 interface BuiltinHookCardProps {
   hook: BuiltinHook;
   onInstall: (hook: BuiltinHook) => void;
+  isInstalled?: boolean;
 }
 
-export function BuiltinHookCard({ hook, onInstall }: BuiltinHookCardProps): React.JSX.Element {
+export function BuiltinHookCard({ hook, onInstall, isInstalled = false }: BuiltinHookCardProps): React.JSX.Element {
   const [expanded, setExpanded] = useState(false);
 
   return (
@@ -85,14 +87,21 @@ export function BuiltinHookCard({ hook, onInstall }: BuiltinHookCardProps): Reac
 
         {/* Right Section: Install Button */}
         <div className="card-actions">
-          <button
-            onClick={() => onInstall(hook)}
-            className="card-action-primary"
-            title="Install hook"
-          >
-            <Download className="w-3.5 h-3.5" />
-            Install
-          </button>
+          {isInstalled ? (
+            <span className="px-3 py-1.5 text-sm font-medium rounded-lg bg-success-500/20 text-success-400 flex items-center gap-1.5">
+              <Check className="w-3.5 h-3.5" />
+              Installed
+            </span>
+          ) : (
+            <button
+              onClick={() => onInstall(hook)}
+              className="card-action-primary"
+              title="Install hook"
+            >
+              <Download className="w-3.5 h-3.5" />
+              Install
+            </button>
+          )}
         </div>
       </div>
 
@@ -154,13 +163,20 @@ export function BuiltinHookCard({ hook, onInstall }: BuiltinHookCardProps): Reac
 
           {/* Install Button */}
           <div className="flex justify-end pt-2">
-            <button
-              onClick={() => onInstall(hook)}
-              className="card-action-primary"
-            >
-              <Download className="w-3.5 h-3.5" />
-              Install to My Hooks
-            </button>
+            {isInstalled ? (
+              <span className="px-3 py-1.5 text-sm font-medium rounded-lg bg-success-500/20 text-success-400 flex items-center gap-1.5">
+                <Check className="w-3.5 h-3.5" />
+                Already Installed
+              </span>
+            ) : (
+              <button
+                onClick={() => onInstall(hook)}
+                className="card-action-primary"
+              >
+                <Download className="w-3.5 h-3.5" />
+                Install to My Hooks
+              </button>
+            )}
           </div>
         </div>
       )}

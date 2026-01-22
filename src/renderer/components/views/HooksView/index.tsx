@@ -294,6 +294,7 @@ export default function HooksView() {
                       key={hook.id}
                       hook={hook}
                       onInstall={handleOpenInstallModal}
+                      isInstalled={hooks.some((h) => h.name === hook.name)}
                     />
                   ))}
                 </div>

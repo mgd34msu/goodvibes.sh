@@ -85,6 +85,7 @@ export function CommandList({
                 key={command.name}
                 command={command}
                 onInstall={() => onInstallCommand?.(command)}
+                isInstalled={customCommands.some((c) => c.name === command.name)}
               />
             ))}
           </div>

@@ -72,7 +72,7 @@ export function useAgentSkills(): UseAgentSkillsReturn {
         await window.goodvibes.updateSkill(skillData.id, {
           name: skillData.name,
           description: skillData.description,
-          promptTemplate: skillData.content,
+          content: skillData.content,
           allowedTools: skillData.allowedTools,
           scope: skillData.scope,
           projectPath: projectPath || undefined,
@@ -81,8 +81,7 @@ export function useAgentSkills(): UseAgentSkillsReturn {
         await window.goodvibes.createSkill({
           name: skillData.name || '',
           description: skillData.description || undefined,
-          promptTemplate: skillData.content || '',
-          isBuiltIn: false,
+          content: skillData.content || '',
           scope: skillData.scope,
           projectPath: projectPath || undefined,
           allowedTools: skillData.allowedTools || undefined,

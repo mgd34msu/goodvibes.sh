@@ -7,6 +7,7 @@ import {
   ChevronRight,
   Zap,
   Download,
+  Check,
 } from 'lucide-react';
 import type { AgentCardAgent } from './types';
 import { AGENT_ICONS } from './constants';
@@ -15,9 +16,10 @@ interface AgentCardProps {
   agent: AgentCardAgent;
   onInstall?: () => void;
   onDelete?: () => void;
+  isInstalled?: boolean;
 }
 
-export function AgentCard({ agent, onInstall, onDelete }: AgentCardProps): React.JSX.Element {
+export function AgentCard({ agent, onInstall, onDelete, isInstalled = false }: AgentCardProps): React.JSX.Element {
   const [expanded, setExpanded] = useState(false);
   const isBuiltIn = 'isBuiltIn' in agent;
 
@@ -77,13 +79,20 @@ export function AgentCard({ agent, onInstall, onDelete }: AgentCardProps): React
         {/* Right Section: Actions */}
         <div className="card-actions">
           {isBuiltIn ? (
-            <button
-              onClick={onInstall}
-              className="card-action-primary"
-            >
-              <Download className="w-3.5 h-3.5" />
-              Install
-            </button>
+            isInstalled ? (
+              <span className="px-3 py-1.5 text-sm font-medium rounded-lg bg-success-500/20 text-success-400 flex items-center gap-1.5">
+                <Check className="w-3.5 h-3.5" />
+                Installed
+              </span>
+            ) : (
+              <button
+                onClick={onInstall}
+                className="card-action-primary"
+              >
+                <Download className="w-3.5 h-3.5" />
+                Install
+              </button>
+            )
           ) : (
             <button
               onClick={onDelete}

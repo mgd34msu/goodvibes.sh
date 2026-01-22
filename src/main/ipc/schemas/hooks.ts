@@ -54,7 +54,7 @@ export const extendedHookEventTypeSchema = z.enum([
 export const createHookSchema = z.object({
   name: z.string().min(1).max(200),
   description: z.string().max(1000).optional(),
-  eventType: hookEventTypeSchema,
+  eventType: extendedHookEventTypeSchema,
   script: z.string().min(1).max(100000),
   enabled: z.boolean(),
   async: z.boolean().optional(),
