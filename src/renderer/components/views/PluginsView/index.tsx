@@ -2,12 +2,13 @@
 // PLUGINS VIEW - Plugin Management Dashboard
 // ============================================================================
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import {
   Puzzle,
   Search,
 } from 'lucide-react';
 import { createLogger } from '../../../../shared/logger';
+import { toast } from '../../../stores/toastStore';
 import { PluginCard } from './PluginCard';
 import { BUILT_IN_PLUGINS, CATEGORY_FILTERS } from './constants';
 import type { Plugin } from './types';
@@ -22,15 +23,8 @@ export default function PluginsView() {
   const [activeTab, setActiveTab] = useState<'installed' | 'marketplace'>('installed');
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
-
-  // For now, GoodVibes is the only installed plugin (it's built into the app)
-  const installedPlugins = useMemo(() => {
-    return BUILT_IN_PLUGINS.filter(p => p.id === 'goodvibes').map(p => ({
-      ...p,
-      installed: true,
-      enabled: true,
-    }));
-  }, []);
+  const [installedPlugins, setInstalledPlugins] = useState<Plugin[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const installedPluginIds = useMemo(() => {
     return new Set(installedPlugins.map(p => p.id));
@@ -49,16 +43,55 @@ export default function PluginsView() {
     });
   }, [searchQuery, categoryFilter]);
 
-  const handleInstall = async (plugin: Plugin) => {
-    logger.info('Installing plugin:', plugin.id);
-    // TODO: Implement actual plugin installation
-    // For now, GoodVibes is built-in and always installed
-  };
+  const loadInstalledPlugins = useCallback(async () => {
+    setLoading(true);
+    try {
+      const plugins = await window.goodvibes.getInstalledPlugins();
+      setInstalledPlugins(plugins);
+    } catch (error) {
+      logger.error('Failed to load plugins:', error);
+      toast.error('Failed to load plugins');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-  const handleToggle = async (plugin: Plugin) => {
-    logger.info('Toggling plugin:', plugin.id, 'enabled:', !plugin.enabled);
-    // TODO: Implement plugin enable/disable
-  };
+  useEffect(() => {
+    loadInstalledPlugins();
+  }, [loadInstalledPlugins]);
+
+  const handleInstall = useCallback(async (plugin: Plugin) => {
+    if (!plugin.repository) {
+      toast.error('Plugin repository URL is missing');
+      return;
+    }
+
+    try {
+      await window.goodvibes.installPlugin({
+        repository: plugin.repository,
+        scope: 'user',
+      });
+      await loadInstalledPlugins();
+      toast.success(`Installed ${plugin.name}`);
+    } catch (error) {
+      logger.error('Failed to install plugin:', error);
+      toast.error(`Failed to install ${plugin.name}`);
+    }
+  }, [loadInstalledPlugins]);
+
+  const handleToggle = useCallback(async (plugin: Plugin) => {
+    try {
+      await window.goodvibes.enablePlugin({
+        pluginId: plugin.id,
+        enabled: !plugin.enabled,
+      });
+      await loadInstalledPlugins();
+      toast.success(`${plugin.enabled ? 'Disabled' : 'Enabled'} ${plugin.name}`);
+    } catch (error) {
+      logger.error('Failed to toggle plugin:', error);
+      toast.error('Failed to toggle plugin');
+    }
+  }, [loadInstalledPlugins]);
 
   return (
     <div className="h-full flex flex-col">
@@ -104,7 +137,11 @@ export default function PluginsView() {
       {/* Content */}
       <div className="flex-1 overflow-y-auto p-6">
         {activeTab === 'installed' ? (
-          installedPlugins.length === 0 ? (
+          loading ? (
+            <div className="flex items-center justify-center h-64">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent-purple" />
+            </div>
+          ) : installedPlugins.length === 0 ? (
             <div className="text-center py-12">
               <Puzzle className="w-12 h-12 text-surface-600 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-surface-300">No plugins installed</h3>

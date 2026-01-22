@@ -13,6 +13,7 @@ import { ZodError } from 'zod';
 import { Logger } from '../../services/logger.js';
 import { withContext } from '../utils.js';
 import * as primitives from '../../database/primitives.js';
+import { syncToClaudeConfig } from '../../services/mcpManager/claudeConfig.js';
 import {
   numericIdSchema,
   sessionIdSchema,
@@ -104,18 +105,32 @@ export function registerPrimitivesHandlers(): void {
 
   ipcMain.handle('create-mcp-server', withContext('create-mcp-server', async (_, server: unknown) => {
     const validatedServer = validateInput(createMCPServerSchema, server, 'create-mcp-server');
-    return primitives.createMCPServer(validatedServer);
+    const created = primitives.createMCPServer(validatedServer);
+    // Sync to Claude config file after creating
+    await syncToClaudeConfig(validatedServer.projectPath);
+    logger.info('MCP server created and synced to Claude config', { name: created.name });
+    return created;
   }));
 
   ipcMain.handle('update-mcp-server', withContext('update-mcp-server', async (_, data: unknown) => {
     const { id, updates } = validateInput(updateMCPServerSchema, data, 'update-mcp-server');
+    // Get server to know project path for sync
+    const server = primitives.getMCPServer(id);
     primitives.updateMCPServer(id, updates);
+    // Sync to Claude config file after updating
+    await syncToClaudeConfig(server?.projectPath);
+    logger.info('MCP server updated and synced to Claude config', { id });
     return true;
   }));
 
   ipcMain.handle('delete-mcp-server', withContext('delete-mcp-server', async (_, id: unknown) => {
     const validatedId = validateInput(numericIdSchema, id, 'delete-mcp-server');
+    // Get server to know project path for sync before deleting
+    const server = primitives.getMCPServer(validatedId);
     primitives.deleteMCPServer(validatedId);
+    // Sync to Claude config file after deleting
+    await syncToClaudeConfig(server?.projectPath);
+    logger.info('MCP server deleted and synced to Claude config', { id: validatedId });
     return true;
   }));
 

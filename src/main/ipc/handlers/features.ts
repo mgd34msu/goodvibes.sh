@@ -128,7 +128,8 @@ function updateSettingsWithHook(
   baseDir: string,
   hookName: string,
   eventType: string,
-  matcher?: string
+  matcher?: string,
+  fullScriptPath?: string
 ): void {
   const settingsPath = path.join(baseDir, 'settings.json');
 
@@ -155,9 +156,9 @@ function updateSettingsWithHook(
     hooks[eventType] = [];
   }
 
-  // Determine script extension based on platform
-  const scriptExt = process.platform === 'win32' ? 'ps1' : 'sh';
-  const scriptPath = `.claude/hooks/${hookName}.${scriptExt}`;
+  // Use full path if provided, otherwise construct from baseDir
+  // Path is stored as-is - JSON.stringify handles escaping
+  const scriptPath = fullScriptPath || path.join(baseDir, 'hooks', `${hookName}.sh`);
 
   // Add hook configuration
   const hookConfig: Record<string, string> = {
@@ -168,10 +169,13 @@ function updateSettingsWithHook(
     hookConfig.matcher = matcher;
   }
 
-  // Check if hook already exists (by command path)
-  const existingIndex = hooks[eventType].findIndex(
-    (h) => typeof h === 'object' && h !== null && 'command' in h && h.command === scriptPath
-  );
+  // Check if hook already exists (by command path or hook name)
+  const existingIndex = hooks[eventType].findIndex((h) => {
+    if (typeof h !== 'object' || h === null || !('command' in h)) return false;
+    const cmd = (h as { command: string }).command;
+    // Match by exact path or by hook filename for backwards compatibility
+    return cmd === scriptPath || cmd.endsWith(`${hookName}.sh`);
+  });
 
   if (existingIndex >= 0) {
     // Update existing hook
@@ -228,15 +232,19 @@ function removeHookFromSettings(
     return;
   }
 
-  // Determine script extension based on platform
-  const scriptExt = process.platform === 'win32' ? 'ps1' : 'sh';
-  const scriptPath = `.claude/hooks/${hookName}.${scriptExt}`;
+  // Hook scripts are always bash scripts (.sh)
+  // Support both full path and relative path formats for backwards compatibility
+  const fullScriptPath = path.join(baseDir, 'hooks', `${hookName}.sh`);
+  const relativeScriptPath = `.claude/hooks/${hookName}.sh`;
 
-  // Find and remove the hook
+  // Find and remove the hook (match by full path, relative path, or hook name in path)
   const originalLength = hooks[eventType].length;
-  hooks[eventType] = hooks[eventType].filter(
-    (h) => !(typeof h === 'object' && h !== null && 'command' in h && h.command === scriptPath)
-  );
+  hooks[eventType] = hooks[eventType].filter((h) => {
+    if (typeof h !== 'object' || h === null || !('command' in h)) return true;
+    const cmd = (h as { command: string }).command;
+    // Remove if matches full path, relative path, or ends with the hook filename
+    return cmd !== fullScriptPath && cmd !== relativeScriptPath && !cmd.endsWith(`${hookName}.sh`);
+  });
 
   if (hooks[eventType].length === originalLength) {
     logger.debug('Hook not found in settings.json', { hookName, eventType });
@@ -384,15 +392,14 @@ export function registerFeatureHandlers(): void {
       const baseDir = getBaseDir(scope, projectPath);
       const hooksDir = path.join(baseDir, 'hooks');
 
-      // Determine script extension based on platform
-      const scriptExt = process.platform === 'win32' ? 'ps1' : 'sh';
-      const filePath = path.join(hooksDir, `${name}.${scriptExt}`);
+      // Hook scripts are always bash scripts (.sh)
+      const filePath = path.join(hooksDir, `${name}.sh`);
 
       // Write hook script
       writeHookScript(filePath, script);
 
-      // Update settings.json
-      updateSettingsWithHook(baseDir, name, eventType, matcher);
+      // Update settings.json with full path to hook script
+      updateSettingsWithHook(baseDir, name, eventType, matcher, filePath);
 
       logger.info('Hook installed successfully', { name, eventType, scope, filePath });
       return { success: true, filePath };
@@ -515,9 +522,8 @@ export function registerFeatureHandlers(): void {
       const baseDir = getBaseDir(scope, projectPath);
       const hooksDir = path.join(baseDir, 'hooks');
 
-      // Determine script extension based on platform
-      const scriptExt = process.platform === 'win32' ? 'ps1' : 'sh';
-      const filePath = path.join(hooksDir, `${name}.${scriptExt}`);
+      // Hook scripts are always bash scripts (.sh)
+      const filePath = path.join(hooksDir, `${name}.sh`);
 
       // Delete hook script file
       if (fs.existsSync(filePath)) fs.unlinkSync(filePath);

@@ -15,3 +15,4 @@ export { registerAgencyHandlers } from './agency.js';
 export { registerExportHandlers } from './export.js';
 export { registerClipboardHandlers } from './clipboard.js';
 export { registerFeatureHandlers } from './features.js';
+export { registerPluginHandlers } from './plugins.js';

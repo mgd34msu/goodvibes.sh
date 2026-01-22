@@ -27,6 +27,7 @@ import {
   registerExportHandlers,
   registerClipboardHandlers,
   registerFeatureHandlers,
+  registerPluginHandlers,
 } from './handlers/index.js';
 
 const logger = new Logger('IPC');
@@ -91,6 +92,9 @@ export function registerAllIpcHandlers(): void {
 
   // Feature installation
   registerFeatureHandlers();
+
+  // Plugin management
+  registerPluginHandlers();
 
   // ============================================================================
   // UI HANDLERS

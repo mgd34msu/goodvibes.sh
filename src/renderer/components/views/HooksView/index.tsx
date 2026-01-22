@@ -272,10 +272,7 @@ export default function HooksView() {
                     <HookCard
                       key={hook.id}
                       hook={hook}
-                      onToggle={handleToggle}
-                      onEdit={handleEdit}
                       onDelete={onDelete}
-                      onTest={handleTest}
                     />
                   ))}
                 </div>

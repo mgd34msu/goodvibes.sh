@@ -4,10 +4,6 @@
 
 import { useState } from 'react';
 import {
-  Play,
-  Pause,
-  Edit2,
-  Trash2,
   CheckCircle,
   XCircle,
   Clock,
@@ -19,13 +15,10 @@ import { EVENT_TYPES, EVENT_TYPE_ICONS, type Hook } from './types';
 
 interface HookCardProps {
   hook: Hook;
-  onToggle: (id: number, enabled: boolean) => void;
-  onEdit: (hook: Hook) => void;
   onDelete: (id: number) => void;
-  onTest: (id: number) => void;
 }
 
-export function HookCard({ hook, onToggle, onEdit, onDelete, onTest }: HookCardProps): React.JSX.Element {
+export function HookCard({ hook, onDelete }: HookCardProps): React.JSX.Element {
   const [expanded, setExpanded] = useState(false);
 
   const getResultBadge = () => {
@@ -128,33 +121,10 @@ export function HookCard({ hook, onToggle, onEdit, onDelete, onTest }: HookCardP
         {/* Right Section: Actions */}
         <div className="card-actions">
           <button
-            onClick={() => onToggle(hook.id, !hook.enabled)}
-            className={`card-action-btn ${
-              hook.enabled
-                ? 'card-action-btn-success text-success-400'
-                : ''
-            }`}
-            title={hook.enabled ? 'Disable' : 'Enable'}
-          >
-            {hook.enabled ? (
-              <Play className="w-4 h-4" />
-            ) : (
-              <Pause className="w-4 h-4" />
-            )}
-          </button>
-          <button
-            onClick={() => onEdit(hook)}
-            className="card-action-btn card-action-btn-primary"
-            title="Edit"
-          >
-            <Edit2 className="w-4 h-4" />
-          </button>
-          <button
             onClick={() => onDelete(hook.id)}
-            className="card-action-btn card-action-btn-danger"
-            title="Delete"
+            className="px-3 py-1.5 text-sm font-medium rounded-lg bg-error-500/20 text-error-400 hover:bg-error-500/30 transition-colors"
           >
-            <Trash2 className="w-4 h-4" />
+            Delete
           </button>
         </div>
       </div>
@@ -199,15 +169,6 @@ export function HookCard({ hook, onToggle, onEdit, onDelete, onTest }: HookCardP
             </div>
           </div>
 
-          <div className="flex justify-end">
-            <button
-              onClick={() => onTest(hook.id)}
-              className="card-action-primary"
-            >
-              <Play className="w-3.5 h-3.5" />
-              Test Hook
-            </button>
-          </div>
         </div>
       )}
     </div>

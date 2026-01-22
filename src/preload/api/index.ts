@@ -16,3 +16,4 @@ export { eventsApi } from './events.js';
 export { projectRegistryApi } from './project-registry.js';
 export { recommendationsApi } from './recommendations.js';
 export { featuresApi } from './features.js';
+export { pluginsApi } from './plugins.js';
