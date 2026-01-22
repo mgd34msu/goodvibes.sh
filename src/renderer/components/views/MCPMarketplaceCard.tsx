@@ -171,6 +171,7 @@ interface MarketplaceCardProps {
   server: MarketplaceServer;
   installed: boolean;
   onInstall: (server: MarketplaceServer) => void;
+  isInstalling?: boolean;
 }
 
 const DEFAULT_CATEGORY: CategoryConfig = {
@@ -178,7 +179,7 @@ const DEFAULT_CATEGORY: CategoryConfig = {
   iconClass: 'card-icon',
 };
 
-export function MCPMarketplaceCard({ server, installed, onInstall }: MarketplaceCardProps): React.JSX.Element {
+export function MCPMarketplaceCard({ server, installed, onInstall, isInstalling }: MarketplaceCardProps): React.JSX.Element {
   const categoryConfig: CategoryConfig = CATEGORY_CONFIG[server.category] ?? DEFAULT_CATEGORY;
   const isFeatured = server.featured;
 
@@ -257,10 +258,22 @@ export function MCPMarketplaceCard({ server, installed, onInstall }: Marketplace
           ) : (
             <button
               onClick={() => onInstall(server)}
-              className={isFeatured ? "card-action-rainbow" : "card-action-primary"}
+              disabled={isInstalling}
+              className={`${isFeatured ? "card-action-rainbow" : "card-action-primary"} ${
+                isInstalling ? 'opacity-50 cursor-not-allowed' : ''
+              }`}
             >
-              <Download className="w-3.5 h-3.5" />
-              Install
+              {isInstalling ? (
+                <>
+                  <Download className="w-3.5 h-3.5" />
+                  Installing...
+                </>
+              ) : (
+                <>
+                  <Download className="w-3.5 h-3.5" />
+                  Install
+                </>
+              )}
             </button>
           )}
         </div>

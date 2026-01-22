@@ -27,6 +27,8 @@ export default function PluginsView() {
   const [installedPlugins, setInstalledPlugins] = useState<Plugin[]>([]);
   const [loading, setLoading] = useState(true);
   const [uninstallingId, setUninstallingId] = useState<string | null>(null);
+  const [installingId, setInstallingId] = useState<string | null>(null);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
 
   const { confirm: confirmUninstall, ConfirmDialog } = useConfirm({
     title: 'Uninstall Plugin',
@@ -80,6 +82,7 @@ export default function PluginsView() {
       return;
     }
 
+    setInstallingId(plugin.id);
     try {
       const response = await window.goodvibes.installPlugin({
         repository: plugin.repository,
@@ -93,11 +96,14 @@ export default function PluginsView() {
     } catch (error) {
       logger.error('Failed to install plugin:', error);
       toast.error(`Failed to install ${plugin.name}`);
+    } finally {
+      setInstallingId(null);
     }
   }, [loadInstalledPlugins]);
 
   const handleToggle = useCallback(async (plugin: Plugin) => {
     const newEnabledState = !plugin.enabled;
+    setTogglingId(plugin.id);
     try {
       const response = await window.goodvibes.enablePlugin({
         pluginId: plugin.id,
@@ -111,6 +117,8 @@ export default function PluginsView() {
     } catch (error) {
       logger.error('Failed to toggle plugin:', error);
       toast.error('Failed to toggle plugin');
+    } finally {
+      setTogglingId(null);
     }
   }, [loadInstalledPlugins]);
 
@@ -211,6 +219,7 @@ export default function PluginsView() {
                   onToggle={handleToggle}
                   onUninstall={handleUninstall}
                   isUninstalling={uninstallingId === plugin.id}
+                  isToggling={togglingId === plugin.id}
                 />
               ))}
             </div>
@@ -259,6 +268,7 @@ export default function PluginsView() {
                     plugin={plugin}
                     installed={installedPluginIds.has(plugin.id)}
                     onInstall={handleInstall}
+                    isInstalling={installingId === plugin.id}
                   />
                 ))
               )}

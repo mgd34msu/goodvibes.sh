@@ -41,6 +41,11 @@ export default function MCPView() {
   const [activeTab, setActiveTab] = useState<'installed' | 'marketplace'>('installed');
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [uninstallingId, setUninstallingId] = useState<number | null>(null);
+  const [startingId, setStartingId] = useState<number | null>(null);
+  const [stoppingId, setStoppingId] = useState<number | null>(null);
+  const [restartingId, setRestartingId] = useState<number | null>(null);
+  const [installingId, setInstallingId] = useState<string | null>(null);
 
   const { confirm: confirmDelete, ConfirmDialog: DeleteConfirmDialog } = useConfirm({
     title: 'Delete MCP Server',
@@ -81,6 +86,7 @@ export default function MCPView() {
   const handleStart = useCallback(async (id: number) => {
     const server = servers.find(s => s.id === id);
     const serverName = server?.name || 'MCP server';
+    setStartingId(id);
     try {
       const success = await setServerStatus(id, 'connected');
       if (success) {
@@ -91,12 +97,15 @@ export default function MCPView() {
     } catch (error) {
       logger.error('Failed to start MCP server:', error);
       toast.error(`Failed to connect to ${serverName}`);
+    } finally {
+      setStartingId(null);
     }
   }, [servers, setServerStatus]);
 
   const handleStop = useCallback(async (id: number) => {
     const server = servers.find(s => s.id === id);
     const serverName = server?.name || 'MCP server';
+    setStoppingId(id);
     try {
       const success = await setServerStatus(id, 'disconnected');
       if (success) {
@@ -107,12 +116,15 @@ export default function MCPView() {
     } catch (error) {
       logger.error('Failed to stop MCP server:', error);
       toast.error(`Failed to disconnect from ${serverName}`);
+    } finally {
+      setStoppingId(null);
     }
   }, [servers, setServerStatus]);
 
   const handleRestart = useCallback(async (id: number) => {
     const server = servers.find(s => s.id === id);
     const serverName = server?.name || 'MCP server';
+    setRestartingId(id);
     try {
       await setServerStatus(id, 'disconnected');
       // Use a timeout with cleanup to avoid memory leaks
@@ -131,29 +143,35 @@ export default function MCPView() {
     } catch (error) {
       logger.error('Failed to restart MCP server:', error);
       toast.error(`Failed to restart ${serverName}`);
+    } finally {
+      setRestartingId(null);
     }
   }, [servers, setServerStatus]);
 
-  const handleDelete = useCallback(async (id: number) => {
+  const handleUninstall = useCallback(async (id: number) => {
     const server = servers.find(s => s.id === id);
     const serverName = server?.name || 'MCP server';
     const confirmed = await confirmDelete();
-    if (confirmed) {
-      try {
-        const success = await deleteServer(id);
-        if (success) {
-          toast.success(`Deleted ${serverName}`);
-        } else {
-          throw new Error('Failed to delete');
-        }
-      } catch (error) {
-        logger.error('Failed to delete MCP server:', error);
-        toast.error(`Failed to delete ${serverName}`);
+    if (!confirmed) return;
+
+    setUninstallingId(id);
+    try {
+      const success = await deleteServer(id);
+      if (success) {
+        toast.success(`Deleted ${serverName}`);
+      } else {
+        throw new Error('Failed to delete');
       }
+    } catch (error) {
+      logger.error('Failed to delete MCP server:', error);
+      toast.error(`Failed to delete ${serverName}`);
+    } finally {
+      setUninstallingId(null);
     }
   }, [servers, confirmDelete, deleteServer]);
 
   const handleInstall = useCallback(async (server: MarketplaceServer) => {
+    setInstallingId(server.id);
     try {
       const input: CreateMCPServerInput = {
         name: server.name,
@@ -173,6 +191,8 @@ export default function MCPView() {
     } catch (error) {
       logger.error('Failed to install MCP server:', error);
       toast.error(`Failed to install ${server.name}`);
+    } finally {
+      setInstallingId(null);
     }
   }, [createServer]);
 
@@ -299,7 +319,11 @@ export default function MCPView() {
                     setEditingServer(s);
                     setShowForm(true);
                   }}
-                  onUninstall={handleDelete}
+                  onUninstall={handleUninstall}
+                  isUninstalling={uninstallingId === server.id}
+                  isStarting={startingId === server.id}
+                  isStopping={stoppingId === server.id}
+                  isRestarting={restartingId === server.id}
                 />
               ))}
             </div>
@@ -339,6 +363,7 @@ export default function MCPView() {
                   server={server}
                   installed={installedServerIds.has(server.name.toLowerCase())}
                   onInstall={handleInstall}
+                  isInstalling={installingId === server.id}
                 />
               ))}
             </div>

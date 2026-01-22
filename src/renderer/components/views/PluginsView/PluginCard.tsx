@@ -65,9 +65,11 @@ interface PluginCardProps {
   onToggle?: (plugin: Plugin) => void;
   onUninstall?: (plugin: Plugin) => void;
   isUninstalling?: boolean;
+  isInstalling?: boolean;
+  isToggling?: boolean;
 }
 
-export function PluginCard({ plugin, installed, onInstall, onToggle, onUninstall, isUninstalling }: PluginCardProps): React.JSX.Element {
+export function PluginCard({ plugin, installed, onInstall, onToggle, onUninstall, isUninstalling, isInstalling, isToggling }: PluginCardProps): React.JSX.Element {
   const categoryConfig: CategoryConfig = CATEGORY_CONFIG[plugin.category] ?? DEFAULT_CATEGORY;
   const isFeatured = plugin.featured;
 
@@ -86,6 +88,13 @@ export function PluginCard({ plugin, installed, onInstall, onToggle, onUninstall
       {categoryConfig.icon}
     </div>
   );
+
+  // Uninstall button styling based on loading state
+  const uninstallButtonClasses = `px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
+    isUninstalling
+      ? 'bg-error-500/10 text-error-400/50 cursor-not-allowed opacity-50'
+      : 'bg-error-500/20 text-error-400 hover:bg-error-500/30'
+  }`;
 
   return (
     <div className={cardClasses}>
@@ -154,7 +163,14 @@ export function PluginCard({ plugin, installed, onInstall, onToggle, onUninstall
               {onToggle && (
                 <button
                   onClick={() => onToggle(plugin)}
-                  className={`card-action-btn ${plugin.enabled ? 'card-action-btn-success' : 'card-action-btn-muted'}`}
+                  disabled={isToggling}
+                  className={`card-action-btn ${
+                    isToggling
+                      ? 'opacity-50 cursor-not-allowed'
+                      : plugin.enabled
+                      ? 'card-action-btn-success'
+                      : 'card-action-btn-muted'
+                  }`}
                   title={plugin.enabled ? 'Disable plugin' : 'Enable plugin'}
                 >
                   {plugin.enabled ? <Power className="w-4 h-4" /> : <PowerOff className="w-4 h-4" />}
@@ -164,11 +180,7 @@ export function PluginCard({ plugin, installed, onInstall, onToggle, onUninstall
                 <button
                   onClick={() => onUninstall(plugin)}
                   disabled={isUninstalling}
-                  className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
-                    isUninstalling
-                      ? 'bg-error-500/10 text-error-400/50 cursor-not-allowed opacity-50'
-                      : 'bg-error-500/20 text-error-400 hover:bg-error-500/30'
-                  }`}
+                  className={uninstallButtonClasses}
                 >
                   {isUninstalling ? 'Uninstalling...' : 'Uninstall'}
                 </button>
@@ -178,10 +190,13 @@ export function PluginCard({ plugin, installed, onInstall, onToggle, onUninstall
             onInstall && (
               <button
                 onClick={() => onInstall(plugin)}
-                className={isFeatured ? "card-action-rainbow" : "card-action-primary"}
+                disabled={isInstalling}
+                className={`${isFeatured ? 'card-action-rainbow' : 'card-action-primary'} ${
+                  isInstalling ? 'opacity-50 cursor-not-allowed' : ''
+                }`}
               >
                 <Download className="w-3.5 h-3.5" />
-                Install
+                {isInstalling ? 'Installing...' : 'Install'}
               </button>
             )
           )}

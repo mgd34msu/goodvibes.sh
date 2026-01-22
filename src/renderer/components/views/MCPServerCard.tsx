@@ -83,6 +83,10 @@ interface ServerCardProps {
   onRestart: (id: number) => void;
   onEdit: (server: MCPServer) => void;
   onUninstall: (id: number) => void;
+  isUninstalling?: boolean;
+  isStarting?: boolean;
+  isStopping?: boolean;
+  isRestarting?: boolean;
 }
 
 const DEFAULT_STATUS: StatusConfig = {
@@ -91,7 +95,19 @@ const DEFAULT_STATUS: StatusConfig = {
   icon: <AlertCircle className="w-5 h-5" />,
 };
 
-export function MCPServerCard({ server, timezone = 'UTC', onStart, onStop, onRestart, onEdit, onUninstall }: ServerCardProps): React.JSX.Element {
+export function MCPServerCard({
+  server,
+  timezone = 'UTC',
+  onStart,
+  onStop,
+  onRestart,
+  onEdit,
+  onUninstall,
+  isUninstalling = false,
+  isStarting = false,
+  isStopping = false,
+  isRestarting = false,
+}: ServerCardProps): React.JSX.Element {
   const statusConfig: StatusConfig = STATUS_CONFIG[server.status] ?? DEFAULT_STATUS;
 
   return (
@@ -146,7 +162,8 @@ export function MCPServerCard({ server, timezone = 'UTC', onStart, onStop, onRes
           {server.status === 'connected' ? (
             <button
               onClick={() => onStop(server.id)}
-              className="card-action-btn card-action-btn-danger"
+              disabled={isStopping}
+              className={`card-action-btn card-action-btn-danger ${isStopping ? 'opacity-50 cursor-not-allowed' : ''}`}
               title="Stop"
             >
               <Square className="w-4 h-4" />
@@ -154,7 +171,8 @@ export function MCPServerCard({ server, timezone = 'UTC', onStart, onStop, onRes
           ) : (
             <button
               onClick={() => onStart(server.id)}
-              className="card-action-btn card-action-btn-success"
+              disabled={isStarting}
+              className={`card-action-btn card-action-btn-success ${isStarting ? 'opacity-50 cursor-not-allowed' : ''}`}
               title="Start"
             >
               <Play className="w-4 h-4" />
@@ -162,7 +180,8 @@ export function MCPServerCard({ server, timezone = 'UTC', onStart, onStop, onRes
           )}
           <button
             onClick={() => onRestart(server.id)}
-            className="card-action-btn card-action-btn-primary"
+            disabled={isRestarting}
+            className={`card-action-btn card-action-btn-primary ${isRestarting ? 'opacity-50 cursor-not-allowed' : ''}`}
             title="Restart"
           >
             <RefreshCw className="w-4 h-4" />
@@ -176,9 +195,14 @@ export function MCPServerCard({ server, timezone = 'UTC', onStart, onStop, onRes
           </button>
           <button
             onClick={() => onUninstall(server.id)}
-            className="px-3 py-1.5 text-sm font-medium rounded-lg bg-error-500/20 text-error-400 hover:bg-error-500/30 transition-colors"
+            disabled={isUninstalling}
+            className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
+              isUninstalling
+                ? 'bg-error-500/10 text-error-400/50 cursor-not-allowed opacity-50'
+                : 'bg-error-500/20 text-error-400 hover:bg-error-500/30'
+            }`}
           >
-            Uninstall
+            {isUninstalling ? 'Uninstalling...' : 'Uninstall'}
           </button>
         </div>
       </div>
