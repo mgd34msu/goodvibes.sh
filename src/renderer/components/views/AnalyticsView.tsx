@@ -165,15 +165,18 @@ function CostChart({ data }: { data: Array<{ date: string; cost: number }> }) {
   const [tooltip, setTooltip] = React.useState<{ date: string; cost: number; x: number; y: number } | null>(null);
   const containerRef = React.useRef<HTMLDivElement>(null);
 
-  const last30 = data.slice(-30);
+  // Memoize all computed values
+  const { last30, maxCost, totalCost, avgCost } = React.useMemo(() => {
+    const sliced = data.slice(-30);
+    const max = Math.max(...sliced.map(d => d.cost), 0.01);
+    const total = sliced.reduce((sum, d) => sum + d.cost, 0);
+    const avg = sliced.length > 0 ? total / sliced.length : 0;
+    return { last30: sliced, maxCost: max, totalCost: total, avgCost: avg };
+  }, [data]);
 
   if (last30.length === 0) {
     return <EmptyChartState message="No cost data available" />;
   }
-
-  const maxCost = Math.max(...last30.map(d => d.cost), 0.01);
-  const totalCost = last30.reduce((sum, d) => sum + d.cost, 0);
-  const avgCost = totalCost / last30.length;
 
   const handleMouseEnter = (day: { date: string; cost: number }, e: React.MouseEvent) => {
     const rect = containerRef.current?.getBoundingClientRect();
@@ -252,15 +255,18 @@ function SessionsChart({ data }: { data: Array<{ date: string; count: number }> 
   const [tooltip, setTooltip] = React.useState<{ date: string; count: number; x: number; y: number } | null>(null);
   const containerRef = React.useRef<HTMLDivElement>(null);
 
-  const last30 = data.slice(-30);
+  // Memoize all computed values
+  const { last30, maxCount, totalSessions, avgSessions } = React.useMemo(() => {
+    const sliced = data.slice(-30);
+    const max = Math.max(...sliced.map(d => d.count), 1);
+    const total = sliced.reduce((sum, d) => sum + d.count, 0);
+    const avg = sliced.length > 0 ? total / sliced.length : 0;
+    return { last30: sliced, maxCount: max, totalSessions: total, avgSessions: avg };
+  }, [data]);
 
   if (last30.length === 0) {
     return <EmptyChartState message="No session data available" />;
   }
-
-  const maxCount = Math.max(...last30.map(d => d.count), 1);
-  const totalSessions = last30.reduce((sum, d) => sum + d.count, 0);
-  const avgSessions = totalSessions / last30.length;
 
   const handleMouseEnter = (day: { date: string; count: number }, e: React.MouseEvent) => {
     const rect = containerRef.current?.getBoundingClientRect();
@@ -395,47 +401,52 @@ function ToolUsageGrid({ data }: { data: ToolUsageStat[] }) {
 function ActivityHeatmap({ data }: { data: Array<{ date: string; count: number }> }) {
   const numWeeks = 12;
 
-  const dateMap = new Map(data.map(d => [d.date, d.count]));
-  const maxCount = Math.max(...data.map(d => d.count), 1);
+  // Memoize the entire grid construction
+  const { grid, maxCount } = React.useMemo(() => {
+    const dateMap = new Map(data.map(d => [d.date, d.count]));
+    const max = Math.max(...data.map(d => d.count), 1);
 
-  // Format date as YYYY-MM-DD in local timezone (not UTC)
-  const formatLocalDate = (date: Date): string => {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  };
+    // Format date as YYYY-MM-DD in local timezone (not UTC)
+    const formatLocalDate = (date: Date): string => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
 
-  const today = new Date();
-  const todayStr = formatLocalDate(today);
+    const today = new Date();
+    const todayStr = formatLocalDate(today);
 
-  // Find the Sunday of the current week
-  const currentSunday = new Date(today);
-  currentSunday.setDate(today.getDate() - today.getDay());
+    // Find the Sunday of the current week
+    const currentSunday = new Date(today);
+    currentSunday.setDate(today.getDate() - today.getDay());
 
-  // Go back numWeeks-1 weeks to get the starting Sunday
-  const startSunday = new Date(currentSunday);
-  startSunday.setDate(currentSunday.getDate() - (numWeeks - 1) * 7);
+    // Go back numWeeks-1 weeks to get the starting Sunday
+    const startSunday = new Date(currentSunday);
+    startSunday.setDate(currentSunday.getDate() - (numWeeks - 1) * 7);
 
-  // Build grid: grid[weekIndex][dayIndex] where dayIndex 0=Sun, 6=Sat
-  const grid: Array<Array<{ date: string; count: number } | null>> = [];
+    // Build grid: grid[weekIndex][dayIndex] where dayIndex 0=Sun, 6=Sat
+    const gridData: Array<Array<{ date: string; count: number } | null>> = [];
 
-  for (let week = 0; week < numWeeks; week++) {
-    const weekData: Array<{ date: string; count: number } | null> = [];
-    for (let day = 0; day < 7; day++) {
-      const cellDate = new Date(startSunday);
-      cellDate.setDate(startSunday.getDate() + week * 7 + day);
-      const dateStr = formatLocalDate(cellDate);
+    for (let week = 0; week < numWeeks; week++) {
+      const weekData: Array<{ date: string; count: number } | null> = [];
+      for (let day = 0; day < 7; day++) {
+        const cellDate = new Date(startSunday);
+        cellDate.setDate(startSunday.getDate() + week * 7 + day);
+        const dateStr = formatLocalDate(cellDate);
 
-      // Don't show future dates
-      if (dateStr > todayStr) {
-        weekData.push(null);
-      } else {
-        weekData.push({ date: dateStr, count: dateMap.get(dateStr) ?? 0 });
+        // Don't show future dates
+        if (dateStr > todayStr) {
+          weekData.push(null);
+        } else {
+          weekData.push({ date: dateStr, count: dateMap.get(dateStr) ?? 0 });
+        }
       }
+      gridData.push(weekData);
     }
-    grid.push(weekData);
-  }
+
+    return { grid: gridData, maxCount: max };
+  }, [data]);
 
   return (
     <div className="flex flex-col gap-2">

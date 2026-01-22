@@ -48,10 +48,17 @@ export function useHooks(): UseHooksReturn {
     async (hookData: Partial<Hook>): Promise<boolean> => {
       const isUpdate = Boolean(hookData.id);
       const hookName = hookData.name || 'hook';
+
       try {
         if (hookData.id) {
+          // Optimistic update for existing hook
+          setHooks((prev) =>
+            prev.map((h) => (h.id === hookData.id ? { ...h, ...hookData } : h))
+          );
           await window.goodvibes.updateHook(hookData.id, hookData);
+          toast.success(`Updated ${hookName}`);
         } else {
+          // For create, we need to reload to get the server-assigned ID
           await window.goodvibes.createHook({
             name: hookData.name || '',
             eventType: hookData.eventType || 'PostToolUse',
@@ -60,11 +67,15 @@ export function useHooks(): UseHooksReturn {
             timeout: hookData.timeout,
             projectPath: hookData.projectPath || undefined,
           });
+          await loadHooks();
+          toast.success(`Created ${hookName}`);
         }
-        await loadHooks();
-        toast.success(isUpdate ? `Updated ${hookName}` : `Created ${hookName}`);
         return true;
       } catch (error) {
+        if (isUpdate && hookData.id) {
+          // Revert optimistic update on failure
+          await loadHooks();
+        }
         logger.error('Failed to save hook:', error);
         toast.error(isUpdate ? 'Failed to update hook' : 'Failed to create hook');
         return false;
@@ -75,27 +86,38 @@ export function useHooks(): UseHooksReturn {
 
   const handleToggle = useCallback(
     async (id: number, enabled: boolean) => {
+      // Optimistic update - update local state immediately
+      setHooks((prev) =>
+        prev.map((h) => (h.id === id ? { ...h, enabled } : h))
+      );
+
       try {
         await window.goodvibes.updateHook(id, { enabled });
-        await loadHooks();
         toast.success(enabled ? 'Hook enabled' : 'Hook disabled');
       } catch (error) {
+        // Revert on failure
+        setHooks((prev) =>
+          prev.map((h) => (h.id === id ? { ...h, enabled: !enabled } : h))
+        );
         logger.error('Failed to toggle hook:', error);
         toast.error('Failed to toggle hook');
       }
     },
-    [loadHooks]
+    []
   );
 
   const handleDelete = useCallback(
     async (id: number) => {
-      try {
-        // Find the hook to determine scope and eventType
-        const hook = hooks.find((h) => h.id === id);
-        if (!hook) {
-          throw new Error('Hook not found');
-        }
+      // Find the hook before removing
+      const hook = hooks.find((h) => h.id === id);
+      if (!hook) {
+        throw new Error('Hook not found');
+      }
 
+      // Optimistic removal - remove from state immediately
+      setHooks((prev) => prev.filter((h) => h.id !== id));
+
+      try {
         // Delete from database
         await window.goodvibes.deleteHook(id);
 
@@ -112,19 +134,19 @@ export function useHooks(): UseHooksReturn {
           logger.warn('Failed to uninstall hook file (may not exist)', { error: uninstallError });
         }
 
-        await loadHooks();
         toast.success('Hook deleted');
       } catch (error) {
+        // Revert on failure - add the hook back
+        setHooks((prev) => [...prev, hook]);
         logger.error('Failed to delete hook:', error);
         toast.error('Failed to delete hook');
       }
     },
-    [hooks, loadHooks]
+    [hooks]
   );
 
   const handleTest = useCallback(
     async (id: number) => {
-      // Find the hook to test
       const hook = hooks.find((h) => h.id === id);
       if (!hook) {
         logger.error('Hook not found:', id);
@@ -133,9 +155,19 @@ export function useHooks(): UseHooksReturn {
       }
 
       const testingHookName = hook.name;
+      const newExecutionCount = (hook.executionCount || 0) + 1;
+      const newLastExecuted = formatTimestamp();
+
+      // Optimistic update - update execution stats immediately
+      setHooks((prev) =>
+        prev.map((h) =>
+          h.id === id
+            ? { ...h, executionCount: newExecutionCount, lastExecuted: newLastExecuted }
+            : h
+        )
+      );
 
       try {
-        // Log the test execution
         await window.goodvibes.logActivity(
           'hook_test',
           null,
@@ -143,25 +175,28 @@ export function useHooks(): UseHooksReturn {
           { hookId: id, command: hook.command, eventType: hook.eventType }
         );
 
-        // Update hook execution count and last executed in the database
         await window.goodvibes.updateHook(id, {
-          executionCount: (hook.executionCount || 0) + 1,
-          lastExecuted: formatTimestamp(),
+          executionCount: newExecutionCount,
+          lastExecuted: newLastExecuted,
         });
 
-        // Reload hooks to reflect the update
-        await loadHooks();
-
-        // Show success notification
         toast.success(`Hook "${testingHookName}" test triggered`, {
           title: 'Test Successful',
         });
       } catch (error) {
+        // Revert on failure
+        setHooks((prev) =>
+          prev.map((h) =>
+            h.id === id
+              ? { ...h, executionCount: hook.executionCount, lastExecuted: hook.lastExecuted }
+              : h
+          )
+        );
         logger.error('Failed to test hook:', error);
         toast.error(`Failed to test hook "${testingHookName}"`);
       }
     },
-    [hooks, loadHooks]
+    [hooks]
   );
 
   return {

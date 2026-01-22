@@ -72,14 +72,23 @@ export function useProjectRegistry(): UseProjectRegistryReturn {
     loadData();
   }, [loadData]);
 
-  // Listen for project events
+  // Listen for project events with debouncing
   useEffect(() => {
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+
     const handleProjectEvent = () => {
-      loadData();
+      // Debounce rapid events
+      if (timeoutId) clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        loadData();
+      }, 300);
     };
 
     const cleanup = window.goodvibes?.onProjectEvent?.(handleProjectEvent);
-    return () => cleanup?.();
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+      cleanup?.();
+    };
   }, [loadData]);
 
   const registerProject = async () => {
@@ -92,17 +101,28 @@ export function useProjectRegistry(): UseProjectRegistryReturn {
 
   const removeProject = async (projectId: number) => {
     await window.goodvibes?.projectRemove?.(projectId);
-    loadData();
+    // Optimistic removal - update local state immediately
+    setProjects((prev) => prev.filter((p) => p.id !== projectId));
+    setProjectAnalytics((prev) => {
+      const next = new Map(prev);
+      next.delete(projectId);
+      return next;
+    });
   };
 
   const switchProject = async (projectId: number) => {
     await window.goodvibes?.projectSwitch?.(projectId);
-    loadData();
+    // No reload needed - switching just changes active project marker
   };
 
   const saveSettings = async (projectId: number, settings: ProjectSettings) => {
     await window.goodvibes?.projectUpdateSettings?.(projectId, settings as unknown as Record<string, unknown>);
-    loadData();
+    // Optimistic update - update local state immediately
+    setProjects((prev) =>
+      prev.map((p) =>
+        p.id === projectId ? { ...p, settings: { ...p.settings, ...settings } } : p
+      )
+    );
   };
 
   const createTemplate = async (projectId: number, name: string, description: string) => {
@@ -121,7 +141,8 @@ export function useProjectRegistry(): UseProjectRegistryReturn {
 
   const deleteTemplate = async (templateId: number) => {
     await window.goodvibes?.templateDelete?.(templateId);
-    loadData();
+    // Optimistic removal
+    setTemplates((prev) => prev.filter((t) => t.id !== templateId));
   };
 
   return {

@@ -54,7 +54,7 @@ describe('useAppStore', () => {
         'sessions',
         'analytics',
         'tasks',
-        'knowledge',
+        'notebook',
         'hooks',
         'mcp',
         'plugins',

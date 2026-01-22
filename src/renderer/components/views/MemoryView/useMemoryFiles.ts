@@ -63,6 +63,7 @@ export function useMemoryFiles(
         content: userEntry?.content || '',
         exists: !!userEntry,
         lastModified: userEntry?.updatedAt || undefined,
+        entryId: userEntry?.id,
       });
 
       // Project scope file
@@ -76,6 +77,7 @@ export function useMemoryFiles(
         content: projectEntry?.content || '',
         exists: !!projectEntry,
         lastModified: projectEntry?.updatedAt || undefined,
+        entryId: projectEntry?.id,
       });
 
       // Local scope file
@@ -89,6 +91,7 @@ export function useMemoryFiles(
         content: localEntry?.content || '',
         exists: !!localEntry,
         lastModified: localEntry?.updatedAt || undefined,
+        entryId: localEntry?.id,
       });
 
       setFiles(loadedFiles);
@@ -164,20 +167,13 @@ export function useMemoryFiles(
 
     setSaving(true);
     try {
-      // Get all entries to find existing one
-      const entries = await window.goodvibes.getAllKnowledgeEntries();
-      const existingEntry = entries.find(
-        (e: { category?: string; tags?: string }) =>
-          e.category === 'claude-md' && e.tags?.includes(`scope:${selectedFile.scope}`)
-      );
-
       const title = `CLAUDE.md (${selectedFile.scope})`;
       const tags = `scope:${selectedFile.scope}`;
 
-      if (existingEntry?.id) {
-        // Update existing entry
+      if (selectedFile.entryId) {
+        // Update existing entry using cached ID - no fetch needed
         await window.goodvibes.updateKnowledgeEntry(
-          existingEntry.id,
+          selectedFile.entryId,
           title,
           content,
           'claude-md',
@@ -185,7 +181,20 @@ export function useMemoryFiles(
         );
       } else {
         // Create new entry
-        await window.goodvibes.createKnowledgeEntry(title, content, 'claude-md', tags);
+        const newEntry = await window.goodvibes.createKnowledgeEntry(
+          title,
+          content,
+          'claude-md',
+          tags
+        );
+        // Update the file with the new entry ID
+        if (newEntry?.id) {
+          setFiles((prev) =>
+            prev.map((f) =>
+              f.path === selectedFile.path ? { ...f, entryId: newEntry.id } : f
+            )
+          );
+        }
       }
 
       // Update state

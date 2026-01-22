@@ -14,7 +14,6 @@
 // ============================================================================
 
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
 import { createLogger } from '../../shared/logger';
 import type { MCPServer } from '../components/views/MCPServerCard';
 
@@ -75,7 +74,6 @@ export interface UseMcpServersReturn {
 export function useMcpServers(options: UseMcpServersOptions = {}): UseMcpServersReturn {
   const { pollingInterval = 0, autoFetch = true } = options;
 
-  const queryClient = useQueryClient();
   const [servers, setServers] = useState<MCPServer[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -137,14 +135,13 @@ export function useMcpServers(options: UseMcpServersOptions = {}): UseMcpServers
       const newServer = await window.goodvibes.createMCPServer(serverData);
       if (isMountedRef.current) {
         await fetchServers();
-        queryClient.invalidateQueries({ queryKey: ['mcp-servers'] });
       }
       return newServer;
     } catch (err) {
       logger.error('Failed to create MCP server:', err);
       return null;
     }
-  }, [fetchServers, queryClient]);
+  }, [fetchServers]);
 
   // ============================================================================
   // UPDATE SERVER
@@ -155,14 +152,13 @@ export function useMcpServers(options: UseMcpServersOptions = {}): UseMcpServers
       await window.goodvibes.updateMCPServer(id, updates);
       if (isMountedRef.current) {
         await fetchServers();
-        queryClient.invalidateQueries({ queryKey: ['mcp-servers'] });
       }
       return true;
     } catch (err) {
       logger.error('Failed to update MCP server:', err);
       return false;
     }
-  }, [fetchServers, queryClient]);
+  }, [fetchServers]);
 
   // ============================================================================
   // DELETE SERVER
@@ -173,14 +169,13 @@ export function useMcpServers(options: UseMcpServersOptions = {}): UseMcpServers
       await window.goodvibes.deleteMCPServer(id);
       if (isMountedRef.current) {
         await fetchServers();
-        queryClient.invalidateQueries({ queryKey: ['mcp-servers'] });
       }
       return true;
     } catch (err) {
       logger.error('Failed to delete MCP server:', err);
       return false;
     }
-  }, [fetchServers, queryClient]);
+  }, [fetchServers]);
 
   // ============================================================================
   // SET SERVER STATUS
@@ -195,14 +190,13 @@ export function useMcpServers(options: UseMcpServersOptions = {}): UseMcpServers
       await window.goodvibes.setMCPServerStatus(id, status, errorMessage);
       if (isMountedRef.current) {
         await fetchServers();
-        queryClient.invalidateQueries({ queryKey: ['mcp-servers'] });
       }
       return true;
     } catch (err) {
       logger.error('Failed to set MCP server status:', err);
       return false;
     }
-  }, [fetchServers, queryClient]);
+  }, [fetchServers]);
 
   // ============================================================================
   // IPC EVENT SUBSCRIPTION - MCP Server Status Updates
@@ -230,9 +224,6 @@ export function useMcpServers(options: UseMcpServersOptions = {}): UseMcpServers
           return server;
         })
       );
-
-      // Invalidate query cache to ensure consistency
-      queryClient.invalidateQueries({ queryKey: ['mcp-servers'] });
     };
 
     // Subscribe to the IPC event
@@ -247,7 +238,7 @@ export function useMcpServers(options: UseMcpServersOptions = {}): UseMcpServers
         ipcCleanupRef.current = null;
       }
     };
-  }, [queryClient]);
+  }, []);
 
   // ============================================================================
   // POLLING INTERVAL (Optional)

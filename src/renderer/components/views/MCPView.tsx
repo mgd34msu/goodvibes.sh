@@ -7,6 +7,7 @@ import {
   Server,
   Plus,
   Search,
+  GitBranch,
 } from 'lucide-react';
 import { useConfirm } from '../overlays/ConfirmModal';
 import { createLogger } from '../../../shared/logger';
@@ -16,6 +17,7 @@ import { MCPServerCard, type MCPServer } from './MCPServerCard';
 import { MCPMarketplaceCard, MARKETPLACE_SERVERS, type MarketplaceServer } from './MCPMarketplaceCard';
 import { MCPServerForm } from './MCPServerForm';
 import { useMcpServers, type CreateMCPServerInput } from '../../hooks/useMcpServers';
+import { RepoInstallModal, type ParsedRepoInfo } from '../common/RepoInstallModal';
 
 const logger = createLogger('MCPView');
 
@@ -46,6 +48,8 @@ export default function MCPView() {
   const [stoppingId, setStoppingId] = useState<number | null>(null);
   const [restartingId, setRestartingId] = useState<number | null>(null);
   const [installingId, setInstallingId] = useState<string | null>(null);
+  const [showRepoInstallModal, setShowRepoInstallModal] = useState(false);
+  const [isInstallingFromRepo, setIsInstallingFromRepo] = useState(false);
 
   const { confirm: confirmUninstall, ConfirmDialog: UninstallConfirmDialog } = useConfirm({
     title: 'Uninstall MCP Server',
@@ -196,6 +200,36 @@ export default function MCPView() {
     }
   }, [createServer]);
 
+  const handleInstallFromRepo = useCallback(async (_repoUrl: string, repoInfo: ParsedRepoInfo) => {
+    setIsInstallingFromRepo(true);
+    try {
+      // Create an MCP server that uses npx to run the package from GitHub
+      const input: CreateMCPServerInput = {
+        name: repoInfo.repo,
+        transport: 'stdio',
+        command: 'npx',
+        args: ['-y', `github:${repoInfo.owner}/${repoInfo.repo}`],
+        env: {},
+        enabled: true,
+        description: `Installed from ${repoInfo.fullUrl}`,
+      };
+      const newServer = await createServer(input);
+      if (newServer) {
+        toast.success(`Installed ${repoInfo.repo} from repository`);
+        setShowRepoInstallModal(false);
+        setActiveTab('installed');
+      } else {
+        throw new Error('Failed to create server');
+      }
+    } catch (error) {
+      logger.error('Failed to install MCP server from repository:', error);
+      toast.error(`Failed to install ${repoInfo.repo}`);
+      throw error;
+    } finally {
+      setIsInstallingFromRepo(false);
+    }
+  }, [createServer]);
+
   const installedServerIds = new Set(servers.map((s) => s.name.toLowerCase()));
 
   const filteredMarketplace = MARKETPLACE_SERVERS.filter((server) => {
@@ -212,6 +246,16 @@ export default function MCPView() {
   return (
     <>
     <UninstallConfirmDialog />
+    {showRepoInstallModal && (
+      <RepoInstallModal
+        title="Install MCP Server from Repository"
+        description="Install an MCP server directly from a GitHub repository"
+        placeholder="https://github.com/user/mcp-server or user/mcp-server"
+        onInstall={handleInstallFromRepo}
+        onClose={() => setShowRepoInstallModal(false)}
+        isInstalling={isInstallingFromRepo}
+      />
+    )}
     <div className="h-full flex flex-col">
       {/* Header */}
       <div className="flex-shrink-0 px-6 py-4 border-b border-surface-800">
@@ -226,16 +270,25 @@ export default function MCPView() {
             </div>
           </div>
 
-          <button
-            onClick={() => {
-              setEditingServer(undefined);
-              setShowForm(true);
-            }}
-            className="px-4 py-2 bg-accent-purple text-white rounded-lg hover:bg-accent-purple/80 transition-colors flex items-center gap-2"
-          >
-            <Plus className="w-4 h-4" />
-            Add Server
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowRepoInstallModal(true)}
+              className="px-4 py-2 bg-surface-700 text-surface-200 rounded-lg hover:bg-surface-600 transition-colors flex items-center gap-2"
+            >
+              <GitBranch className="w-4 h-4" />
+              Install from Repo
+            </button>
+            <button
+              onClick={() => {
+                setEditingServer(undefined);
+                setShowForm(true);
+              }}
+              className="px-4 py-2 bg-accent-purple text-white rounded-lg hover:bg-accent-purple/80 transition-colors flex items-center gap-2"
+            >
+              <Plus className="w-4 h-4" />
+              Add Server
+            </button>
+          </div>
         </div>
 
         {/* Tabs */}

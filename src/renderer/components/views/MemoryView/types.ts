@@ -9,6 +9,7 @@ export interface ClaudeMdFile {
   content: string;
   exists: boolean;
   lastModified?: string;
+  entryId?: number;
 }
 
 export interface MemoryTemplate {

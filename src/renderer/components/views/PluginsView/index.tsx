@@ -6,6 +6,7 @@ import { useState, useMemo, useEffect, useCallback } from 'react';
 import {
   Puzzle,
   Search,
+  GitBranch,
 } from 'lucide-react';
 import { createLogger } from '../../../../shared/logger';
 import { toast } from '../../../stores/toastStore';
@@ -13,6 +14,7 @@ import { useConfirm } from '../../overlays/ConfirmModal';
 import { PluginCard } from './PluginCard';
 import { BUILT_IN_PLUGINS, CATEGORY_FILTERS } from './constants';
 import type { Plugin } from './types';
+import { RepoInstallModal, type ParsedRepoInfo } from '../../common/RepoInstallModal';
 
 const logger = createLogger('PluginsView');
 
@@ -29,6 +31,8 @@ export default function PluginsView() {
   const [uninstallingId, setUninstallingId] = useState<string | null>(null);
   const [installingId, setInstallingId] = useState<string | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [showRepoInstallModal, setShowRepoInstallModal] = useState(false);
+  const [isInstallingFromRepo, setIsInstallingFromRepo] = useState(false);
 
   const { confirm: confirmUninstall, ConfirmDialog } = useConfirm({
     title: 'Uninstall Plugin',
@@ -104,15 +108,24 @@ export default function PluginsView() {
   const handleToggle = useCallback(async (plugin: Plugin) => {
     const newEnabledState = !plugin.enabled;
     setTogglingId(plugin.id);
+
+    // Optimistic update - update local state immediately
+    setInstalledPlugins(prev =>
+      prev.map(p => p.id === plugin.id ? { ...p, enabled: newEnabledState } : p)
+    );
+
     try {
       const response = await window.goodvibes.enablePlugin({
         pluginId: plugin.id,
         enabled: newEnabledState,
       });
       if (!response.success) {
+        // Revert on failure
+        setInstalledPlugins(prev =>
+          prev.map(p => p.id === plugin.id ? { ...p, enabled: !newEnabledState } : p)
+        );
         throw new Error(response.error || 'Failed to toggle plugin');
       }
-      await loadInstalledPlugins();
       toast.success(`${newEnabledState ? 'Enabled' : 'Disabled'} ${plugin.name}`);
     } catch (error) {
       logger.error('Failed to toggle plugin:', error);
@@ -120,7 +133,7 @@ export default function PluginsView() {
     } finally {
       setTogglingId(null);
     }
-  }, [loadInstalledPlugins]);
+  }, []);
 
   const handleUninstall = useCallback(async (plugin: Plugin) => {
     const confirmed = await confirmUninstall();
@@ -135,7 +148,8 @@ export default function PluginsView() {
       if (!response.success) {
         throw new Error(response.error || 'Failed to uninstall plugin');
       }
-      await loadInstalledPlugins();
+      // Optimistic removal - remove from local state
+      setInstalledPlugins(prev => prev.filter(p => p.id !== plugin.id));
       toast.success(`Uninstalled ${plugin.name}`);
     } catch (error) {
       logger.error('Failed to uninstall plugin:', error);
@@ -143,11 +157,44 @@ export default function PluginsView() {
     } finally {
       setUninstallingId(null);
     }
-  }, [confirmUninstall, loadInstalledPlugins]);
+  }, [confirmUninstall]);
+
+  const handleInstallFromRepo = useCallback(async (repoUrl: string, repoInfo: ParsedRepoInfo) => {
+    setIsInstallingFromRepo(true);
+    try {
+      const response = await window.goodvibes.installPlugin({
+        repository: repoUrl,
+        scope: 'user',
+      });
+      if (!response.success) {
+        throw new Error(response.error || 'Installation failed');
+      }
+      await loadInstalledPlugins();
+      toast.success(`Installed ${repoInfo.repo} from repository`);
+      setShowRepoInstallModal(false);
+      setActiveTab('installed');
+    } catch (error) {
+      logger.error('Failed to install plugin from repository:', error);
+      toast.error(`Failed to install ${repoInfo.repo}`);
+      throw error;
+    } finally {
+      setIsInstallingFromRepo(false);
+    }
+  }, [loadInstalledPlugins]);
 
   return (
     <>
     <ConfirmDialog />
+    {showRepoInstallModal && (
+      <RepoInstallModal
+        title="Install Plugin from Repository"
+        description="Install a Claude Code plugin directly from a GitHub repository"
+        placeholder="https://github.com/user/plugin or user/plugin"
+        onInstall={handleInstallFromRepo}
+        onClose={() => setShowRepoInstallModal(false)}
+        isInstalling={isInstallingFromRepo}
+      />
+    )}
     <div className="h-full flex flex-col">
       {/* Header */}
       <div className="flex-shrink-0 px-6 py-4 border-b border-surface-800">
@@ -161,6 +208,13 @@ export default function PluginsView() {
               </p>
             </div>
           </div>
+          <button
+            onClick={() => setShowRepoInstallModal(true)}
+            className="px-4 py-2 bg-surface-700 text-surface-200 rounded-lg hover:bg-surface-600 transition-colors flex items-center gap-2"
+          >
+            <GitBranch className="w-4 h-4" />
+            Install from Repo
+          </button>
         </div>
 
         {/* Tabs */}

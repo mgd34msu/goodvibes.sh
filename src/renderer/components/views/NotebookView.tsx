@@ -64,9 +64,25 @@ export default function NotebookView() {
     },
   });
 
+  const createTaskMutation = useMutation({
+    mutationFn: (content: string) => window.goodvibes.createQuickNote(content),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notes'] });
+      toast.success('Task created from notebook entry');
+    },
+    onError: () => {
+      toast.error('Failed to create task');
+    },
+  });
+
   const handleEditEntry = (entry: KnowledgeEntry) => {
     setEditingEntry(entry);
     setSelectedEntry(null);
+  };
+
+  const handleCreateTask = (entry: KnowledgeEntry) => {
+    const taskContent = `[From Notebook: ${entry.title}]\n\n${entry.content}`;
+    createTaskMutation.mutate(taskContent);
   };
 
   // Get unique categories
@@ -190,6 +206,8 @@ export default function NotebookView() {
           onClose={() => setSelectedEntry(null)}
           onEdit={() => handleEditEntry(selectedEntry)}
           onDelete={() => deleteMutation.mutate(selectedEntry.id)}
+          onCreateTask={() => handleCreateTask(selectedEntry)}
+          isCreatingTask={createTaskMutation.isPending}
         />
       )}
 
@@ -269,9 +287,11 @@ interface EntryDetailPanelProps {
   onClose: () => void;
   onEdit: () => void;
   onDelete: () => void;
+  onCreateTask: () => void;
+  isCreatingTask: boolean;
 }
 
-function EntryDetailPanel({ entry, onClose, onEdit, onDelete }: EntryDetailPanelProps) {
+function EntryDetailPanel({ entry, onClose, onEdit, onDelete, onCreateTask, isCreatingTask }: EntryDetailPanelProps) {
   return (
     <div className="w-96 border-l border-surface-800 flex flex-col">
       <div className="flex items-center justify-between px-4 py-3 border-b border-surface-700">
@@ -302,19 +322,31 @@ function EntryDetailPanel({ entry, onClose, onEdit, onDelete }: EntryDetailPanel
         </div>
       </div>
 
-      <div className="flex items-center gap-2 px-4 py-3 border-t border-surface-700">
+      <div className="flex flex-col gap-2 px-4 py-3 border-t border-surface-700">
         <button
-          onClick={onEdit}
-          className="btn btn-secondary btn-sm flex-1"
+          onClick={onCreateTask}
+          disabled={isCreatingTask}
+          className="btn btn-primary btn-sm w-full flex items-center justify-center gap-1.5"
         >
-          Edit
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+          </svg>
+          {isCreatingTask ? 'Creating...' : 'Create Task'}
         </button>
-        <button
-          onClick={onDelete}
-          className="btn btn-danger btn-sm flex-1"
-        >
-          Delete
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={onEdit}
+            className="btn btn-secondary btn-sm flex-1"
+          >
+            Edit
+          </button>
+          <button
+            onClick={onDelete}
+            className="btn btn-danger btn-sm flex-1"
+          >
+            Delete
+          </button>
+        </div>
       </div>
     </div>
   );

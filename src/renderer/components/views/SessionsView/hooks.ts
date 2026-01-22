@@ -74,8 +74,8 @@ export function useAppUptime(): number {
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setAppUptime((prev) => prev + 1);
-    }, 1000);
+      setAppUptime((prev) => prev + 10);
+    }, 10000);
     return () => clearInterval(interval);
   }, []);
 
