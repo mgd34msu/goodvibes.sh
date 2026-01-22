@@ -10,7 +10,7 @@ import { formatRelativeTime } from '../../../shared/utils';
 import { toast } from '../../stores/toastStore';
 
 export default function TasksView() {
-  const [filter, setFilter] = useState<'active' | 'completed' | 'all'>('active');
+  const [filter, setFilter] = useState<'active' | 'completed'>('active');
   const [newNoteContent, setNewNoteContent] = useState('');
   const queryClient = useQueryClient();
 
@@ -103,7 +103,7 @@ export default function TasksView() {
 
         {/* Filter Tabs */}
         <div className="filter-pills">
-          {(['active', 'completed', 'all'] as const).map((f) => (
+          {(['active', 'completed'] as const).map((f) => (
             <button
               key={f}
               onClick={() => setFilter(f)}
@@ -232,11 +232,6 @@ function EmptyState({ filter }: { filter: string }) {
       icon: '✓',
       title: 'No completed tasks',
       description: 'Completed tasks will appear here'
-    },
-    all: {
-      icon: '📋',
-      title: 'No tasks yet',
-      description: 'Start adding tasks to keep track of your work'
     }
   }[filter] || { icon: '📝', title: 'No tasks', description: 'Add a task above' };
 

@@ -1,5 +1,5 @@
 // ============================================================================
-// KNOWLEDGE VIEW COMPONENT
+// NOTEBOOK VIEW COMPONENT
 // ============================================================================
 
 import React, { useState } from 'react';
@@ -9,7 +9,7 @@ import type { KnowledgeEntry } from '../../../shared/types';
 import { formatRelativeTime } from '../../../shared/utils';
 import { toast } from '../../stores/toastStore';
 
-export default function KnowledgeView() {
+export default function NotebookView() {
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedEntry, setSelectedEntry] = useState<KnowledgeEntry | null>(null);
@@ -88,7 +88,7 @@ export default function KnowledgeView() {
             </svg>
             <input
               type="text"
-              placeholder="Search knowledge..."
+              placeholder="Search notebook..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="input w-full pl-10"
@@ -146,7 +146,7 @@ export default function KnowledgeView() {
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-surface-800/80 bg-surface-900/30">
           <div>
-            <h1 className="text-xl font-semibold text-surface-100">Knowledge Base</h1>
+            <h1 className="text-xl font-semibold text-surface-100">Notebook</h1>
             <p className="text-sm text-surface-500 mt-0.5">
               {filteredEntries.length} {filteredEntries.length === 1 ? 'entry' : 'entries'}
               {selectedCategory && ` in ${selectedCategory}`}
@@ -447,8 +447,8 @@ function EmptyState() {
       <div className="empty-icon-wrap">
         <span className="emoji-icon">📚</span>
       </div>
-      <h3>No knowledge entries</h3>
-      <p>Build your personal knowledge base by adding entries. Store code snippets, documentation, or any useful information.</p>
+      <h3>No notebook entries</h3>
+      <p>Build your personal notebook by adding entries. Store code snippets, documentation, or any useful information.</p>
     </div>
   );
 }

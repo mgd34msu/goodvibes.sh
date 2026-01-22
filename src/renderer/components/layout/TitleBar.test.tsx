@@ -298,17 +298,17 @@ describe('TitleBar', () => {
       expect(useAppStore.getState().currentView).toBe('plugins');
     });
 
-    it('navigates to knowledge view in Organize group', async () => {
+    it('navigates to notebook view in Organize group', async () => {
       const user = userEvent.setup();
       render(<TitleBar />);
 
       const organizeButton = screen.getByRole('button', { name: /Organize/i });
       await user.click(organizeButton);
 
-      const knowledgeItem = screen.getByRole('menuitem', { name: /Knowledge/i });
-      await user.click(knowledgeItem);
+      const notebookItem = screen.getByRole('menuitem', { name: /Notebook/i });
+      await user.click(notebookItem);
 
-      expect(useAppStore.getState().currentView).toBe('knowledge');
+      expect(useAppStore.getState().currentView).toBe('notebook');
     });
 
     it('navigates to tasks view in Organize group', async () => {

@@ -16,7 +16,7 @@ const TerminalView = lazy(() => import('../views/TerminalView'));
 const SessionsView = lazy(() => import('../views/SessionsView/index'));
 const AnalyticsView = lazy(() => import('../views/AnalyticsView'));
 const TasksView = lazy(() => import('../views/TasksView'));
-const KnowledgeView = lazy(() => import('../views/KnowledgeView'));
+const NotebookView = lazy(() => import('../views/NotebookView'));
 const SettingsView = lazy(() => import('../views/SettingsView'));
 const HooksView = lazy(() => import('../views/HooksView'));
 const MCPView = lazy(() => import('../views/MCPView'));
@@ -43,7 +43,7 @@ const VIEW_CONFIG: Record<ViewName, ViewConfig> = {
   sessions: { component: SessionsView, displayName: 'Sessions' },
   analytics: { component: AnalyticsView, displayName: 'Analytics' },
   tasks: { component: TasksView, displayName: 'Tasks' },
-  knowledge: { component: KnowledgeView, displayName: 'Knowledge' },
+  notebook: { component: NotebookView, displayName: 'Notebook' },
   settings: { component: SettingsView, displayName: 'Settings' },
   hooks: { component: HooksView, displayName: 'Hooks' },
   mcp: { component: MCPView, displayName: 'MCP Servers' },
