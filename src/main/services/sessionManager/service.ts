@@ -198,8 +198,26 @@ export class SessionManagerInstance {
     }, SESSION_SCAN_INTERVAL_MS);
   }
 
+  private cleanupDeletedSessions(): void {
+    for (const [filePath] of this.watchedSessions) {
+      if (!existsSync(filePath)) {
+        try {
+          unwatchFile(filePath);
+        } catch (e) {
+          // File may already be unwatched
+        }
+        this.watchedSessions.delete(filePath);
+        this.knownSessionFiles.delete(filePath);
+        logger.debug('Cleaned up deleted session file', { filePath });
+      }
+    }
+  }
+
   private async scanForNewSessions(): Promise<void> {
     if (!existsSync(this.claudeDir)) return;
+
+    // Cleanup deleted sessions before scanning for new ones
+    this.cleanupDeletedSessions();
 
     try {
       const files = await this.findSessionFiles(this.claudeDir);
@@ -252,6 +270,15 @@ export class SessionManagerInstance {
 
     watchFile(filePath, { interval: SESSION_FILE_WATCH_INTERVAL_MS }, async () => {
       try {
+        // Check if file still exists
+        if (!existsSync(filePath)) {
+          logger.debug('Session file deleted, cleaning up watcher', { filePath, sessionId });
+          unwatchFile(filePath);
+          this.watchedSessions.delete(filePath);
+          this.knownSessionFiles.delete(filePath);
+          return;
+        }
+
         const stats = await fs.stat(filePath);
         if (stats.size !== lastSize) {
           logger.debug('Session file changed', { filePath, sessionId, oldSize: lastSize, newSize: stats.size });
@@ -271,6 +298,18 @@ export class SessionManagerInstance {
           filePath,
           error: error instanceof Error ? error.message : 'Unknown error'
         });
+
+        // If error occurred, check if file was deleted and cleanup
+        if (!existsSync(filePath)) {
+          try {
+            unwatchFile(filePath);
+            this.watchedSessions.delete(filePath);
+            this.knownSessionFiles.delete(filePath);
+            logger.debug('Cleaned up watcher for deleted file after error', { filePath, sessionId });
+          } catch (cleanupError) {
+            // Ignore cleanup errors
+          }
+        }
       }
     });
 

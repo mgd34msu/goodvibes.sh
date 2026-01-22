@@ -467,6 +467,7 @@ describe('AgentsView', () => {
       // Find the Delete button in the card (not the confirmation dialog)
       const deleteButtons = screen.getAllByRole('button', { name: /delete/i });
       const deleteButton = deleteButtons[0];
+      if (!deleteButton) throw new Error('Delete button not found');
       await act(async () => {
         fireEvent.click(deleteButton);
       });
@@ -489,6 +490,7 @@ describe('AgentsView', () => {
       // Find the Delete button in the card (first one)
       const deleteButtons = screen.getAllByRole('button', { name: /delete/i });
       const deleteButton = deleteButtons[0];
+      if (!deleteButton) throw new Error('Delete button not found');
       await act(async () => {
         fireEvent.click(deleteButton);
       });
@@ -522,6 +524,7 @@ describe('AgentsView', () => {
       // Find the Delete button in the card
       const deleteButtons = screen.getAllByRole('button', { name: /delete/i });
       const deleteButton = deleteButtons[0];
+      if (!deleteButton) throw new Error('Delete button not found');
       await act(async () => {
         fireEvent.click(deleteButton);
       });
@@ -591,6 +594,7 @@ describe('AgentsView', () => {
       // Find the Delete button in the card
       const deleteButtons = screen.getAllByRole('button', { name: /delete/i });
       const deleteButton = deleteButtons[0];
+      if (!deleteButton) throw new Error('Delete button not found');
       await act(async () => {
         fireEvent.click(deleteButton);
       });

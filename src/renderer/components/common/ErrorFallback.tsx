@@ -24,7 +24,7 @@ export function ErrorFallback({ error, resetErrorBoundary }: FallbackProps): Rea
 
         <div className="bg-surface-900 rounded-lg p-4 mb-6 text-left overflow-auto max-h-48">
           <code className="text-xs text-error-400 font-mono whitespace-pre-wrap">
-            {error.message}
+            {error instanceof Error ? error.message : String(error)}
           </code>
         </div>
 

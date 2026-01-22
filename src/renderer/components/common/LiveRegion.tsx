@@ -32,12 +32,18 @@ interface LiveRegionProviderProps {
 export function LiveRegionProvider({ children }: LiveRegionProviderProps): React.JSX.Element {
   const [politeMessage, setPoliteMessage] = useState('');
   const [assertiveMessage, setAssertiveMessage] = useState('');
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const announceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const clearTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const announce = useCallback((message: string, priority: 'polite' | 'assertive' = 'polite') => {
-    // Clear any pending announcements
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
+    // Clear any pending timeouts
+    if (announceTimeoutRef.current) {
+      clearTimeout(announceTimeoutRef.current);
+      announceTimeoutRef.current = null;
+    }
+    if (clearTimeoutRef.current) {
+      clearTimeout(clearTimeoutRef.current);
+      clearTimeoutRef.current = null;
     }
 
     // Clear current message first (needed for repeated announcements)
@@ -48,25 +54,30 @@ export function LiveRegionProvider({ children }: LiveRegionProviderProps): React
     }
 
     // Set new message after a brief delay
-    timeoutRef.current = setTimeout(() => {
+    announceTimeoutRef.current = setTimeout(() => {
       if (priority === 'polite') {
         setPoliteMessage(message);
       } else {
         setAssertiveMessage(message);
       }
+      announceTimeoutRef.current = null;
 
       // Clear after announcement
-      timeoutRef.current = setTimeout(() => {
+      clearTimeoutRef.current = setTimeout(() => {
         setPoliteMessage('');
         setAssertiveMessage('');
+        clearTimeoutRef.current = null;
       }, 1000);
     }, 50);
   }, []);
 
   useEffect(() => {
     return () => {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
+      if (announceTimeoutRef.current) {
+        clearTimeout(announceTimeoutRef.current);
+      }
+      if (clearTimeoutRef.current) {
+        clearTimeout(clearTimeoutRef.current);
       }
     };
   }, []);

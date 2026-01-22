@@ -451,21 +451,32 @@ export function getAllSettings(): Record<string, unknown> {
 
 export function getAnalytics(): Analytics {
   const database = getDatabase();
+  const today = getTodayString();
 
-  const sessions = database.prepare('SELECT * FROM sessions').all() as SessionRow[];
-  const totalSessions = sessions.length;
-
-  let totalTokens = 0;
-  let totalCost = 0;
-  let totalMessages = 0;
-
-  sessions.forEach(s => {
-    totalTokens += s.token_count ?? 0;
-    totalCost += s.cost ?? 0;
-    totalMessages += s.message_count ?? 0;
-  });
-
-  const avgTokensPerSession = totalSessions > 0 ? Math.round(totalTokens / totalSessions) : 0;
+  // Main aggregations query - single pass to get all stats
+  const mainStats = database.prepare(`
+    SELECT
+      COUNT(*) as totalSessions,
+      COALESCE(SUM(token_count), 0) as totalTokens,
+      COALESCE(SUM(cost), 0) as totalCost,
+      COALESCE(SUM(message_count), 0) as totalMessages,
+      COALESCE(AVG(token_count), 0) as avgTokensPerSession,
+      SUM(CASE WHEN start_time LIKE ? || '%' THEN COALESCE(cost, 0) ELSE 0 END) as dailyCost,
+      SUM(CASE WHEN start_time LIKE ? || '%' THEN COALESCE(message_count, 0) ELSE 0 END) as messagesToday,
+      SUM(CASE WHEN id LIKE 'agent-%' THEN 1 ELSE 0 END) as totalSubagents,
+      SUM(CASE WHEN favorite = 1 THEN 1 ELSE 0 END) as favoriteCount
+    FROM sessions
+  `).get(today, today) as {
+    totalSessions: number;
+    totalTokens: number;
+    totalCost: number;
+    totalMessages: number;
+    avgTokensPerSession: number;
+    dailyCost: number;
+    messagesToday: number;
+    totalSubagents: number;
+    favoriteCount: number;
+  };
 
   // Cost by project
   const projectGroups = database.prepare(`
@@ -512,33 +523,19 @@ export function getAnalytics(): Analytics {
     });
   }
 
-  // Daily cost
-  const today = getTodayString();
-  const todaySessions = sessions.filter(s => s.start_time?.startsWith(today));
-  const dailyCost = todaySessions.reduce((sum, s) => sum + (s.cost ?? 0), 0);
-
-  // Messages today
-  const messagesToday = todaySessions.reduce((sum, s) => sum + (s.message_count ?? 0), 0);
-
-  // Subagent count
-  const totalSubagents = sessions.filter(s => s.id?.startsWith('agent-')).length;
-
-  // Favorite count
-  const favoriteCount = sessions.filter(s => s.favorite).length;
-
   return {
-    totalSessions,
-    totalTokens,
-    totalCost,
-    dailyCost,
-    avgTokensPerSession,
+    totalSessions: mainStats.totalSessions,
+    totalTokens: mainStats.totalTokens,
+    totalCost: mainStats.totalCost,
+    dailyCost: mainStats.dailyCost,
+    avgTokensPerSession: Math.round(mainStats.avgTokensPerSession),
     costByProject,
     sessionsOverTime,
-    messageCount: totalMessages,
-    totalMessages,
-    messagesToday,
-    totalSubagents,
-    favoriteCount,
+    messageCount: mainStats.totalMessages,
+    totalMessages: mainStats.totalMessages,
+    messagesToday: mainStats.messagesToday,
+    totalSubagents: mainStats.totalSubagents,
+    favoriteCount: mainStats.favoriteCount,
   };
 }
 

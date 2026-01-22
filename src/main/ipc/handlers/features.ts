@@ -424,18 +424,12 @@ export function registerFeatureHandlers(): void {
 
     try {
       const { name, scope, projectPath } = result.data;
-      console.log('UNINSTALL DEBUG:', { name, scope, projectPath });
       const baseDir = getBaseDir(scope, projectPath);
       const agentsDir = path.join(baseDir, 'agents');
       const filePath = path.join(agentsDir, `${name}.md`);
-      console.log('UNINSTALL PATH:', filePath);
-      console.log('FILE EXISTS:', fs.existsSync(filePath));
 
       if (fs.existsSync(filePath)) {
         fs.unlinkSync(filePath);
-        console.log('DELETED:', filePath);
-      } else {
-        console.log('FILE NOT FOUND:', filePath);
       }
 
       logger.info('Agent uninstalled successfully', { name, scope, filePath });
