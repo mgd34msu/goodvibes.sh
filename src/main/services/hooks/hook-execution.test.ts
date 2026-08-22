@@ -388,7 +388,7 @@ describe('Hook Execution Result Structure', () => {
     ];
 
     // The fields are defined in types.ts
-    // This test serves as documentation
+    // This test documents the expected fields
     expect(expectedFields).toHaveLength(8);
   });
 

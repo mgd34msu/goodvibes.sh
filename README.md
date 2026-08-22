@@ -228,7 +228,7 @@ handling your password or storing a client secret.
 A client ID for a shared GoodVibes OAuth App is compiled into the build, so Device Flow works
 on a fresh install with nothing to configure. Open **Settings -> GitHub** and choose to sign
 in. Device Flow is the only sign-in path available by default, because the Authorization Code
-Flow additionally needs a client secret, which is deliberately not shipped.
+Flow also needs a client secret, which is deliberately not shipped.
 
 ### Where your token is kept
 
