@@ -212,7 +212,7 @@ if ! $NO_GIT; then
   echo ""
   echo "  Committing version bump..."
   cd "$PROJECT_ROOT"
-  git add package.json
+  git add package.json package-lock.json
   git commit -m "chore: bump version to $NEW_VERSION"
 
   echo "  Creating git tag v$NEW_VERSION..."
@@ -288,9 +288,14 @@ Write professional release notes in markdown with these sections:
 
 Be concise but informative. Focus on user-facing changes."
 
-      # Generate notes with Claude CLI
-      RELEASE_NOTES=$(echo "$RELEASE_PROMPT" | claude --print 2>/dev/null || echo "")
-      
+      # Generate notes with Claude CLI. A failed invocation still writes its
+      # error text to stdout (for example an API balance message), so a
+      # non-zero exit or an implausibly short body both mean "no notes".
+      RELEASE_NOTES=$(echo "$RELEASE_PROMPT" | claude --print 2>/dev/null) || RELEASE_NOTES=""
+      if [[ ${#RELEASE_NOTES} -lt 200 ]]; then
+        RELEASE_NOTES=""
+      fi
+
       if [[ -z "$RELEASE_NOTES" ]]; then
         echo "  Claude generation failed, using auto-generated notes"
         gh release create "v$NEW_VERSION" \
